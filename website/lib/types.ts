@@ -38,7 +38,7 @@ export interface CatalogItem {
   type: CatalogItemType;
   name: string;
   price: number;
-  options?: Record<string, any>;
+  options?: Record<string, string[]>;
   active: boolean;
   description?: string;
 }
@@ -50,7 +50,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   unitPrice: number;
-  options?: Record<string, any>;
+  options?: Record<string, string[]>;
 }
 
 export interface Suborder {
@@ -69,7 +69,7 @@ export interface Payment {
   amount: number;
   status: PaymentStatus;
   proofUrl?: string;
-  recognized?: Record<string, any>;
+  recognized?: Record<string, string[]>;
   confirmedAt?: Date;
 }
 

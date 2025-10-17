@@ -54,8 +54,7 @@ export function QuickTodoList({
           >
             <Checkbox
               checked={todo.completed}
-              onCheckedChange={(e) => {
-                e.stopPropagation();
+              onCheckedChange={() => {
                 onToggle(todo.id);
               }}
               onClick={(e) => e.stopPropagation()}

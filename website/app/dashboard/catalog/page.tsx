@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { mockCatalogItems } from "@/lib/mock-data";
 import type { CatalogItem, CatalogItemType } from "@/lib/types";
 import { Plus, Upload, X } from "lucide-react";
+import ImageComponent from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -154,8 +155,7 @@ export default function CatalogPage() {
                   </span>
                   <Switch
                     checked={item.active}
-                    onCheckedChange={(e) => {
-                      e.stopPropagation();
+                    onCheckedChange={() => {
                       toggleActive(item.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
@@ -193,11 +193,14 @@ export default function CatalogPage() {
               >
                 {formData.imageUrl ? (
                   <>
-                    <img
+                    <ImageComponent
                       src={formData.imageUrl}
                       alt="商品預覽"
+                      width={100}
+                      height={100}
                       className="h-full w-full object-cover"
                     />
+
                     <Button
                       variant="destructive"
                       size="icon"

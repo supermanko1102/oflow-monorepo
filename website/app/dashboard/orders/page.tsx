@@ -19,7 +19,7 @@ import type { Order, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Search, ShoppingBag, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const statusConfig: Record<
@@ -46,7 +46,7 @@ const filterOptions: { label: string; value: OrderStatus | "all" }[] = [
   { label: "已取消", value: "cancelled" },
 ];
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -372,5 +372,13 @@ export default function OrdersPage() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-4">載入中...</div>}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }
