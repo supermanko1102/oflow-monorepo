@@ -1,18 +1,36 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { StatCard } from '@/components/StatCard';
 import { TodayOrderItem } from '@/components/TodayOrderItem';
 import { WeekStatsCard } from '@/components/WeekStatsCard';
+import { TodayTasksCard } from '@/components/TodayTasksCard';
+import { UrgentOrderPreview } from '@/components/UrgentOrderPreview';
 import { mockOrders } from '@/data/mockOrders';
 import { mockDailyStats, mockWeeklyStats } from '@/data/mockStats';
 import { mockReminders } from '@/data/mockReminders';
+import { useToast } from '@/hooks/useToast';
+import { useHaptics } from '@/hooks/useHaptics';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const merchantName = useAuthStore((state) => state.merchantName);
+  const toast = useToast();
+  const haptics = useHaptics();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    haptics.light();
+    
+    // 模擬資料重新載入
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setRefreshing(false);
+    toast.success('資料已更新');
+  }, [haptics, toast]);
 
   // 取得今日訂單（pickupDate 是今天的）
   const today = new Date();
@@ -50,7 +68,17 @@ export default function DashboardScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView 
+      className="flex-1 bg-gray-50"
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#00B900"
+          colors={['#00B900']}
+        />
+      }
+    >
       {/* Header */}
       <View className="bg-white pt-12 pb-6 px-4 border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-900 mb-1">
@@ -60,6 +88,14 @@ export default function DashboardScreen() {
           今天是 {formatDate()}
         </Text>
       </View>
+
+      {/* Today Tasks Card - 新增：今日待辦 */}
+      <View className="mt-4">
+        <TodayTasksCard orders={mockOrders} />
+      </View>
+
+      {/* Urgent Order Preview - 新增：緊急訂單預覽 */}
+      <UrgentOrderPreview orders={mockOrders} />
 
       {/* Today Stats */}
       <View className="px-4 py-4">

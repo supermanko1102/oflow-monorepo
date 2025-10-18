@@ -32,11 +32,7 @@ export default function RemindersScreen() {
             提醒通知
           </Text>
         </View>
-        <EmptyState
-          icon="🔔"
-          title="沒有提醒"
-          description="目前沒有需要提醒的訂單"
-        />
+        <EmptyState type="noReminders" />
       </View>
     );
   }

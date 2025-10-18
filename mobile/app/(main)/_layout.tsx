@@ -28,7 +28,16 @@ export default function MainLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="order" />
+      <Stack.Screen 
+        name="order"
+        options={{
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#FFFFFF',
+          },
+          headerShadowVisible: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -7,6 +7,7 @@ import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import '../global.css';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { ToastContainer } from '@/components/Toast';
 
 // 防止 splash screen 自動隱藏
 SplashScreen.preventAutoHideAsync();
@@ -68,6 +69,7 @@ export default function RootLayout() {
           />
         </Stack>
         <StatusBar style="auto" />
+        <ToastContainer />
       </ThemeProvider>
     </PaperProvider>
   );

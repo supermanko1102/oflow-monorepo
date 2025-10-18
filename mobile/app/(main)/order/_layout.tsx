@@ -2,7 +2,16 @@ import { Stack } from 'expo-router';
 
 export default function OrderLayout() {
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#FFFFFF',
+        },
+        headerShadowVisible: false,
+        headerTintColor: '#00B900',
+        headerBackTitleVisible: false,
+      }}
+    >
       <Stack.Screen 
         name="[id]" 
         options={{

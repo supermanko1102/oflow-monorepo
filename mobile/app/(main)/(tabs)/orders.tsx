@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Chip } from 'react-native-paper';
 import { OrderCard } from '@/components/OrderCard';
 import { EmptyState } from '@/components/EmptyState';
 import { mockOrders } from '@/data/mockOrders';
 import { OrderStatus } from '@/types/order';
+import { useToast } from '@/hooks/useToast';
+import { useHaptics } from '@/hooks/useHaptics';
 
 type FilterType = 'all' | OrderStatus;
 
 export default function OrdersScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const toast = useToast();
+  const haptics = useHaptics();
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    haptics.light();
+    
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    setRefreshing(false);
+    toast.success('訂單已更新');
+  }, [haptics, toast]);
 
   const filteredOrders = filter === 'all' 
     ? mockOrders 
@@ -54,17 +69,27 @@ export default function OrdersScreen() {
 
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
-        <EmptyState
-          icon="📦"
-          title="沒有訂單"
-          description={`目前沒有${filter === 'pending' ? '待處理' : filter === 'completed' ? '已完成' : ''}訂單`}
-        />
+        filter === 'all' ? (
+          <EmptyState type="noOrders" />
+        ) : filter === 'pending' ? (
+          <EmptyState type="noPendingOrders" />
+        ) : (
+          <EmptyState type="noCompletedOrders" />
+        )
       ) : (
         <FlatList
           data={filteredOrders}
           renderItem={({ item }) => <OrderCard order={item} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 16 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00B900"
+              colors={['#00B900']}
+            />
+          }
         />
       )}
     </View>
