@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Button } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { StatCard } from '@/components/StatCard';
@@ -15,9 +17,11 @@ import { mockReminders } from '@/data/mockReminders';
 import { useToast } from '@/hooks/useToast';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useScheduleStore } from '@/stores/useScheduleStore';
+import { SHADOWS } from '@/constants/design';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const merchantName = useAuthStore((state) => state.merchantName);
   const schedule = useScheduleStore((state) => state.schedule);
   const toast = useToast();
@@ -81,15 +85,21 @@ export default function DashboardScreen() {
         />
       }
     >
-      {/* Header */}
-      <View className="bg-white pt-12 pb-6 px-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900 mb-1">
-          👋 {getCurrentGreeting()}，{merchantName}
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#00B900', '#009900']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="pb-8 px-6 rounded-b-3xl"
+        style={[SHADOWS.elevated, { paddingTop: insets.top + 16 }]}
+      >
+        <Text className="text-3xl font-bold text-white mb-2">
+          {getCurrentGreeting()}，{merchantName}
         </Text>
-        <Text className="text-sm text-gray-600">
+        <Text className="text-base text-white/90">
           今天是 {formatDate()}
         </Text>
-      </View>
+      </LinearGradient>
 
       {/* Today Schedule Card - 新增：今日排班 */}
       <View className="mt-4">
@@ -105,40 +115,40 @@ export default function DashboardScreen() {
       <UrgentOrderPreview orders={mockOrders} />
 
       {/* Today Stats */}
-      <View className="px-4 py-4">
-        <Text className="text-base font-semibold text-gray-900 mb-3">
-          📊 今日數據
+      <View className="px-6 py-6">
+        <Text className="text-lg font-bold text-gray-900 mb-4">
+          今日數據
         </Text>
         <View className="flex-row gap-3">
           <StatCard
-            icon="📦"
+            icon="package"
             label="訂單數"
             value={mockDailyStats.todayOrderCount}
-            color="gray-900"
+            color="info"
           />
           <StatCard
-            icon="💰"
+            icon="cash"
             label="營收"
             value={formatCurrency(mockDailyStats.todayRevenue)}
-            color="line-green"
+            color="success"
           />
           <StatCard
-            icon="⏳"
+            icon="clock"
             label="待處理"
             value={mockDailyStats.pendingOrderCount}
-            color="orange-500"
+            color="warning"
           />
         </View>
       </View>
 
       {/* Today's Orders */}
-      <View className="bg-white mx-4 rounded-xl p-4 mb-4">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-base font-semibold text-gray-900">
-            🔴 今日重點
+      <View className="bg-white mx-6 rounded-2xl p-5 mb-6" style={SHADOWS.card}>
+        <View className="flex-row justify-between items-center mb-4">
+          <Text className="text-lg font-bold text-gray-900">
+            今日重點
           </Text>
-          <Text className="text-sm text-gray-600">
-            {todayOrders.length} 筆訂單要取貨
+          <Text className="text-sm font-medium text-gray-600">
+            {todayOrders.length} 筆訂單
           </Text>
         </View>
 
@@ -169,9 +179,9 @@ export default function DashboardScreen() {
       <WeekStatsCard stats={mockWeeklyStats} />
 
       {/* Quick Actions */}
-      <View className="px-4 mb-4">
-        <Text className="text-base font-semibold text-gray-900 mb-3">
-          ⚡ 快速操作
+      <View className="px-6 mb-6">
+        <Text className="text-lg font-bold text-gray-900 mb-4">
+          快速操作
         </Text>
         <View className="flex-row gap-3">
           <View className="flex-1">
@@ -179,7 +189,8 @@ export default function DashboardScreen() {
               mode="contained"
               onPress={() => router.push('/(main)/(tabs)/orders')}
               buttonColor="#00B900"
-              contentStyle={{ paddingVertical: 4 }}
+              contentStyle={{ paddingVertical: 8 }}
+              style={{ borderRadius: 12 }}
             >
               查看所有訂單
             </Button>
@@ -189,8 +200,8 @@ export default function DashboardScreen() {
               mode="outlined"
               onPress={() => {}}
               textColor="#6B7280"
-              style={{ borderColor: '#D1D5DB' }}
-              contentStyle={{ paddingVertical: 4 }}
+              style={{ borderColor: '#D1D5DB', borderRadius: 12 }}
+              contentStyle={{ paddingVertical: 8 }}
             >
               手動新增
             </Button>
@@ -200,14 +211,14 @@ export default function DashboardScreen() {
 
       {/* Upcoming Reminders */}
       {upcomingReminders.length > 0 && (
-        <View className="bg-white mx-4 rounded-xl p-4 mb-4">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-base font-semibold text-gray-900">
-              🔔 近期提醒
+        <View className="bg-white mx-6 rounded-2xl p-5 mb-6" style={SHADOWS.card}>
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-900">
+              近期提醒
             </Text>
             <TouchableOpacity onPress={() => router.push('/(main)/(tabs)/reminders')}>
-              <Text className="text-sm text-line-green font-medium">
-                查看全部
+              <Text className="text-sm text-primary-500 font-semibold">
+                查看全部 →
               </Text>
             </TouchableOpacity>
           </View>

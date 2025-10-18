@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { Button } from 'react-native-paper';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { LogoIcon } from '@/components/icons';
 
 export default function LoginScreen() {
   const login = useAuthStore((state) => state.login);
@@ -15,8 +16,10 @@ export default function LoginScreen() {
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 justify-center items-center px-6 py-12 min-h-screen">
         {/* Logo / Icon */}
-        <View className="mb-8">
-          <Text className="text-6xl text-center mb-4">🧾</Text>
+        <View className="mb-8 items-center">
+          <View className="mb-4">
+            <LogoIcon size={80} color="#00B900" />
+          </View>
           <Text className="text-3xl font-bold text-gray-900 text-center mb-2">
             OFlow
           </Text>
@@ -32,40 +35,31 @@ export default function LoginScreen() {
               讓 AI 幫你自動處理訂單
             </Text>
             <View className="space-y-3">
-              <View className="flex-row items-start mb-3">
-                <Text className="text-2xl mr-3">✨</Text>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-800 mb-1">
-                    自動讀取 LINE 對話
-                  </Text>
-                  <Text className="text-xs text-gray-600">
-                    AI 自動識別訂單資訊並建立訂單
-                  </Text>
-                </View>
+              <View className="mb-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-1">
+                  自動讀取 LINE 對話
+                </Text>
+                <Text className="text-xs text-gray-600">
+                  AI 自動識別訂單資訊並建立訂單
+                </Text>
               </View>
               
-              <View className="flex-row items-start mb-3">
-                <Text className="text-2xl mr-3">🔔</Text>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-800 mb-1">
-                    智慧提醒功能
-                  </Text>
-                  <Text className="text-xs text-gray-600">
-                    提前提醒，讓你不漏單
-                  </Text>
-                </View>
+              <View className="mb-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-1">
+                  智慧提醒功能
+                </Text>
+                <Text className="text-xs text-gray-600">
+                  提前提醒，讓你不漏單
+                </Text>
               </View>
               
-              <View className="flex-row items-start">
-                <Text className="text-2xl mr-3">⚡</Text>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-800 mb-1">
-                    全自動/半自動模式
-                  </Text>
-                  <Text className="text-xs text-gray-600">
-                    彈性選擇適合你的接單方式
-                  </Text>
-                </View>
+              <View>
+                <Text className="text-sm font-semibold text-gray-800 mb-1">
+                  全自動/半自動模式
+                </Text>
+                <Text className="text-xs text-gray-600">
+                  彈性選擇適合你的接單方式
+                </Text>
               </View>
             </View>
           </View>

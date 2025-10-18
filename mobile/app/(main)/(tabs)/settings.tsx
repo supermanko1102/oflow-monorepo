@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { List, Divider, Button } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const autoMode = useSettingsStore((state) => state.autoMode);
@@ -26,7 +28,10 @@ export default function SettingsScreen() {
   return (
     <ScrollView className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+      <View 
+        className="bg-white pb-4 px-4 border-b border-gray-200"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <Text className="text-2xl font-bold text-gray-900">
           設置
         </Text>

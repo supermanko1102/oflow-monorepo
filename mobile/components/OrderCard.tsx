@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
-import { Card, IconButton } from 'react-native-paper';
+import { Card } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Order } from '@/types/order';
 import { StatusBadge } from './StatusBadge';
 import { useRouter } from 'expo-router';
@@ -14,6 +16,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { useScheduleStore } from '@/stores/useScheduleStore';
 import { isWithinBusinessHours } from '@/utils/scheduleHelpers';
+import { SHADOWS } from '@/constants/design';
 
 interface OrderCardProps {
   order: Order;
@@ -78,17 +81,30 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
       activeOpacity={0.7}
     >
       <Card 
-        className="mb-3 mx-4 bg-white" 
-        style={{ 
-          borderLeftWidth: 4, 
-          borderLeftColor: urgencyLevel === 'urgent' ? urgencyConfig.color : 'transparent' 
-        }}
+        className="mb-4 mx-4 bg-white overflow-hidden" 
+        style={[
+          SHADOWS.card,
+          {
+            borderLeftWidth: 4,
+            borderLeftColor: urgencyLevel === 'urgent' ? urgencyConfig.color : 'transparent',
+          }
+        ]}
       >
-        <Card.Content className="p-4">
+        {/* 緊急訂單漸層背景 */}
+        {urgencyLevel === 'urgent' && (
+          <LinearGradient
+            colors={['#FEE2E2', '#FFFFFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            className="absolute inset-0 opacity-40"
+          />
+        )}
+        
+        <Card.Content className="p-5">
           {/* Header */}
           <View className="flex-row justify-between items-start mb-3">
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-gray-900 mb-1">
+              <Text className="text-xl font-bold text-gray-900 mb-1">
                 {order.customerName}
               </Text>
               <Text className="text-sm text-gray-600">
@@ -103,58 +119,61 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
 
           {/* 非營業時間警告 */}
           {!isWithinHours && (
-            <View className="bg-amber-50 py-1.5 px-3 rounded-md mb-3 border border-amber-200">
-              <Text className="text-xs font-semibold text-amber-900 text-center">
+            <View className="bg-warning-light py-2 px-3 rounded-xl mb-3 border border-warning/20">
+              <Text className="text-xs font-bold text-warning-dark text-center">
                 ⚠️ 非營業時間
               </Text>
             </View>
           )}
           
           {/* Time and Amount */}
-          <View className="flex-row justify-between items-center mb-3">
+          <View className="flex-row justify-between items-center mb-4">
             <View 
-              className="flex-row items-center px-3 py-1 rounded-full"
+              className="flex-row items-center px-4 py-2 rounded-full"
               style={{ backgroundColor: urgencyConfig.bgColor }}
             >
-              <Text className="text-base mr-1">{urgencyEmoji}</Text>
+              <Text className="text-lg mr-1.5">{urgencyEmoji}</Text>
               <Text 
-                className="text-sm font-medium"
+                className="text-sm font-bold"
                 style={{ color: urgencyConfig.textColor }}
               >
                 {relativeTime}
               </Text>
             </View>
-            <Text className="text-lg font-bold text-line-green">
+            <Text className="text-2xl font-bold text-primary-500">
               ${order.totalAmount}
             </Text>
           </View>
 
           {/* Quick Actions */}
           {order.status === 'pending' && (
-            <View className="flex-row gap-2 pt-2 border-t border-gray-100">
-              <IconButton
-                icon="check-circle"
-                size={20}
-                iconColor="#10B981"
+            <View className="flex-row gap-3 pt-4 border-t border-neutral-100">
+              <TouchableOpacity
+                className="flex-1 flex-row items-center justify-center bg-success-light py-3 rounded-xl"
                 onPress={handleComplete}
-                className="m-0 bg-gray-100"
-              />
-              <IconButton
-                icon="phone"
-                size={20}
-                iconColor="#3B82F6"
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
+                <Text className="ml-2 text-sm font-bold text-success">完成</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="w-12 h-12 items-center justify-center bg-info-light rounded-xl"
                 onPress={handleCall}
-                className="m-0 bg-gray-100"
                 disabled={!order.customerPhone}
-              />
-              <IconButton
-                icon="message-text"
-                size={20}
-                iconColor="#8B5CF6"
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="phone" size={20} color="#3B82F6" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="w-12 h-12 items-center justify-center bg-purple-100 rounded-xl"
                 onPress={handleMessage}
-                className="m-0 bg-gray-100"
                 disabled={!order.customerPhone}
-              />
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="message-text" size={20} color="#8B5CF6" />
+              </TouchableOpacity>
             </View>
           )}
         </Card.Content>

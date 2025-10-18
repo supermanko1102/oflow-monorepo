@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, SectionList } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReminderCard } from '@/components/ReminderCard';
 import { EmptyState } from '@/components/EmptyState';
 import { mockReminders } from '@/data/mockReminders';
 import { Reminder } from '@/types/order';
+import { SHADOWS } from '@/constants/design';
 
 interface ReminderSection {
   title: string;
@@ -11,6 +14,8 @@ interface ReminderSection {
 }
 
 export default function RemindersScreen() {
+  const insets = useSafeAreaInsets();
+  
   // Group reminders by type
   const todayReminders = mockReminders.filter(r => r.reminderType === 'today');
   const threeDaysReminders = mockReminders.filter(r => r.reminderType === '3days');
@@ -27,12 +32,19 @@ export default function RemindersScreen() {
   if (mockReminders.length === 0) {
     return (
       <View className="flex-1 bg-gray-50">
-        <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
-          <Text className="text-2xl font-bold text-gray-900">
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          className="pb-5 px-6"
+          style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
+        >
+          <Text className="text-3xl font-bold text-gray-900">
             提醒通知
           </Text>
-        </View>
-        <EmptyState type="noReminders" />
+        </LinearGradient>
+        <EmptyState
+          title="沒有提醒"
+          description="當有重要訂單需要注意時，會顯示在這裡"
+        />
       </View>
     );
   }
@@ -40,20 +52,24 @@ export default function RemindersScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+      <LinearGradient
+        colors={['#FFFFFF', '#F9FAFB']}
+        className="pb-5 px-6"
+        style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
+      >
         <View className="flex-row justify-between items-center">
-          <Text className="text-2xl font-bold text-gray-900">
+          <Text className="text-3xl font-bold text-gray-900">
             提醒通知
           </Text>
           {unreadCount > 0 && (
-            <View className="bg-line-green rounded-full px-3 py-1">
-              <Text className="text-white text-sm font-semibold">
+            <View className="bg-error rounded-full px-3 py-1.5">
+              <Text className="text-white text-xs font-bold">
                 {unreadCount} 則未讀
               </Text>
             </View>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Reminders List */}
       <SectionList

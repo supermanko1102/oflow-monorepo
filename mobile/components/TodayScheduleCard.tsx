@@ -11,6 +11,8 @@ import {
   getAllSlots,
 } from '@/utils/scheduleHelpers';
 import { format } from 'date-fns';
+import { SHADOWS } from '@/constants/design';
+import { CheckCircleIcon, CloseCircleIcon } from '@/components/icons';
 
 interface TodayScheduleCardProps {
   schedule: Schedule | null;
@@ -31,20 +33,20 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
 
   if (!schedule) {
     return (
-      <Card className="mx-4 bg-white">
-        <Card.Content className="p-4 flex-row items-center">
+      <Card className="mx-4 bg-white" style={SHADOWS.card}>
+        <Card.Content className="p-5 flex-row items-center">
           <View className="mr-4">
-            <Text className="text-3xl">📅</Text>
+            <CloseCircleIcon size={48} color="#9CA3AF" />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold text-gray-900 mb-1">尚未設定排班</Text>
+            <Text className="text-lg font-bold text-gray-900 mb-1">尚未設定排班</Text>
             <Text className="text-sm text-gray-600">點擊設定營業時間</Text>
           </View>
           <TouchableOpacity
-            className="bg-green-50 px-4 py-2 rounded-lg"
+            className="bg-primary-100 px-4 py-2.5 rounded-xl"
             onPress={() => router.push('/(main)/schedule')}
           >
-            <Text className="text-sm font-semibold text-line-green">設定</Text>
+            <Text className="text-sm font-bold text-primary-600">設定</Text>
           </TouchableOpacity>
         </Card.Content>
       </Card>
@@ -55,15 +57,32 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
   const businessHours = getBusinessHours(today, schedule);
   const businessStatus = getBusinessStatus(today, schedule);
 
-  const getStatusColor = () => {
-    if (!isBusiness) return 'text-gray-500';
-    return 'text-green-600';
+  const getStatusConfig = () => {
+    if (!isBusiness) return {
+      textColor: 'text-gray-600',
+      iconColor: '#9CA3AF',
+      IconComponent: CloseCircleIcon,
+    };
+    return {
+      textColor: 'text-success',
+      iconColor: '#10B981',
+      IconComponent: CheckCircleIcon,
+    };
   };
 
-  const getStatusIcon = () => {
-    if (!isBusiness) return '⚪';
-    return '🟢';
-  };
+  const statusConfig = getStatusConfig();
+
+  // 計算可用時段（預約制）
+  let availableInfo = null;
+  if (schedule.businessType === 'appointment' && isBusiness) {
+    const allSlots = getAllSlots(today, schedule);
+    const availableSlots = getAvailableSlots(today, schedule);
+    availableInfo = {
+      available: availableSlots.length,
+      total: allSlots.length,
+      percentage: allSlots.length > 0 ? (availableSlots.length / allSlots.length) * 100 : 0,
+    };
+  }
 
   return (
     <TouchableOpacity
@@ -71,36 +90,44 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
       onPress={() => router.push('/(main)/schedule')}
       activeOpacity={0.7}
     >
-      <Card className="mx-4 bg-white">
-        <Card.Content className="p-4 flex-row items-center">
+      <Card className="mx-4 bg-white" style={SHADOWS.card}>
+        <Card.Content className="p-5 flex-row items-center">
           <View className="mr-4">
-            <Text className="text-3xl">{getStatusIcon()}</Text>
+            <statusConfig.IconComponent size={48} color={statusConfig.iconColor} />
           </View>
           
           <View className="flex-1">
-            <Text className={`text-base font-bold mb-1 ${getStatusColor()}`}>
+            <Text className={`text-lg font-bold ${statusConfig.textColor} mb-1`}>
               {businessStatus}
             </Text>
             
-            {isBusiness && businessHours && (
-              <Text className="text-sm text-gray-600">
-                {businessHours.open} - {businessHours.close}
-              </Text>
-            )}
-
-            {isBusiness && schedule.businessType === 'appointment' && (
-              <View className="mt-1.5 bg-green-50 px-2.5 py-1 rounded-lg self-start">
-                <Text className="text-xs text-green-600 font-semibold">
-                  可預約：{getAvailableSlots(today, schedule).length}/
-                  {getAllSlots(today, schedule).length} 時段
+            {isBusiness ? (
+              <View>
+                <Text className="text-sm text-gray-600">
+                  {businessHours.openTime} - {businessHours.closeTime}
                 </Text>
+                
+                {/* 預約制：顯示可用時段 */}
+                {availableInfo && (
+                  <View className="flex-row items-center mt-2">
+                    <View className="flex-1 h-1.5 bg-neutral-200 rounded-full overflow-hidden mr-2">
+                      <View 
+                        className="h-full bg-success rounded-full"
+                        style={{ width: `${availableInfo.percentage}%` }}
+                      />
+                    </View>
+                    <Text className="text-xs font-semibold text-success">
+                      {availableInfo.available}/{availableInfo.total} 可預約
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-
-            {!isBusiness && (
-              <Text className="text-sm text-gray-600">今天休息</Text>
+            ) : (
+              <Text className="text-sm text-gray-600">今日休息</Text>
             )}
           </View>
+
+          <Text className="text-2xl ml-2">→</Text>
         </Card.Content>
       </Card>
     </TouchableOpacity>
