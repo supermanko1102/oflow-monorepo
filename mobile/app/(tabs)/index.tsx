@@ -1,98 +1,115 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView } from 'react-native';
+import { Button } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function LoginScreen() {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-export default function HomeScreen() {
+  const handleLineLogin = () => {
+    // 假的登入邏輯
+    setIsLoggedIn(true);
+    // 實際應該導航到訂單頁面，但這裡只是切換狀態
+    setTimeout(() => {
+      router.push('/(tabs)/orders');
+    }, 500);
+  };
+
+  if (isLoggedIn) {
+    return (
+      <View className="flex-1 bg-white dark:bg-gray-900 justify-center items-center px-6">
+        <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+          登入成功！
+        </Text>
+        <Text className="text-base text-gray-600 dark:text-gray-400">
+          正在跳轉...
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView className="flex-1 bg-white dark:bg-gray-900">
+      <View className="flex-1 justify-center items-center px-6 py-12">
+        {/* Logo / Icon */}
+        <View className="mb-8">
+          <Text className="text-6xl text-center mb-4">🧾</Text>
+          <Text className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-2">
+            OFlow
+          </Text>
+          <Text className="text-base text-gray-600 dark:text-gray-400 text-center">
+            智慧訂單中心
+          </Text>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Product Description */}
+        <View className="mb-8 w-full">
+          <View className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-3 text-center">
+              讓 AI 幫你自動處理訂單
+            </Text>
+            <View className="space-y-3">
+              <View className="flex-row items-start mb-3">
+                <Text className="text-2xl mr-3">✨</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+                    自動讀取 LINE 對話
+                  </Text>
+                  <Text className="text-xs text-gray-600 dark:text-gray-400">
+                    AI 自動識別訂單資訊並建立訂單
+                  </Text>
+                </View>
+              </View>
+              
+              <View className="flex-row items-start mb-3">
+                <Text className="text-2xl mr-3">🔔</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+                    智慧提醒功能
+                  </Text>
+                  <Text className="text-xs text-gray-600 dark:text-gray-400">
+                    提前提醒，讓你不漏單
+                  </Text>
+                </View>
+              </View>
+              
+              <View className="flex-row items-start">
+                <Text className="text-2xl mr-3">⚡</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+                    全自動/半自動模式
+                  </Text>
+                  <Text className="text-xs text-gray-600 dark:text-gray-400">
+                    彈性選擇適合你的接單方式
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* CTA */}
+        <View className="w-full mb-6">
+          <Button
+            mode="contained"
+            onPress={handleLineLogin}
+            className="w-full"
+            buttonColor="#00B900"
+            textColor="#FFFFFF"
+            contentStyle={{ paddingVertical: 8 }}
+          >
+            <Text className="text-base font-semibold">使用 LINE 登入</Text>
+          </Button>
+        </View>
+
+        {/* Footer */}
+        <View className="mt-4">
+          <Text className="text-xs text-gray-500 dark:text-gray-500 text-center">
+            你只要聊天，OFlow 就能幫你完成整個接單流程
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

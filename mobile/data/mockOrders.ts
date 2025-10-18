@@ -1,0 +1,121 @@
+import { Order } from '@/types/order';
+
+export const mockOrders: Order[] = [
+  {
+    id: '1',
+    customerName: '陳小姐',
+    customerPhone: '0912-345-678',
+    items: [
+      { name: '草莓生日蛋糕 8吋', quantity: 1, price: 1200 },
+      { name: '馬卡龍禮盒', quantity: 1, price: 680 },
+    ],
+    totalAmount: 1880,
+    pickupDate: '2025-10-20',
+    pickupTime: '14:00',
+    status: 'pending',
+    source: 'auto',
+    createdAt: '2025-10-18T10:30:00',
+    lineConversation: [
+      '客人: 我要一個草莓生日蛋糕 8吋，時間是 10/20 下午2點',
+      'AI: 好的！已為您預訂草莓生日蛋糕 8吋，取貨時間為 10/20 下午2點，總金額 $1200',
+      '客人: 再加一盒馬卡龍',
+      'AI: 已為您加入馬卡龍禮盒，總金額更新為 $1880',
+    ],
+    notes: '生日蛋糕上寫「生日快樂」',
+  },
+  {
+    id: '2',
+    customerName: '林先生',
+    customerPhone: '0923-456-789',
+    items: [
+      { name: '巧克力蛋糕 6吋', quantity: 2, price: 1600 },
+    ],
+    totalAmount: 1600,
+    pickupDate: '2025-10-21',
+    pickupTime: '16:00',
+    status: 'pending',
+    source: 'semi-auto',
+    createdAt: '2025-10-18T14:20:00',
+    lineConversation: [
+      '客人: 我要 2 個巧克力蛋糕 6吋，時間 10/21 下午4點可以嗎',
+      '商家: OK 沒問題',
+      'AI: 已確認訂單，巧克力蛋糕 6吋 x2，取貨時間 10/21 下午4點',
+    ],
+  },
+  {
+    id: '3',
+    customerName: '王小姐',
+    customerPhone: '0934-567-890',
+    items: [
+      { name: '檸檬塔', quantity: 6, price: 720 },
+      { name: '焦糖布丁', quantity: 4, price: 360 },
+    ],
+    totalAmount: 1080,
+    pickupDate: '2025-10-19',
+    pickupTime: '11:00',
+    status: 'pending',
+    source: 'auto',
+    createdAt: '2025-10-17T16:45:00',
+    lineConversation: [
+      '客人: 明天早上 11 點可以拿 6 個檸檬塔和 4 個焦糖布丁嗎',
+      'AI: 好的！已為您預訂，明天 11:00 可取貨，總金額 $1080',
+    ],
+    notes: '提早 10 分鐘到',
+  },
+  {
+    id: '4',
+    customerName: '張太太',
+    customerPhone: '0945-678-901',
+    items: [
+      { name: '提拉米蘇', quantity: 1, price: 450 },
+    ],
+    totalAmount: 450,
+    pickupDate: '2025-10-25',
+    pickupTime: '15:30',
+    status: 'pending',
+    source: 'semi-auto',
+    createdAt: '2025-10-18T09:15:00',
+    lineConversation: [
+      '客人: 下週五下午有提拉米蘇嗎',
+      '商家: 有的！什麼時間取貨呢',
+      '客人: 3點半',
+      '商家: 好的',
+    ],
+  },
+  {
+    id: '5',
+    customerName: '劉小姐',
+    items: [
+      { name: '芒果千層', quantity: 1, price: 550 },
+    ],
+    totalAmount: 550,
+    pickupDate: '2025-10-15',
+    pickupTime: '18:00',
+    status: 'completed',
+    source: 'auto',
+    createdAt: '2025-10-14T11:30:00',
+    lineConversation: [
+      '客人: 我要一個芒果千層，明天晚上 6 點拿',
+      'AI: 已為您預訂芒果千層，明天 18:00 取貨，總金額 $550',
+    ],
+  },
+  {
+    id: '6',
+    customerName: '黃先生',
+    items: [
+      { name: '草莓蛋糕 6吋', quantity: 1, price: 800 },
+    ],
+    totalAmount: 800,
+    pickupDate: '2025-10-16',
+    pickupTime: '12:00',
+    status: 'completed',
+    source: 'semi-auto',
+    createdAt: '2025-10-15T15:20:00',
+    lineConversation: [
+      '客人: 明天中午想拿草莓蛋糕',
+      '商家: 好的，6吋可以嗎',
+      '客人: OK',
+    ],
+  },
+];
+
