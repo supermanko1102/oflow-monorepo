@@ -1,3 +1,8 @@
+/**
+ * Reminder Card 組件 - 極簡風格
+ * 與設置頁面風格一致：灰色為主 + LINE green 僅用於品牌標記
+ */
+
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from 'react-native-paper';
@@ -18,19 +23,6 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
-  const getReminderIcon = () => {
-    switch (reminder.reminderType) {
-      case 'today':
-        return '🔴';
-      case '3days':
-        return '🟡';
-      case '7days':
-        return '🟢';
-      default:
-        return '⚪';
-    }
-  };
-
   const getReminderLabel = () => {
     switch (reminder.reminderType) {
       case 'today':
@@ -49,15 +41,18 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
       onPress={() => router.push(`/order/${order.id}`)}
       activeOpacity={0.7}
     >
-      <Card className={`mb-3 mx-4 ${!reminder.isRead ? 'border-l-4 border-line-green' : ''}`}>
+      <Card className="mb-3 mx-4 bg-white">
         <Card.Content className="p-4">
           <View className="flex-row items-center mb-2">
-            <Text className="text-xl mr-2">{getReminderIcon()}</Text>
-            <Text className="text-sm font-medium text-gray-700">
-              {getReminderLabel()}
-            </Text>
+            {/* 提醒類型標籤 - 統一灰色風格 */}
+            <View className="px-2 py-1 rounded-md bg-gray-100 mr-2">
+              <Text className="text-xs font-semibold text-gray-700">
+                {getReminderLabel()}
+              </Text>
+            </View>
+            {/* 未讀標記 - 使用 LINE green */}
             {!reminder.isRead && (
-              <View className="ml-2 w-2 h-2 rounded-full bg-line-green" />
+              <View className="w-2 h-2 rounded-full bg-line-green" />
             )}
           </View>
 
@@ -76,9 +71,9 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
 
           <View className="flex-row justify-between items-center">
             <Text className="text-sm text-gray-600">
-              📅 {formatDate(order.pickupDate)} {order.pickupTime}
+              {formatDate(order.pickupDate)} {order.pickupTime}
             </Text>
-            <Text className="text-base font-bold text-line-green">
+            <Text className="text-base font-bold text-gray-900">
               ${order.totalAmount}
             </Text>
           </View>
@@ -87,4 +82,3 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
     </TouchableOpacity>
   );
 }
-

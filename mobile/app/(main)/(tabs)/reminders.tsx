@@ -21,9 +21,9 @@ export default function RemindersScreen() {
   const sevenDaysReminders = mockReminders.filter(r => r.reminderType === '7days');
 
   const sections: ReminderSection[] = [
-    { title: '🔴 今天', data: todayReminders },
-    { title: '🟡 3 天內', data: threeDaysReminders },
-    { title: '🟢 7 天內', data: sevenDaysReminders },
+    { title: '今天', data: todayReminders },
+    { title: '3 天內', data: threeDaysReminders },
+    { title: '7 天內', data: sevenDaysReminders },
   ].filter(section => section.data.length > 0);
 
   const unreadCount = mockReminders.filter(r => !r.isRead).length;
@@ -35,7 +35,7 @@ export default function RemindersScreen() {
           className="pb-5 px-6 bg-white border-b border-gray-100"
           style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
         >
-          <Text className="text-3xl font-bold text-gray-900">
+          <Text className="text-4xl font-black text-gray-900">
             提醒通知
           </Text>
         </View>
@@ -55,12 +55,12 @@ export default function RemindersScreen() {
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
         <View className="flex-row justify-between items-center">
-          <Text className="text-3xl font-bold text-gray-900">
+          <Text className="text-4xl font-black text-gray-900">
             提醒通知
           </Text>
           {unreadCount > 0 && (
-            <View className="bg-error rounded-full px-3 py-1.5">
-              <Text className="text-white text-xs font-bold">
+            <View className="bg-gray-100 rounded-full px-3 py-1.5 border border-gray-200">
+              <Text className="text-gray-700 text-xs font-semibold">
                 {unreadCount} 則未讀
               </Text>
             </View>

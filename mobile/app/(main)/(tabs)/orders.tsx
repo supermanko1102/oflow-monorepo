@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
-import { Chip } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chip } from '@/components/native/Chip';
 import { OrderCard } from '@/components/OrderCard';
 import { EmptyState } from '@/components/EmptyState';
 import { mockOrders } from '@/data/mockOrders';
@@ -43,39 +43,27 @@ export default function OrdersScreen() {
         className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        <Text className="text-3xl font-bold text-gray-900 mb-4">
+        <Text className="text-4xl font-black text-gray-900 mb-4">
           訂單管理
         </Text>
         
         {/* Filters */}
         <View className="flex-row gap-2">
           <Chip
+            label={`全部 (${mockOrders.length})`}
             selected={filter === 'all'}
             onPress={() => setFilter('all')}
-            textStyle={{ fontSize: 13, fontWeight: '600' }}
-            selectedColor="#00B900"
-            style={{ borderRadius: 20 }}
-          >
-            全部 ({mockOrders.length})
-          </Chip>
+          />
           <Chip
+            label={`待處理 (${pendingCount})`}
             selected={filter === 'pending'}
             onPress={() => setFilter('pending')}
-            textStyle={{ fontSize: 13, fontWeight: '600' }}
-            selectedColor="#F59E0B"
-            style={{ borderRadius: 20 }}
-          >
-            待處理 ({pendingCount})
-          </Chip>
+          />
           <Chip
+            label={`已完成 (${completedCount})`}
             selected={filter === 'completed'}
             onPress={() => setFilter('completed')}
-            textStyle={{ fontSize: 13, fontWeight: '600' }}
-            selectedColor="#10B981"
-            style={{ borderRadius: 20 }}
-          >
-            已完成 ({completedCount})
-          </Chip>
+          />
         </View>
       </View>
 

@@ -3,35 +3,35 @@
  * 統一的陰影、動畫、圓角、間距定義
  */
 
-// 陰影系統
+// 陰影系統（LINE 風格 - 更柔和）
 export const SHADOWS = {
   soft: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  card: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
   elevated: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
   floating: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 4,
   },
 };
 
@@ -53,12 +53,12 @@ export const TYPOGRAPHY = {
   tiny: 'text-xs',               // 12px
 };
 
-// 圓角層級
+// 圓角層級（LINE 風格 - 更大更圓潤）
 export const RADIUS = {
-  small: 8,    // badge, chip
-  medium: 12,  // card
-  large: 16,   // large card
-  xlarge: 20,  // container
+  small: 12,   // badge, chip
+  medium: 16,  // button
+  large: 20,   // card - LINE 標準
+  xlarge: 24,  // container - LINE 大卡片
   full: 9999,  // pill
 };
 

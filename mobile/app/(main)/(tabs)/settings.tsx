@@ -32,7 +32,7 @@ export default function SettingsScreen() {
         className="bg-white pb-4 px-4 border-b border-gray-200"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <Text className="text-2xl font-bold text-gray-900">
+        <Text className="text-4xl font-black text-gray-900">
           設置
         </Text>
       </View>

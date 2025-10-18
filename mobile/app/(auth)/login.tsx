@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
-import { Button } from 'react-native-paper';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { LogoIcon } from '@/components/icons';
+import { Button } from '@/components/native/Button';
 
 export default function LoginScreen() {
   const login = useAuthStore((state) => state.login);
@@ -18,12 +18,12 @@ export default function LoginScreen() {
         {/* Logo / Icon */}
         <View className="mb-8 items-center">
           <View className="mb-4">
-            <LogoIcon size={80} color="#00B900" />
+            <LogoIcon size={100} color="#00B900" />
           </View>
-          <Text className="text-3xl font-bold text-gray-900 text-center mb-2">
+          <Text className="text-4xl font-black text-gray-900 text-center mb-2">
             OFlow
           </Text>
-          <Text className="text-base text-gray-600 text-center">
+          <Text className="text-base font-bold text-gray-600 text-center">
             智慧訂單中心
           </Text>
         </View>
@@ -68,14 +68,11 @@ export default function LoginScreen() {
         {/* CTA */}
         <View className="w-full mb-6">
           <Button
-            mode="contained"
             onPress={handleLineLogin}
-            className="w-full"
-            buttonColor="#00B900"
-            textColor="#FFFFFF"
-            contentStyle={{ paddingVertical: 8 }}
+            variant="primary"
+            fullWidth
           >
-            <Text className="text-base font-semibold">使用 LINE 登入</Text>
+            使用 LINE 登入
           </Button>
         </View>
 
