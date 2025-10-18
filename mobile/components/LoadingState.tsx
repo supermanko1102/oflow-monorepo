@@ -1,38 +1,15 @@
-/**
- * Loading 狀態組件
- * 顯示載入中的動畫
- */
-
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 
 interface LoadingStateProps {
   message?: string;
-  size?: 'small' | 'large';
 }
 
-export function LoadingState({ message = '載入中...', size = 'large' }: LoadingStateProps) {
+export function LoadingState({ message = '載入中...' }: LoadingStateProps) {
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color="#00B900" />
-      {message && (
-        <Text style={styles.message}>{message}</Text>
-      )}
+    <View className="flex-1 justify-center items-center bg-gray-50">
+      <ActivityIndicator size="large" color="#00B900" />
+      <Text className="mt-4 text-base text-gray-700">{message}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  message: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-});
-

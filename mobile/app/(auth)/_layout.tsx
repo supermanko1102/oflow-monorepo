@@ -23,7 +23,7 @@ export default function AuthLayout() {
     if (isLoggedIn && inAuthGroup) {
       router.replace('/(main)/(tabs)');
     }
-  }, [hasHydrated, isLoggedIn, segments]);
+  }, [hasHydrated, isLoggedIn, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

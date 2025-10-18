@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Switch, IconButton } from 'react-native-paper';
 import { Weekday, DaySchedule, AppointmentDaySchedule, BusinessType } from '@/types/schedule';
 import { getWeekdayLabel, generateTimeSlots } from '@/utils/scheduleHelpers';
@@ -70,41 +70,43 @@ export function WeeklySchedule({
   const handleCopyToAll = (day: Weekday) => {
     const sourceSchedule = weeklySchedule[day];
     weekdays.forEach((d) => {
-      if (d !== day && d !== 'sunday') { // 預設不複製到週日
+      if (d !== day && d !== 'sunday') {
         onDayScheduleChange(d, { ...sourceSchedule });
       }
     });
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>每週排班設定</Text>
-      <Text style={styles.subtitle}>設定每天的營業時間</Text>
+    <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <Text className="text-lg font-bold text-gray-900 mb-1">每週排班設定</Text>
+      <Text className="text-sm text-gray-600 mb-4">設定每天的營業時間</Text>
 
       {weekdays.map((day) => {
         const schedule = weeklySchedule[day];
         const isExpanded = expandedDay === day;
 
         return (
-          <View key={day} style={styles.dayCard}>
+          <View key={day} className="bg-white rounded-xl mb-3 border border-gray-200 overflow-hidden">
             {/* 標題列 */}
             <TouchableOpacity
-              style={styles.dayHeader}
+              className="flex-row items-center justify-between p-4"
               onPress={() => handleExpandDay(day)}
               activeOpacity={0.7}
             >
-              <View style={styles.dayHeaderLeft}>
-                <Text style={styles.dayLabel}>{getWeekdayLabel(day)}</Text>
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-gray-900 mb-1">
+                  {getWeekdayLabel(day)}
+                </Text>
                 {schedule.enabled && (
-                  <Text style={styles.dayTime}>
+                  <Text className="text-sm text-green-600">
                     {schedule.openTime} - {schedule.closeTime}
                   </Text>
                 )}
                 {!schedule.enabled && (
-                  <Text style={styles.dayClosed}>休息</Text>
+                  <Text className="text-sm text-gray-500">休息</Text>
                 )}
               </View>
-              <View style={styles.dayHeaderRight}>
+              <View className="flex-row items-center gap-2">
                 <Switch
                   value={schedule.enabled}
                   onValueChange={(enabled) => handleToggleDay(day, enabled)}
@@ -120,7 +122,7 @@ export function WeeklySchedule({
 
             {/* 展開內容 */}
             {isExpanded && schedule.enabled && (
-              <View style={styles.dayContent}>
+              <View className="p-4 pt-0 border-t border-gray-100">
                 <TimeSlotPicker
                   openTime={schedule.openTime}
                   closeTime={schedule.closeTime}
@@ -129,16 +131,16 @@ export function WeeklySchedule({
 
                 {/* 複製到其他日子 */}
                 <TouchableOpacity
-                  style={styles.copyButton}
+                  className="bg-gray-100 py-2.5 px-4 rounded-lg mt-3 items-center"
                   onPress={() => handleCopyToAll(day)}
                 >
-                  <Text style={styles.copyButtonText}>複製到其他工作日</Text>
+                  <Text className="text-sm text-gray-600 font-medium">複製到其他工作日</Text>
                 </TouchableOpacity>
 
                 {/* 預約制：顯示時段數量 */}
                 {businessType === 'appointment' && (
-                  <View style={styles.slotInfo}>
-                    <Text style={styles.slotInfoText}>
+                  <View className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <Text className="text-xs text-blue-700 text-center">
                       將自動生成 {(schedule as AppointmentDaySchedule).timeSlots.length} 個時段
                     </Text>
                   </View>
@@ -151,87 +153,3 @@ export function WeeklySchedule({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-  },
-  dayCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-  dayHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  dayHeaderLeft: {
-    flex: 1,
-  },
-  dayHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dayLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  dayTime: {
-    fontSize: 14,
-    color: '#10B981',
-  },
-  dayClosed: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  dayContent: {
-    padding: 16,
-    paddingTop: 0,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  copyButton: {
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  copyButtonText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  slotInfo: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 8,
-  },
-  slotInfoText: {
-    fontSize: 13,
-    color: '#0369A1',
-    textAlign: 'center',
-  },
-});
-

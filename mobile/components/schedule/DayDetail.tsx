@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { Schedule } from '@/types/schedule';
 import {
   isBusinessDay,
@@ -29,8 +29,8 @@ interface DayDetailProps {
 export function DayDetail({ date, schedule }: DayDetailProps) {
   if (!schedule) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>無排班資料</Text>
+      <View className="flex-1 bg-gray-50 p-4">
+        <Text className="text-base text-gray-600 text-center mt-8">無排班資料</Text>
       </View>
     );
   }
@@ -42,30 +42,36 @@ export function DayDetail({ date, schedule }: DayDetailProps) {
   const dateObj = parseISO(date);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView className="flex-1 bg-gray-50 p-4" showsVerticalScrollIndicator={false}>
       {/* 日期標題 */}
-      <View style={styles.header}>
-        <Text style={styles.dateText}>
+      <View className="mb-4">
+        <Text className="text-2xl font-bold text-gray-900 mb-1">
           {format(dateObj, 'M月d日', { locale: zhTW })}
         </Text>
-        <Text style={styles.weekdayText}>
-          {getWeekdayLabel(weekday)}
-        </Text>
+        <Text className="text-base text-gray-600">{getWeekdayLabel(weekday)}</Text>
       </View>
 
       {/* 營業狀態 */}
-      <View style={[styles.statusCard, !isBusiness && styles.statusCardClosed]}>
-        <Text style={[styles.statusText, !isBusiness && styles.statusTextClosed]}>
+      <View
+        className={`p-4 rounded-xl mb-4 border ${
+          isBusiness ? 'bg-green-50 border-green-600' : 'bg-gray-100 border-gray-300'
+        }`}
+      >
+        <Text
+          className={`text-base font-semibold text-center ${
+            isBusiness ? 'text-green-600' : 'text-gray-600'
+          }`}
+        >
           {businessStatus}
         </Text>
       </View>
 
       {/* 營業時間 */}
       {isBusiness && businessHours && (
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>營業時間</Text>
-            <Text style={styles.infoValue}>
+        <View className="bg-white p-4 rounded-xl mb-4 border border-gray-200">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm text-gray-600">營業時間</Text>
+            <Text className="text-base font-semibold text-gray-900">
               {businessHours.open} - {businessHours.close}
             </Text>
           </View>
@@ -74,13 +80,12 @@ export function DayDetail({ date, schedule }: DayDetailProps) {
 
       {/* 預約制：時段詳情 */}
       {isBusiness && schedule.businessType === 'appointment' && (
-        <View style={styles.slotsSection}>
-          <Text style={styles.sectionTitle}>預約時段</Text>
+        <View className="mb-4">
+          <Text className="text-base font-semibold text-gray-900 mb-3">預約時段</Text>
           <TimeSlotGrid
             date={date}
             schedule={schedule}
             onSlotPress={(slot) => {
-              // 可以在這裡處理時段點擊，例如顯示訂單詳情
               console.log('Slot pressed:', slot);
             }}
           />
@@ -89,9 +94,9 @@ export function DayDetail({ date, schedule }: DayDetailProps) {
 
       {/* 特殊日期說明 */}
       {schedule.specialDates.find((sd) => sd.date === date)?.reason && (
-        <View style={styles.noteCard}>
-          <Text style={styles.noteLabel}>備註</Text>
-          <Text style={styles.noteText}>
+        <View className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+          <Text className="text-xs font-semibold text-amber-900 mb-1 uppercase">備註</Text>
+          <Text className="text-sm text-amber-800">
             {schedule.specialDates.find((sd) => sd.date === date)?.reason}
           </Text>
         </View>
@@ -99,101 +104,3 @@ export function DayDetail({ date, schedule }: DayDetailProps) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-  },
-  header: {
-    marginBottom: 16,
-  },
-  dateText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  weekdayText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  statusCard: {
-    backgroundColor: '#ECFDF5',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#10B981',
-  },
-  statusCardClosed: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#D1D5DB',
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10B981',
-    textAlign: 'center',
-  },
-  statusTextClosed: {
-    color: '#6B7280',
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  slotsSection: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  noteCard: {
-    backgroundColor: '#FFFBEB',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  noteLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400E',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  noteText: {
-    fontSize: 14,
-    color: '#78350F',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 32,
-  },
-});
-

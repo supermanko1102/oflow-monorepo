@@ -23,7 +23,7 @@ export default function MainLayout() {
     if (!isLoggedIn && inMainGroup) {
       router.replace('/(auth)/login');
     }
-  }, [hasHydrated, isLoggedIn, segments]);
+  }, [hasHydrated, isLoggedIn, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

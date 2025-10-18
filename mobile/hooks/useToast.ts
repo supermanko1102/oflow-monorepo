@@ -1,77 +1,48 @@
 /**
- * Toast Hook
- * 提供全局 Toast 通知功能
+ * Toast Hook with Zustand
+ * 提供全局 Toast 通知功能，使用 Zustand 狀態管理
  */
 
-import { useState, useCallback } from 'react';
+import { create } from 'zustand';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-export interface ToastConfig {
+interface Toast {
   id: string;
   type: ToastType;
   message: string;
-  duration?: number;
 }
 
-// 全局 toast 狀態管理
-let toastCallbacks: ((config: ToastConfig) => void)[] = [];
-let dismissCallbacks: ((id: string) => void)[] = [];
+interface ToastState {
+  toasts: Toast[];
+  show: (type: ToastType, message: string) => void;
+  hide: (id: string) => void;
+}
 
-export function useToast() {
-  const show = useCallback((type: ToastType, message: string, duration = 3000) => {
+export const useToastStore = create<ToastState>((set) => ({
+  toasts: [],
+  show: (type, message) => {
     const id = Date.now().toString();
-    const config: ToastConfig = { id, type, message, duration };
-    
-    // 通知所有監聽者
-    toastCallbacks.forEach(callback => callback(config));
+    set((state) => ({ toasts: [...state.toasts, { id, type, message }] }));
     
     // 自動消失
-    if (duration > 0) {
-      setTimeout(() => {
-        dismissCallbacks.forEach(callback => callback(id));
-      }, duration);
-    }
-    
-    return id;
-  }, []);
+    setTimeout(() => {
+      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+    }, 3000);
+  },
+  hide: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+}));
 
-  const dismiss = useCallback((id: string) => {
-    dismissCallbacks.forEach(callback => callback(id));
-  }, []);
-
+/**
+ * Toast Hook - 提供簡化的 API
+ */
+export function useToast() {
+  const show = useToastStore((state) => state.show);
+  
   return {
-    success: (message: string, duration?: number) => show('success', message, duration),
-    error: (message: string, duration?: number) => show('error', message, duration),
-    info: (message: string, duration?: number) => show('info', message, duration),
-    warning: (message: string, duration?: number) => show('warning', message, duration),
-    dismiss,
+    success: (message: string) => show('success', message),
+    error: (message: string) => show('error', message),
+    info: (message: string) => show('info', message),
+    warning: (message: string) => show('warning', message),
   };
 }
-
-// Toast Provider 使用的內部 hook
-export function useToastProvider() {
-  const [toasts, setToasts] = useState<ToastConfig[]>([]);
-
-  const addToast = useCallback((config: ToastConfig) => {
-    setToasts(prev => [...prev, config]);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  // 註冊全局回調
-  useState(() => {
-    toastCallbacks.push(addToast);
-    dismissCallbacks.push(removeToast);
-
-    return () => {
-      toastCallbacks = toastCallbacks.filter(cb => cb !== addToast);
-      dismissCallbacks = dismissCallbacks.filter(cb => cb !== removeToast);
-    };
-  });
-
-  return { toasts, removeToast };
-}
-

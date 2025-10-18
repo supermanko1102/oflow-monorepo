@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Schedule } from '@/types/schedule';
@@ -31,20 +31,20 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
 
   if (!schedule) {
     return (
-      <Card style={styles.card} className="mx-4">
-        <Card.Content style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>📅</Text>
+      <Card className="mx-4 bg-white">
+        <Card.Content className="p-4 flex-row items-center">
+          <View className="mr-4">
+            <Text className="text-3xl">📅</Text>
           </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>尚未設定排班</Text>
-            <Text style={styles.description}>點擊設定營業時間</Text>
+          <View className="flex-1">
+            <Text className="text-base font-bold text-gray-900 mb-1">尚未設定排班</Text>
+            <Text className="text-sm text-gray-600">點擊設定營業時間</Text>
           </View>
           <TouchableOpacity
-            style={styles.actionButton}
+            className="bg-green-50 px-4 py-2 rounded-lg"
             onPress={() => router.push('/(main)/schedule')}
           >
-            <Text style={styles.actionText}>設定</Text>
+            <Text className="text-sm font-semibold text-line-green">設定</Text>
           </TouchableOpacity>
         </Card.Content>
       </Card>
@@ -56,8 +56,8 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
   const businessStatus = getBusinessStatus(today, schedule);
 
   const getStatusColor = () => {
-    if (!isBusiness) return '#9CA3AF';
-    return '#10B981';
+    if (!isBusiness) return 'text-gray-500';
+    return 'text-green-600';
   };
 
   const getStatusIcon = () => {
@@ -67,30 +67,30 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
 
   return (
     <TouchableOpacity
-      style={styles.cardTouchable}
+      className="mb-4"
       onPress={() => router.push('/(main)/schedule')}
       activeOpacity={0.7}
     >
-      <Card style={styles.card} className="mx-4">
-        <Card.Content style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{getStatusIcon()}</Text>
+      <Card className="mx-4 bg-white">
+        <Card.Content className="p-4 flex-row items-center">
+          <View className="mr-4">
+            <Text className="text-3xl">{getStatusIcon()}</Text>
           </View>
           
-          <View style={styles.textContainer}>
-            <Text style={[styles.title, { color: getStatusColor() }]}>
+          <View className="flex-1">
+            <Text className={`text-base font-bold mb-1 ${getStatusColor()}`}>
               {businessStatus}
             </Text>
             
             {isBusiness && businessHours && (
-              <Text style={styles.description}>
+              <Text className="text-sm text-gray-600">
                 {businessHours.open} - {businessHours.close}
               </Text>
             )}
 
             {isBusiness && schedule.businessType === 'appointment' && (
-              <View style={styles.slotInfo}>
-                <Text style={styles.slotText}>
+              <View className="mt-1.5 bg-green-50 px-2.5 py-1 rounded-lg self-start">
+                <Text className="text-xs text-green-600 font-semibold">
                   可預約：{getAvailableSlots(today, schedule).length}/
                   {getAllSlots(today, schedule).length} 時段
                 </Text>
@@ -98,7 +98,7 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
             )}
 
             {!isBusiness && (
-              <Text style={styles.description}>今天休息</Text>
+              <Text className="text-sm text-gray-600">今天休息</Text>
             )}
           </View>
         </Card.Content>
@@ -106,61 +106,3 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  cardTouchable: {
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  iconContainer: {
-    marginRight: 16,
-  },
-  icon: {
-    fontSize: 32,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  slotInfo: {
-    marginTop: 6,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  slotText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  actionButton: {
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#00B900',
-  },
-});
-

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface TimeSlotPickerProps {
@@ -52,15 +52,15 @@ export function TimeSlotPicker({ openTime, closeTime, onChange }: TimeSlotPicker
   };
 
   return (
-    <View style={styles.container}>
+    <View className="gap-3">
       {/* 開始時間 */}
-      <View style={styles.timeRow}>
-        <Text style={styles.label}>開始時間</Text>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-sm font-medium text-gray-600">開始時間</Text>
         <TouchableOpacity
-          style={styles.timeButton}
+          className="bg-gray-100 py-2.5 px-5 rounded-lg min-w-[100px] items-center"
           onPress={() => setShowOpenPicker(true)}
         >
-          <Text style={styles.timeText}>{openTime}</Text>
+          <Text className="text-base font-semibold text-gray-900">{openTime}</Text>
         </TouchableOpacity>
       </View>
 
@@ -76,13 +76,13 @@ export function TimeSlotPicker({ openTime, closeTime, onChange }: TimeSlotPicker
       )}
 
       {/* 結束時間 */}
-      <View style={styles.timeRow}>
-        <Text style={styles.label}>結束時間</Text>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-sm font-medium text-gray-600">結束時間</Text>
         <TouchableOpacity
-          style={styles.timeButton}
+          className="bg-gray-100 py-2.5 px-5 rounded-lg min-w-[100px] items-center"
           onPress={() => setShowClosePicker(true)}
         >
-          <Text style={styles.timeText}>{closeTime}</Text>
+          <Text className="text-base font-semibold text-gray-900">{closeTime}</Text>
         </TouchableOpacity>
       </View>
 
@@ -98,8 +98,8 @@ export function TimeSlotPicker({ openTime, closeTime, onChange }: TimeSlotPicker
       )}
 
       {/* 時段長度提示 */}
-      <View style={styles.durationInfo}>
-        <Text style={styles.durationText}>
+      <View className="p-2.5 bg-green-50 rounded-md mt-1">
+        <Text className="text-xs text-green-600 text-center">
           營業時數：{calculateDuration(openTime, closeTime)} 小時
         </Text>
       </View>
@@ -126,44 +126,3 @@ function calculateDuration(openTime: string, closeTime: string): string {
   }
   return `${hours}.${minutes === 30 ? '5' : '0'}`;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 12,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  timeButton: {
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  durationInfo: {
-    padding: 10,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  durationText: {
-    fontSize: 13,
-    color: '#10B981',
-    textAlign: 'center',
-  },
-});
-

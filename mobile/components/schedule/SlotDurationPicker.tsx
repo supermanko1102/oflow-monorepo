@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 
 interface SlotDurationPickerProps {
   selectedDuration: number;
@@ -49,11 +49,11 @@ const durationOptions: DurationOption[] = [
  */
 export function SlotDurationPicker({ selectedDuration, onSelect }: SlotDurationPickerProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>選擇時段長度</Text>
-      <Text style={styles.subtitle}>每個預約時段的時間長度</Text>
+    <View className="p-4">
+      <Text className="text-lg font-bold text-gray-900 mb-1">選擇時段長度</Text>
+      <Text className="text-sm text-gray-600 mb-5">每個預約時段的時間長度</Text>
 
-      <View style={styles.optionsContainer}>
+      <View className="gap-3 mb-4">
         {durationOptions.map((option) => (
           <DurationOptionCard
             key={option.value}
@@ -64,8 +64,8 @@ export function SlotDurationPicker({ selectedDuration, onSelect }: SlotDurationP
         ))}
       </View>
 
-      <View style={styles.noteCard}>
-        <Text style={styles.noteText}>
+      <View className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+        <Text className="text-xs text-amber-900 leading-5">
           💡 提示：設定後可以隨時調整，但已預約的時段不會受影響
         </Text>
       </View>
@@ -82,38 +82,45 @@ interface DurationOptionProps {
 function DurationOptionCard({ option, isSelected, onPress }: DurationOptionProps) {
   return (
     <TouchableOpacity
-      style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+      className={`rounded-xl p-4 border-2 ${
+        isSelected ? 'border-line-green bg-green-50' : 'border-gray-200 bg-white'
+      }`}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.optionHeader}>
+      <View className="flex-row items-center justify-between mb-3">
         <View>
-          <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
+          <Text
+            className={`text-base font-semibold mb-1 ${
+              isSelected ? 'text-line-green' : 'text-gray-900'
+            }`}
+          >
             {option.label}
           </Text>
-          <Text style={styles.optionDescription}>{option.description}</Text>
+          <Text className="text-xs text-gray-600">{option.description}</Text>
         </View>
         {isSelected && (
-          <View style={styles.selectedIndicator}>
-            <View style={styles.selectedDot} />
+          <View className="w-6 h-6 rounded-full bg-line-green items-center justify-center">
+            <View className="w-2 h-2 rounded-full bg-white" />
           </View>
         )}
       </View>
 
       {option.recommended && (
-        <View style={styles.recommendedContainer}>
-          <Text style={styles.recommendedLabel}>推薦：</Text>
-          <View style={styles.recommendedTags}>
+        <View className="pt-3 border-t border-gray-200">
+          <Text className="text-xs text-gray-600 mb-2">推薦：</Text>
+          <View className="flex-row flex-wrap gap-1.5">
             {option.recommended.map((item) => (
               <View
                 key={item}
-                style={[styles.recommendedTag, isSelected && styles.recommendedTagSelected]}
+                className={`px-2.5 py-1 rounded-lg ${
+                  isSelected ? 'bg-green-100' : 'bg-gray-100'
+                }`}
               >
                 <Text
-                  style={[
-                    styles.recommendedText,
-                    isSelected && styles.recommendedTextSelected,
-                  ]}
+                  className={`text-xs ${
+                    isSelected ? 'text-green-700 font-medium' : 'text-gray-600'
+                  }`}
                 >
                   {item}
                 </Text>
@@ -125,113 +132,3 @@ function DurationOptionCard({ option, isSelected, onPress }: DurationOptionProps
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 20,
-  },
-  optionsContainer: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  optionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  optionCardSelected: {
-    borderColor: '#00B900',
-    backgroundColor: '#F0FDF4',
-  },
-  optionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  optionLabelSelected: {
-    color: '#00B900',
-  },
-  optionDescription: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  selectedIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#00B900',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  recommendedContainer: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  recommendedLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  recommendedTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  recommendedTag: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  recommendedTagSelected: {
-    backgroundColor: '#DCFCE7',
-  },
-  recommendedText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  recommendedTextSelected: {
-    color: '#16A34A',
-    fontWeight: '500',
-  },
-  noteCard: {
-    backgroundColor: '#FFFBEB',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  noteText: {
-    fontSize: 13,
-    color: '#78350F',
-    lineHeight: 18,
-  },
-});
-

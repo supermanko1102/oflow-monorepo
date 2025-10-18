@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { BusinessType } from '@/types/schedule';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -42,11 +42,11 @@ const businessTypes: BusinessTypeOption[] = [
  */
 export function BusinessTypeSelector({ selectedType, onSelect }: BusinessTypeSelectorProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>選擇您的業態</Text>
-      <Text style={styles.subtitle}>根據您的業務類型選擇合適的排班模式</Text>
+    <View className="p-4">
+      <Text className="text-xl font-bold text-gray-900 mb-2">選擇您的業態</Text>
+      <Text className="text-sm text-gray-600 mb-5">根據您的業務類型選擇合適的排班模式</Text>
 
-      <View style={styles.optionsContainer}>
+      <View className="gap-4">
         {businessTypes.map((option) => (
           <BusinessTypeCard
             key={option.type}
@@ -69,12 +69,18 @@ interface BusinessTypeCardProps {
 function BusinessTypeCard({ option, isSelected, onPress }: BusinessTypeCardProps) {
   return (
     <TouchableOpacity
-      style={[styles.card, isSelected && styles.cardSelected]}
+      className={`rounded-2xl p-5 border-2 ${
+        isSelected ? 'border-line-green bg-green-50' : 'border-gray-200 bg-white'
+      }`}
       onPress={onPress}
       activeOpacity={0.7}
     >
       {/* Icon */}
-      <View style={[styles.iconContainer, isSelected && styles.iconContainerSelected]}>
+      <View
+        className={`w-16 h-16 rounded-full items-center justify-center mb-4 ${
+          isSelected ? 'bg-line-green' : 'bg-green-50'
+        }`}
+      >
         <MaterialCommunityIcons
           name={option.icon as any}
           size={32}
@@ -83,20 +89,30 @@ function BusinessTypeCard({ option, isSelected, onPress }: BusinessTypeCardProps
       </View>
 
       {/* Content */}
-      <View style={styles.cardContent}>
-        <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>
+      <View className="mb-3">
+        <Text
+          className={`text-lg font-bold mb-2 ${
+            isSelected ? 'text-line-green' : 'text-gray-900'
+          }`}
+        >
           {option.title}
         </Text>
-        <Text style={styles.cardDescription}>{option.description}</Text>
+        <Text className="text-sm text-gray-600 leading-5">{option.description}</Text>
 
         {/* Examples */}
-        <View style={styles.examplesContainer}>
+        <View className="flex-row flex-wrap gap-2 mt-3">
           {option.examples.map((example) => (
             <View
               key={example}
-              style={[styles.exampleBadge, isSelected && styles.exampleBadgeSelected]}
+              className={`px-3 py-1.5 rounded-xl ${
+                isSelected ? 'bg-green-100' : 'bg-gray-100'
+              }`}
             >
-              <Text style={[styles.exampleText, isSelected && styles.exampleTextSelected]}>
+              <Text
+                className={`text-xs font-medium ${
+                  isSelected ? 'text-green-700' : 'text-gray-600'
+                }`}
+              >
                 {example}
               </Text>
             </View>
@@ -106,99 +122,10 @@ function BusinessTypeCard({ option, isSelected, onPress }: BusinessTypeCardProps
 
       {/* Selection Indicator */}
       {isSelected && (
-        <View style={styles.checkIcon}>
+        <View className="absolute top-4 right-4">
           <MaterialCommunityIcons name="check-circle" size={24} color="#00B900" />
         </View>
       )}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 20,
-  },
-  optionsContainer: {
-    gap: 16,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  cardSelected: {
-    borderColor: '#00B900',
-    backgroundColor: '#F0FDF4',
-  },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  iconContainerSelected: {
-    backgroundColor: '#00B900',
-  },
-  cardContent: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
-  cardTitleSelected: {
-    color: '#00B900',
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  examplesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  exampleBadge: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  exampleBadgeSelected: {
-    backgroundColor: '#DCFCE7',
-  },
-  exampleText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  exampleTextSelected: {
-    color: '#16A34A',
-  },
-  checkIcon: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-});
-

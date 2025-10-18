@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { Button, Card, Divider } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { mockOrders } from '@/data/mockOrders';
 import { StatusBadge } from '@/components/StatusBadge';
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   
   const order = mockOrders.find(o => o.id === id);
 

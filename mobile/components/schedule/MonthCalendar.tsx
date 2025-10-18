@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Schedule } from '@/types/schedule';
 import { isBusinessDay, getBusinessLevel } from '@/utils/scheduleHelpers';
@@ -57,7 +57,7 @@ export function MonthCalendar({
       // 休息日：灰色
       if (!isBusiness) {
         mark.disabled = true;
-        mark.disableTouchEvent = false; // 仍可點擊查看詳情
+        mark.disableTouchEvent = false;
       }
 
       // 預約制：根據忙碌程度顯示不同顏色
@@ -116,7 +116,7 @@ export function MonthCalendar({
   };
 
   return (
-    <View style={styles.container}>
+    <View className="bg-white rounded-xl p-4">
       <Calendar
         markedDates={markedDates}
         onDayPress={handleDayPress}
@@ -141,12 +141,12 @@ export function MonthCalendar({
           textMonthFontSize: 18,
           textDayHeaderFontSize: 14,
         }}
-        style={styles.calendar}
+        className="rounded-xl"
         enableSwipeMonths
       />
 
       {/* 圖例 */}
-      <View style={styles.legend}>
+      <View className="flex-row flex-wrap gap-3 mt-4 pt-4 border-t border-gray-200">
         {schedule?.businessType === 'pickup' && (
           <>
             <LegendItem color="#10B981" label="營業日" />
@@ -173,44 +173,9 @@ interface LegendItemProps {
 
 function LegendItem({ color, label }: LegendItemProps) {
   return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
+    <View className="flex-row items-center gap-1.5">
+      <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <Text className="text-xs text-gray-600">{label}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-  },
-  calendar: {
-    borderRadius: 12,
-  },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-});
-

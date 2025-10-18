@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Card, IconButton } from 'react-native-paper';
 import { Order } from '@/types/order';
 import { StatusBadge } from './StatusBadge';
@@ -72,17 +72,18 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
     }
   };
 
-  // 根據緊急程度決定邊框樣式
-  const borderStyle = urgencyLevel === 'urgent' 
-    ? { borderLeftWidth: 4, borderLeftColor: urgencyConfig.color }
-    : {};
-
   return (
     <TouchableOpacity 
       onPress={handleCardPress}
       activeOpacity={0.7}
     >
-      <Card style={[styles.card, borderStyle]} className="mb-3 mx-4">
+      <Card 
+        className="mb-3 mx-4 bg-white" 
+        style={{ 
+          borderLeftWidth: 4, 
+          borderLeftColor: urgencyLevel === 'urgent' ? urgencyConfig.color : 'transparent' 
+        }}
+      >
         <Card.Content className="p-4">
           {/* Header */}
           <View className="flex-row justify-between items-start mb-3">
@@ -102,8 +103,10 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
 
           {/* 非營業時間警告 */}
           {!isWithinHours && (
-            <View style={styles.warningBanner}>
-              <Text style={styles.warningText}>⚠️ 非營業時間</Text>
+            <View className="bg-amber-50 py-1.5 px-3 rounded-md mb-3 border border-amber-200">
+              <Text className="text-xs font-semibold text-amber-900 text-center">
+                ⚠️ 非營業時間
+              </Text>
             </View>
           )}
           
@@ -134,14 +137,14 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
                 size={20}
                 iconColor="#10B981"
                 onPress={handleComplete}
-                style={styles.quickAction}
+                className="m-0 bg-gray-100"
               />
               <IconButton
                 icon="phone"
                 size={20}
                 iconColor="#3B82F6"
                 onPress={handleCall}
-                style={styles.quickAction}
+                className="m-0 bg-gray-100"
                 disabled={!order.customerPhone}
               />
               <IconButton
@@ -149,7 +152,7 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
                 size={20}
                 iconColor="#8B5CF6"
                 onPress={handleMessage}
-                style={styles.quickAction}
+                className="m-0 bg-gray-100"
                 disabled={!order.customerPhone}
               />
             </View>
@@ -159,29 +162,3 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-  },
-  quickAction: {
-    margin: 0,
-    backgroundColor: '#F3F4F6',
-  },
-  warningBanner: {
-    backgroundColor: '#FFFBEB',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  warningText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400E',
-    textAlign: 'center',
-  },
-});
-

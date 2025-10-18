@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Schedule, TimeSlot } from '@/types/schedule';
 import { getAllSlots } from '@/utils/scheduleHelpers';
 
@@ -26,8 +26,8 @@ export function TimeSlotGrid({ date, schedule, onSlotPress }: TimeSlotGridProps)
 
   if (slots.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>今日無可預約時段</Text>
+      <View className="py-8 items-center">
+        <Text className="text-sm text-gray-500">今日無可預約時段</Text>
       </View>
     );
   }
@@ -36,32 +36,30 @@ export function TimeSlotGrid({ date, schedule, onSlotPress }: TimeSlotGridProps)
   const totalSlots = slots.length;
 
   return (
-    <View style={styles.container}>
+    <View className="bg-white rounded-xl p-4 border border-gray-200">
       {/* 統計資訊 */}
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{availableSlots}</Text>
-          <Text style={styles.statLabel}>可預約</Text>
+      <View className="flex-row mb-4 pb-4 border-b border-gray-200">
+        <View className="flex-1 items-center">
+          <Text className="text-xl font-bold text-green-600">{availableSlots}</Text>
+          <Text className="text-xs text-gray-600">可預約</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#6B7280' }]}>
-            {totalSlots - availableSlots}
-          </Text>
-          <Text style={styles.statLabel}>已預約</Text>
+        <View className="w-px bg-gray-200" />
+        <View className="flex-1 items-center">
+          <Text className="text-xl font-bold text-gray-600">{totalSlots - availableSlots}</Text>
+          <Text className="text-xs text-gray-600">已預約</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{totalSlots}</Text>
-          <Text style={styles.statLabel}>總共</Text>
+        <View className="w-px bg-gray-200" />
+        <View className="flex-1 items-center">
+          <Text className="text-xl font-bold text-gray-900">{totalSlots}</Text>
+          <Text className="text-xs text-gray-600">總共</Text>
         </View>
       </View>
 
       {/* 時段網格 */}
       <ScrollView
-        style={styles.gridContainer}
+        className="max-h-96"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.gridContent}
+        contentContainerStyle={{ gap: 8 }}
       >
         {slots.map((slot, index) => (
           <TimeSlotCard
@@ -85,147 +83,29 @@ function TimeSlotCard({ slot, onPress }: TimeSlotCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.slotCard, isBooked && styles.slotCardBooked]}
+      className={`flex-row items-center justify-between p-3.5 rounded-lg border-2 ${
+        isBooked ? 'bg-white border-gray-200' : 'bg-gray-50 border-green-600'
+      }`}
       onPress={onPress}
-      disabled={!isBooked} // 只有已預約的時段可以點擊查看詳情
+      disabled={!isBooked}
       activeOpacity={0.7}
     >
-      <View style={styles.slotTimeContainer}>
-        <Text style={[styles.slotTime, isBooked && styles.slotTimeBooked]}>
+      <View className="flex-row items-center gap-1.5">
+        <Text className={`text-base font-semibold ${isBooked ? 'text-gray-400' : 'text-green-600'}`}>
           {slot.start}
         </Text>
-        <Text style={[styles.slotDivider, isBooked && styles.slotDividerBooked]}>
-          -
-        </Text>
-        <Text style={[styles.slotTime, isBooked && styles.slotTimeBooked]}>
+        <Text className={`text-sm ${isBooked ? 'text-gray-300' : 'text-green-500'}`}>-</Text>
+        <Text className={`text-base font-semibold ${isBooked ? 'text-gray-400' : 'text-green-600'}`}>
           {slot.end}
         </Text>
       </View>
       
-      <View style={styles.slotStatusContainer}>
-        {isBooked ? (
-          <>
-            <View style={styles.bookedDot} />
-            <Text style={styles.slotStatusBooked}>已預約</Text>
-          </>
-        ) : (
-          <>
-            <View style={styles.availableDot} />
-            <Text style={styles.slotStatusAvailable}>可預約</Text>
-          </>
-        )}
+      <View className="flex-row items-center gap-1.5">
+        <View className={`w-2 h-2 rounded-full ${isBooked ? 'bg-gray-300' : 'bg-green-600'}`} />
+        <Text className={`text-xs font-medium ${isBooked ? 'text-gray-500' : 'text-green-600'}`}>
+          {isBooked ? '已預約' : '可預約'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  statsBar: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#10B981',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  gridContainer: {
-    maxHeight: 400,
-  },
-  gridContent: {
-    gap: 8,
-  },
-  slotCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  slotCardBooked: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5E7EB',
-  },
-  slotTimeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  slotTime: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  slotTimeBooked: {
-    color: '#9CA3AF',
-  },
-  slotDivider: {
-    fontSize: 14,
-    color: '#10B981',
-  },
-  slotDividerBooked: {
-    color: '#D1D5DB',
-  },
-  slotStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  availableDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-  },
-  bookedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D1D5DB',
-  },
-  slotStatusAvailable: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#10B981',
-  },
-  slotStatusBooked: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#9CA3AF',
-  },
-});
-

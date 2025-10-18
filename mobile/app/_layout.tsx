@@ -53,7 +53,7 @@ export default function RootLayout() {
 
     // Hydration 完成後隱藏 splash screen
     SplashScreen.hideAsync();
-  }, [hasHydrated, isLoggedIn, segments]);
+  }, [hasHydrated, isLoggedIn, segments, router]);
 
   return (
     <PaperProvider theme={paperLightTheme}>
