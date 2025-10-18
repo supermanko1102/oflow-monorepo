@@ -105,7 +105,7 @@ export default function DashboardScreen() {
               <TodayOrderItem key={order.id} order={order} />
             ))}
             <TouchableOpacity
-              onPress={() => router.push('/(tabs)/orders')}
+              onPress={() => router.push('/(main)/(tabs)/orders')}
               className="mt-3 py-2"
             >
               <Text className="text-sm text-line-green font-medium text-center">
@@ -134,7 +134,7 @@ export default function DashboardScreen() {
           <View className="flex-1">
             <Button
               mode="contained"
-              onPress={() => router.push('/(tabs)/orders')}
+              onPress={() => router.push('/(main)/(tabs)/orders')}
               buttonColor="#00B900"
               contentStyle={{ paddingVertical: 4 }}
             >
@@ -162,7 +162,7 @@ export default function DashboardScreen() {
             <Text className="text-base font-semibold text-gray-900">
               🔔 近期提醒
             </Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/reminders')}>
+            <TouchableOpacity onPress={() => router.push('/(main)/(tabs)/reminders')}>
               <Text className="text-sm text-line-green font-medium">
                 查看全部
               </Text>
@@ -172,7 +172,7 @@ export default function DashboardScreen() {
           {upcomingReminders.map((reminder) => (
             <TouchableOpacity
               key={reminder.id}
-              onPress={() => router.push(`/order/${reminder.orderId}`)}
+              onPress={() => router.push(`/(main)/order/${reminder.orderId}`)}
               className="flex-row items-center py-3 border-b border-gray-100 last:border-b-0"
             >
               <Text className="text-xl mr-3">
@@ -199,3 +199,4 @@ export default function DashboardScreen() {
     </ScrollView>
   );
 }
+

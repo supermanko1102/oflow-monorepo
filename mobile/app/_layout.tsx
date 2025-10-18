@@ -1,16 +1,15 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import '../global.css';
 import { useEffect } from 'react';
-
 import { useAuthStore } from '@/stores/useAuthStore';
 
-export const unstable_settings = {
-  initialRouteName: 'login',
-};
+// 防止 splash screen 自動隱藏
+SplashScreen.preventAutoHideAsync();
 
 const paperLightTheme = {
   ...MD3LightTheme,
@@ -21,44 +20,51 @@ const paperLightTheme = {
   },
 };
 
+/**
+ * Root Layout
+ * 
+ * 職責：
+ * 1. 提供全局 providers (Theme, Paper)
+ * 2. 等待 auth 狀態 hydration
+ * 3. 根據 auth 狀態進行初始路由決策
+ * 4. 管理 splash screen
+ */
 export default function RootLayout() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    const inAuthGroup = segments[0] === '(tabs)';
+    if (!hasHydrated) return;
 
-    if (!isLoggedIn && inAuthGroup) {
-      // 未登入但在受保護路由，重定向到登入頁
-      router.replace('/login');
-    } else if (isLoggedIn && !inAuthGroup) {
-      // 已登入但不在受保護路由，重定向到首頁
-      router.replace('/(tabs)');
+    // 當 hydration 完成後，根據 auth 狀態進行初始導航
+    const inAuthGroup = segments[0] === '(auth)';
+    const inMainGroup = segments[0] === '(main)';
+
+    if (!isLoggedIn && !inAuthGroup) {
+      // 未登入且不在 auth group → 導向登入
+      router.replace('/(auth)/login');
+    } else if (isLoggedIn && !inMainGroup) {
+      // 已登入且不在 main group → 導向主頁
+      router.replace('/(main)/(tabs)');
     }
-  }, [isLoggedIn, segments]);
+
+    // Hydration 完成後隱藏 splash screen
+    SplashScreen.hideAsync();
+  }, [hasHydrated, isLoggedIn, segments]);
 
   return (
     <PaperProvider theme={paperLightTheme}>
       <ThemeProvider value={DefaultTheme}>
-        <Stack>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(main)" />
           <Stack.Screen 
-            name="login" 
+            name="modal" 
             options={{ 
-              headerShown: false,
-              animation: 'fade',
+              presentation: 'modal',
             }} 
-          />
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ 
-              headerShown: false,
-              animation: 'fade',
-            }} 
-          />
-          <Stack.Screen 
-            name="order" 
-            options={{ headerShown: false }} 
           />
         </Stack>
         <StatusBar style="auto" />
