@@ -12,6 +12,8 @@ import {
 import { URGENCY_CONFIG } from '@/constants/urgency';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
+import { useScheduleStore } from '@/stores/useScheduleStore';
+import { isWithinBusinessHours } from '@/utils/scheduleHelpers';
 
 interface OrderCardProps {
   order: Order;
@@ -22,11 +24,15 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
   const router = useRouter();
   const haptics = useHaptics();
   const toast = useToast();
+  const schedule = useScheduleStore((state) => state.schedule);
   
   const urgencyLevel = getUrgencyLevel(order.pickupDate);
   const urgencyConfig = URGENCY_CONFIG[urgencyLevel];
   const relativeTime = formatRelativeTime(order.pickupDate, order.pickupTime);
   const urgencyEmoji = getUrgencyEmoji(urgencyLevel);
+
+  // 檢查訂單是否在營業時間內
+  const isWithinHours = schedule ? isWithinBusinessHours(order.pickupDate, order.pickupTime, schedule) : true;
 
   const itemsSummary = order.items.length === 1 
     ? order.items[0].name 
@@ -93,6 +99,13 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
               <StatusBadge type="status" value={order.status} />
             </View>
           </View>
+
+          {/* 非營業時間警告 */}
+          {!isWithinHours && (
+            <View style={styles.warningBanner}>
+              <Text style={styles.warningText}>⚠️ 非營業時間</Text>
+            </View>
+          )}
           
           {/* Time and Amount */}
           <View className="flex-row justify-between items-center mb-3">
@@ -154,6 +167,21 @@ const styles = StyleSheet.create({
   quickAction: {
     margin: 0,
     backgroundColor: '#F3F4F6',
+  },
+  warningBanner: {
+    backgroundColor: '#FFFBEB',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+    textAlign: 'center',
   },
 });
 

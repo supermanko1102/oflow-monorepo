@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { List, Divider, Button } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const autoMode = useSettingsStore((state) => state.autoMode);
   const notificationsEnabled = useSettingsStore((state) => state.notificationsEnabled);
@@ -66,10 +68,10 @@ export default function SettingsScreen() {
           <Divider />
           <List.Item
             title="排班設定"
-            description="設定可接單的時間"
-            left={props => <List.Icon {...props} icon="calendar" />}
+            description="設定可接單/預約時段"
+            left={props => <List.Icon {...props} icon="calendar-clock" />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
+            onPress={() => router.push('/(main)/schedule')}
           />
         </List.Section>
       </View>

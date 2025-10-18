@@ -8,15 +8,18 @@ import { TodayOrderItem } from '@/components/TodayOrderItem';
 import { WeekStatsCard } from '@/components/WeekStatsCard';
 import { TodayTasksCard } from '@/components/TodayTasksCard';
 import { UrgentOrderPreview } from '@/components/UrgentOrderPreview';
+import { TodayScheduleCard } from '@/components/TodayScheduleCard';
 import { mockOrders } from '@/data/mockOrders';
 import { mockDailyStats, mockWeeklyStats } from '@/data/mockStats';
 import { mockReminders } from '@/data/mockReminders';
 import { useToast } from '@/hooks/useToast';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useScheduleStore } from '@/stores/useScheduleStore';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const merchantName = useAuthStore((state) => state.merchantName);
+  const schedule = useScheduleStore((state) => state.schedule);
   const toast = useToast();
   const haptics = useHaptics();
   const [refreshing, setRefreshing] = useState(false);
@@ -34,7 +37,6 @@ export default function DashboardScreen() {
 
   // 取得今日訂單（pickupDate 是今天的）
   const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
   
   // 模擬今日訂單 - 取前3筆待處理的訂單
   const todayOrders = mockOrders
@@ -89,8 +91,13 @@ export default function DashboardScreen() {
         </Text>
       </View>
 
-      {/* Today Tasks Card - 新增：今日待辦 */}
+      {/* Today Schedule Card - 新增：今日排班 */}
       <View className="mt-4">
+        <TodayScheduleCard schedule={schedule} />
+      </View>
+
+      {/* Today Tasks Card - 新增：今日待辦 */}
+      <View className="mt-0">
         <TodayTasksCard orders={mockOrders} />
       </View>
 
