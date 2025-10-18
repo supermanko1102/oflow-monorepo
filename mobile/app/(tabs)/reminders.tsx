@@ -26,9 +26,9 @@ export default function RemindersScreen() {
 
   if (mockReminders.length === 0) {
     return (
-      <View className="flex-1 bg-gray-50 dark:bg-gray-900">
-        <View className="bg-white dark:bg-gray-800 pt-12 pb-4 px-4 border-b border-gray-200 dark:border-gray-700">
-          <Text className="text-2xl font-bold text-gray-900 dark:text-white">
+      <View className="flex-1 bg-gray-50">
+        <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+          <Text className="text-2xl font-bold text-gray-900">
             提醒通知
           </Text>
         </View>
@@ -42,11 +42,11 @@ export default function RemindersScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white dark:bg-gray-800 pt-12 pb-4 px-4 border-b border-gray-200 dark:border-gray-700">
+      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
         <View className="flex-row justify-between items-center">
-          <Text className="text-2xl font-bold text-gray-900 dark:text-white">
+          <Text className="text-2xl font-bold text-gray-900">
             提醒通知
           </Text>
           {unreadCount > 0 && (
@@ -64,8 +64,8 @@ export default function RemindersScreen() {
         sections={sections}
         renderItem={({ item }) => <ReminderCard reminder={item} />}
         renderSectionHeader={({ section: { title } }) => (
-          <View className="bg-gray-100 dark:bg-gray-800 px-4 py-2">
-            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <View className="bg-gray-100 px-4 py-2">
+            <Text className="text-sm font-semibold text-gray-700">
               {title}
             </Text>
           </View>

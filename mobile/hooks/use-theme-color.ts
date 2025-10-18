@@ -1,21 +1,21 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * 簡化版的主題顏色 hook - 只返回淺色主題
  */
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const lightColors = {
+  text: '#11181C',
+  background: '#fff',
+  tint: '#0a7ea4',
+  icon: '#687076',
+  tabIconDefault: '#687076',
+  tabIconSelected: '#0a7ea4',
+};
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof typeof lightColors
 ) {
-  const theme = useColorScheme() ?? 'light';
-  const colorFromProps = props[theme];
-
-  if (colorFromProps) {
-    return colorFromProps;
-  } else {
-    return Colors[theme][colorName];
-  }
+  // 如果提供了 light 屬性，使用它；否則使用預設的淺色主題顏色
+  return props.light ?? lightColors[colorName];
 }
+

@@ -13,8 +13,8 @@ export default function OrderDetailScreen() {
 
   if (!order) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-gray-900">
-        <Text className="text-lg text-gray-600 dark:text-gray-400">訂單不存在</Text>
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text className="text-lg text-gray-600">訂單不存在</Text>
       </View>
     );
   }
@@ -30,15 +30,15 @@ export default function OrderDetailScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <ScrollView className="flex-1 bg-gray-50">
       {/* Order Header */}
-      <View className="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
+      <View className="bg-white p-4 border-b border-gray-200">
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1">
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <Text className="text-xs text-gray-500 mb-1">
               訂單編號
             </Text>
-            <Text className="text-base font-mono text-gray-700 dark:text-gray-300">
+            <Text className="text-base font-mono text-gray-700">
               #{order.id}
             </Text>
           </View>
@@ -48,7 +48,7 @@ export default function OrderDetailScreen() {
           </View>
         </View>
         
-        <Text className="text-xs text-gray-500 dark:text-gray-400">
+        <Text className="text-xs text-gray-500">
           建立時間：{formatDateTime(order.createdAt)}
         </Text>
       </View>
@@ -56,19 +56,19 @@ export default function OrderDetailScreen() {
       {/* Customer Info */}
       <Card className="m-4">
         <Card.Content className="p-4">
-          <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <Text className="text-sm font-semibold text-gray-700 mb-3">
             客戶資訊
           </Text>
           <View className="flex-row items-center mb-2">
-            <Text className="text-base text-gray-900 dark:text-white w-20">姓名</Text>
-            <Text className="text-base text-gray-700 dark:text-gray-300 flex-1">
+            <Text className="text-base text-gray-900 w-20">姓名</Text>
+            <Text className="text-base text-gray-700 flex-1">
               {order.customerName}
             </Text>
           </View>
           {order.customerPhone && (
             <View className="flex-row items-center">
-              <Text className="text-base text-gray-900 dark:text-white w-20">電話</Text>
-              <Text className="text-base text-gray-700 dark:text-gray-300 flex-1">
+              <Text className="text-base text-gray-900 w-20">電話</Text>
+              <Text className="text-base text-gray-700 flex-1">
                 {order.customerPhone}
               </Text>
             </View>
@@ -79,18 +79,18 @@ export default function OrderDetailScreen() {
       {/* Pickup Info */}
       <Card className="mx-4 mb-4">
         <Card.Content className="p-4">
-          <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <Text className="text-sm font-semibold text-gray-700 mb-3">
             取貨資訊
           </Text>
           <View className="flex-row items-center mb-2">
-            <Text className="text-base text-gray-900 dark:text-white w-20">日期</Text>
-            <Text className="text-base text-gray-700 dark:text-gray-300 flex-1">
+            <Text className="text-base text-gray-900 w-20">日期</Text>
+            <Text className="text-base text-gray-700 flex-1">
               {formatDate(order.pickupDate)}
             </Text>
           </View>
           <View className="flex-row items-center">
-            <Text className="text-base text-gray-900 dark:text-white w-20">時間</Text>
-            <Text className="text-base text-gray-700 dark:text-gray-300 flex-1">
+            <Text className="text-base text-gray-900 w-20">時間</Text>
+            <Text className="text-base text-gray-700 flex-1">
               {order.pickupTime}
             </Text>
           </View>
@@ -100,21 +100,21 @@ export default function OrderDetailScreen() {
       {/* Order Items */}
       <Card className="mx-4 mb-4">
         <Card.Content className="p-4">
-          <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <Text className="text-sm font-semibold text-gray-700 mb-3">
             訂單明細
           </Text>
           {order.items.map((item, index) => (
             <View key={index}>
               <View className="flex-row justify-between items-start py-2">
                 <View className="flex-1">
-                  <Text className="text-base text-gray-900 dark:text-white mb-1">
+                  <Text className="text-base text-gray-900 mb-1">
                     {item.name}
                   </Text>
-                  <Text className="text-sm text-gray-600 dark:text-gray-400">
+                  <Text className="text-sm text-gray-600">
                     數量：{item.quantity}
                   </Text>
                 </View>
-                <Text className="text-base font-semibold text-gray-900 dark:text-white">
+                <Text className="text-base font-semibold text-gray-900">
                   ${item.price}
                 </Text>
               </View>
@@ -125,7 +125,7 @@ export default function OrderDetailScreen() {
           <Divider className="my-3" />
           
           <View className="flex-row justify-between items-center">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">
+            <Text className="text-lg font-bold text-gray-900">
               總金額
             </Text>
             <Text className="text-2xl font-bold text-line-green">
@@ -139,10 +139,10 @@ export default function OrderDetailScreen() {
       {order.notes && (
         <Card className="mx-4 mb-4">
           <Card.Content className="p-4">
-            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
               備註
             </Text>
-            <Text className="text-base text-gray-700 dark:text-gray-300">
+            <Text className="text-base text-gray-700">
               {order.notes}
             </Text>
           </Card.Content>
@@ -153,7 +153,7 @@ export default function OrderDetailScreen() {
       {order.lineConversation && order.lineConversation.length > 0 && (
         <Card className="mx-4 mb-4">
           <Card.Content className="p-4">
-            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Text className="text-sm font-semibold text-gray-700 mb-3">
               LINE 對話記錄
             </Text>
             {order.lineConversation.map((message, index) => (
@@ -161,11 +161,11 @@ export default function OrderDetailScreen() {
                 key={index}
                 className={`p-3 rounded-lg mb-2 ${
                   message.startsWith('AI:') || message.startsWith('商家:')
-                    ? 'bg-green-50 dark:bg-green-900/20'
-                    : 'bg-gray-100 dark:bg-gray-700'
+                    ? 'bg-green-50/20'
+                    : 'bg-gray-100'
                 }`}
               >
-                <Text className="text-sm text-gray-800 dark:text-gray-200">
+                <Text className="text-sm text-gray-800">
                   {message}
                 </Text>
               </View>

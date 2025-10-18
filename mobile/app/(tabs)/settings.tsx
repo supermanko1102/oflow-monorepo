@@ -1,32 +1,37 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { List, Divider, Button } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export default function SettingsScreen() {
-  const router = useRouter();
-  const [autoMode, setAutoMode] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [reminderToday, setReminderToday] = useState(true);
-  const [reminder3Days, setReminder3Days] = useState(true);
-  const [reminder7Days, setReminder7Days] = useState(true);
+  const logout = useAuthStore((state) => state.logout);
+  const autoMode = useSettingsStore((state) => state.autoMode);
+  const notificationsEnabled = useSettingsStore((state) => state.notificationsEnabled);
+  const reminderToday = useSettingsStore((state) => state.reminderToday);
+  const reminder3Days = useSettingsStore((state) => state.reminder3Days);
+  const reminder7Days = useSettingsStore((state) => state.reminder7Days);
+  const setAutoMode = useSettingsStore((state) => state.setAutoMode);
+  const setNotificationsEnabled = useSettingsStore((state) => state.setNotificationsEnabled);
+  const setReminderToday = useSettingsStore((state) => state.setReminderToday);
+  const setReminder3Days = useSettingsStore((state) => state.setReminder3Days);
+  const setReminder7Days = useSettingsStore((state) => state.setReminder7Days);
 
   const handleLogout = () => {
-    // 假的登出邏輯
-    router.replace('/(tabs)/');
+    logout();
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <ScrollView className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white dark:bg-gray-800 pt-12 pb-4 px-4 border-b border-gray-200 dark:border-gray-700">
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white">
+      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+        <Text className="text-2xl font-bold text-gray-900">
           設置
         </Text>
       </View>
 
       {/* Account Section */}
-      <View className="bg-white dark:bg-gray-800 mt-4">
+      <View className="bg-white mt-4">
         <List.Section>
           <List.Subheader>帳號資訊</List.Subheader>
           <List.Item
@@ -43,7 +48,7 @@ export default function SettingsScreen() {
       </View>
 
       {/* Order Mode Section */}
-      <View className="bg-white dark:bg-gray-800 mt-4">
+      <View className="bg-white mt-4">
         <List.Section>
           <List.Subheader>接單模式</List.Subheader>
           <List.Item
@@ -70,7 +75,7 @@ export default function SettingsScreen() {
       </View>
 
       {/* Notification Section */}
-      <View className="bg-white dark:bg-gray-800 mt-4">
+      <View className="bg-white mt-4">
         <List.Section>
           <List.Subheader>通知設定</List.Subheader>
           <List.Item
@@ -134,7 +139,7 @@ export default function SettingsScreen() {
       </View>
 
       {/* About Section */}
-      <View className="bg-white dark:bg-gray-800 mt-4">
+      <View className="bg-white mt-4">
         <List.Section>
           <List.Subheader>關於</List.Subheader>
           <List.Item

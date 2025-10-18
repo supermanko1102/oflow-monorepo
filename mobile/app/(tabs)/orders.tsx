@@ -19,10 +19,10 @@ export default function OrdersScreen() {
   const completedCount = mockOrders.filter(o => o.status === 'completed').length;
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white dark:bg-gray-800 pt-12 pb-4 px-4 border-b border-gray-200 dark:border-gray-700">
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+        <Text className="text-2xl font-bold text-gray-900 mb-4">
           訂單管理
         </Text>
         

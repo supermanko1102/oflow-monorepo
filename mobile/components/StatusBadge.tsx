@@ -11,11 +11,11 @@ export function StatusBadge({ type, value }: StatusBadgeProps) {
   const getSourceStyle = (source: OrderSource) => {
     switch (source) {
       case 'auto':
-        return 'bg-blue-100 dark:bg-blue-900';
+        return 'bg-blue-100';
       case 'semi-auto':
-        return 'bg-purple-100 dark:bg-purple-900';
+        return 'bg-purple-100';
       default:
-        return 'bg-gray-100 dark:bg-gray-800';
+        return 'bg-gray-100';
     }
   };
 
@@ -33,13 +33,13 @@ export function StatusBadge({ type, value }: StatusBadgeProps) {
   const getStatusStyle = (status: OrderStatus) => {
     switch (status) {
       case 'pending':
-        return 'bg-orange-100 dark:bg-orange-900';
+        return 'bg-orange-100';
       case 'completed':
-        return 'bg-green-100 dark:bg-green-900';
+        return 'bg-green-100';
       case 'cancelled':
-        return 'bg-red-100 dark:bg-red-900';
+        return 'bg-red-100';
       default:
-        return 'bg-gray-100 dark:bg-gray-800';
+        return 'bg-gray-100';
     }
   };
 
@@ -61,7 +61,7 @@ export function StatusBadge({ type, value }: StatusBadgeProps) {
 
   return (
     <View className={`px-2 py-1 rounded-full ${style}`}>
-      <Text className="text-xs font-medium dark:text-white">{text}</Text>
+      <Text className="text-xs font-medium">{text}</Text>
     </View>
   );
 }

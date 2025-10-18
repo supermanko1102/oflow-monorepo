@@ -53,7 +53,7 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
         <Card.Content className="p-4">
           <View className="flex-row items-center mb-2">
             <Text className="text-xl mr-2">{getReminderIcon()}</Text>
-            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Text className="text-sm font-medium text-gray-700">
               {getReminderLabel()}
             </Text>
             {!reminder.isRead && (
@@ -63,10 +63,10 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
 
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              <Text className="text-lg font-semibold text-gray-900 mb-1">
                 {order.customerName}
               </Text>
-              <Text className="text-sm text-gray-600 dark:text-gray-400">
+              <Text className="text-sm text-gray-600">
                 {order.items[0]?.name}
                 {order.items.length > 1 && ` 等 ${order.items.length} 項`}
               </Text>
@@ -75,7 +75,7 @@ export function ReminderCard({ reminder }: ReminderCardProps) {
           </View>
 
           <View className="flex-row justify-between items-center">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">
+            <Text className="text-sm text-gray-600">
               📅 {formatDate(order.pickupDate)} {order.pickupTime}
             </Text>
             <Text className="text-base font-bold text-line-green">

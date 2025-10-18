@@ -30,10 +30,10 @@ export function OrderCard({ order }: OrderCardProps) {
         <Card.Content className="p-4">
           <View className="flex-row justify-between items-start mb-3">
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              <Text className="text-lg font-semibold text-gray-900 mb-1">
                 {order.customerName}
               </Text>
-              <Text className="text-sm text-gray-600 dark:text-gray-400">
+              <Text className="text-sm text-gray-600">
                 {itemsSummary}
               </Text>
             </View>
@@ -45,7 +45,7 @@ export function OrderCard({ order }: OrderCardProps) {
           
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center">
-              <Text className="text-sm text-gray-600 dark:text-gray-400 mr-4">
+              <Text className="text-sm text-gray-600 mr-4">
                 📅 {formatDate(order.pickupDate)} {order.pickupTime}
               </Text>
             </View>

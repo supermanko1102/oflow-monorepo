@@ -1,14 +1,15 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
+import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import '../global.css';
+import { useEffect } from 'react';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: 'login',
 };
 
 const paperLightTheme = {
@@ -20,25 +21,45 @@ const paperLightTheme = {
   },
 };
 
-const paperDarkTheme = {
-  ...MD3DarkTheme,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: '#00B900',
-    primaryContainer: '#004D00',
-  },
-};
-
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const paperTheme = colorScheme === 'dark' ? paperDarkTheme : paperLightTheme;
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === '(tabs)';
+
+    if (!isLoggedIn && inAuthGroup) {
+      // 未登入但在受保護路由，重定向到登入頁
+      router.replace('/login');
+    } else if (isLoggedIn && !inAuthGroup) {
+      // 已登入但不在受保護路由，重定向到首頁
+      router.replace('/(tabs)');
+    }
+  }, [isLoggedIn, segments]);
 
   return (
-    <PaperProvider theme={paperTheme}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <PaperProvider theme={paperLightTheme}>
+      <ThemeProvider value={DefaultTheme}>
         <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="order" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="login" 
+            options={{ 
+              headerShown: false,
+              animation: 'fade',
+            }} 
+          />
+          <Stack.Screen 
+            name="(tabs)" 
+            options={{ 
+              headerShown: false,
+              animation: 'fade',
+            }} 
+          />
+          <Stack.Screen 
+            name="order" 
+            options={{ headerShown: false }} 
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

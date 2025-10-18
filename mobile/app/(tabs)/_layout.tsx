@@ -3,12 +3,10 @@ import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const activeTintColor = '#00B900';
-  const inactiveTintColor = colorScheme === 'dark' ? '#9CA3AF' : '#6B7280';
+  const inactiveTintColor = '#6B7280';
 
   return (
     <Tabs
@@ -18,16 +16,16 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#1F2937' : '#FFFFFF',
-          borderTopColor: colorScheme === 'dark' ? '#374151' : '#E5E7EB',
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E5E7EB',
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: '首頁',
+          title: '儀表板',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color} />
+            <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
           ),
         }}
       />
