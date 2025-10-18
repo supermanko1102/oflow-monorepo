@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, SectionList } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReminderCard } from '@/components/ReminderCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -32,15 +31,14 @@ export default function RemindersScreen() {
   if (mockReminders.length === 0) {
     return (
       <View className="flex-1 bg-gray-50">
-        <LinearGradient
-          colors={['#FFFFFF', '#F9FAFB']}
-          className="pb-5 px-6"
+        <View
+          className="pb-5 px-6 bg-white border-b border-gray-100"
           style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
         >
           <Text className="text-3xl font-bold text-gray-900">
             提醒通知
           </Text>
-        </LinearGradient>
+        </View>
         <EmptyState
           title="沒有提醒"
           description="當有重要訂單需要注意時，會顯示在這裡"
@@ -52,9 +50,8 @@ export default function RemindersScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <LinearGradient
-        colors={['#FFFFFF', '#F9FAFB']}
-        className="pb-5 px-6"
+      <View
+        className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
         <View className="flex-row justify-between items-center">
@@ -69,7 +66,7 @@ export default function RemindersScreen() {
             </View>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Reminders List */}
       <SectionList

@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Card } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { WeeklyStats } from '@/data/mockStats';
 import { SHADOWS } from '@/constants/design';
 
@@ -53,22 +52,17 @@ export function WeekStatsCard({ stats }: WeekStatsCardProps) {
           </View>
 
           <View className="border-t border-neutral-100 pt-4 mt-2">
-            <LinearGradient
-              colors={['#EFF6FF', '#DBEAFE']}
-              className="p-4 rounded-xl"
-            >
-              <View className="mb-2">
-                <Text className="text-base font-bold text-info-dark">
-                  AI 智能助理
-                </Text>
-              </View>
+            <View className="p-4 rounded-xl bg-gray-50">
+              <Text className="text-base font-bold text-gray-900 mb-2">
+                AI 智能助理
+              </Text>
               <Text className="text-sm text-gray-700 mb-1">
-                自動處理了 <Text className="font-bold text-info">{stats.aiAutoProcessed} 筆</Text> 訂單
+                自動處理了 <Text className="font-bold text-primary-600">{stats.aiAutoProcessed} 筆</Text> 訂單
               </Text>
               <Text className="text-xs text-gray-600">
                 幫你省下 <Text className="font-bold text-success">{stats.timeSaved} 分鐘</Text> 的時間
               </Text>
-            </LinearGradient>
+            </View>
           </View>
         </View>
       </Card.Content>

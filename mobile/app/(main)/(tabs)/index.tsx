@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Button } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -85,21 +84,18 @@ export default function DashboardScreen() {
         />
       }
     >
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={['#00B900', '#009900']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="pb-8 px-6 rounded-b-3xl"
-        style={[SHADOWS.elevated, { paddingTop: insets.top + 16 }]}
+      {/* Header */}
+      <View 
+        className="pb-6 px-6 bg-white border-b border-gray-100"
+        style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        <Text className="text-3xl font-bold text-white mb-2">
+        <Text className="text-3xl font-bold text-gray-900 mb-2">
           {getCurrentGreeting()}，{merchantName}
         </Text>
-        <Text className="text-base text-white/90">
+        <Text className="text-base text-gray-600">
           今天是 {formatDate()}
         </Text>
-      </LinearGradient>
+      </View>
 
       {/* Today Schedule Card - 新增：今日排班 */}
       <View className="mt-4">

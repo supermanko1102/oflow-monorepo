@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Card } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Order } from '@/types/order';
 import { StatusBadge } from './StatusBadge';
@@ -90,16 +89,6 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
           }
         ]}
       >
-        {/* 緊急訂單漸層背景 */}
-        {urgencyLevel === 'urgent' && (
-          <LinearGradient
-            colors={['#FEE2E2', '#FFFFFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            className="absolute inset-0 opacity-40"
-          />
-        )}
-        
         <Card.Content className="p-5">
           {/* Header */}
           <View className="flex-row justify-between items-start mb-3">

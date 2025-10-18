@@ -6,7 +6,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Order } from '@/types/order';
 import { isToday, isTomorrow } from '@/utils/timeHelpers';
@@ -36,7 +35,7 @@ export function TodayTasksCard({ orders }: TodayTasksCardProps) {
     : (completedCount / (totalTasks + completedCount)) * 100;
 
   return (
-    <Card className="mx-4 mb-4" style={SHADOWS.card}>
+    <Card className="mx-4 mb-4 bg-white" style={SHADOWS.card}>
       <Card.Content className="p-5">
         <Text className="text-lg font-bold text-gray-900 mb-4">
           今日待辦
@@ -46,21 +45,19 @@ export function TodayTasksCard({ orders }: TodayTasksCardProps) {
         {todayOrders.length > 0 && (
           <TouchableOpacity
             onPress={() => router.push('/(main)/(tabs)/orders')}
-            className="flex-row items-center justify-between py-4 rounded-xl mb-2 bg-error-light/30"
+            className="flex-row items-center justify-between py-4 px-3 border-l-4 border-error mb-2 rounded-lg"
             activeOpacity={0.7}
           >
-            <View className="flex-row items-center flex-1 px-3">
-              <View className="flex-1">
-                <Text className="text-base font-bold text-gray-900">
-                  今天取貨
-                </Text>
-                <Text className="text-xs text-gray-600 mt-0.5">
-                  {todayOrders.length} 筆訂單需要準備
-                </Text>
-              </View>
+            <View className="flex-1">
+              <Text className="text-base font-bold text-gray-900">
+                今天取貨
+              </Text>
+              <Text className="text-xs text-gray-600 mt-0.5">
+                {todayOrders.length} 筆訂單需要準備
+              </Text>
             </View>
-            <View className="bg-error px-4 py-2 rounded-lg mr-3">
-              <Text className="text-lg font-bold text-white">
+            <View className="border-2 border-error px-3 py-1 rounded-lg">
+              <Text className="text-base font-bold text-error">
                 {todayOrders.length}
               </Text>
             </View>
@@ -71,21 +68,19 @@ export function TodayTasksCard({ orders }: TodayTasksCardProps) {
         {tomorrowOrders.length > 0 && (
           <TouchableOpacity
             onPress={() => router.push('/(main)/(tabs)/orders')}
-            className="flex-row items-center justify-between py-4 rounded-xl mb-2 bg-warning-light/30"
+            className="flex-row items-center justify-between py-4 px-3 border-l-4 border-warning mb-2 rounded-lg"
             activeOpacity={0.7}
           >
-            <View className="flex-row items-center flex-1 px-3">
-              <View className="flex-1">
-                <Text className="text-base font-bold text-gray-900">
-                  明天取貨
-                </Text>
-                <Text className="text-xs text-gray-600 mt-0.5">
-                  提前準備更輕鬆
-                </Text>
-              </View>
+            <View className="flex-1">
+              <Text className="text-base font-bold text-gray-900">
+                明天取貨
+              </Text>
+              <Text className="text-xs text-gray-600 mt-0.5">
+                提前準備更輕鬆
+              </Text>
             </View>
-            <View className="bg-warning px-4 py-2 rounded-lg mr-3">
-              <Text className="text-lg font-bold text-white">
+            <View className="border-2 border-warning px-3 py-1 rounded-lg">
+              <Text className="text-base font-bold text-warning">
                 {tomorrowOrders.length}
               </Text>
             </View>
@@ -94,7 +89,7 @@ export function TodayTasksCard({ orders }: TodayTasksCardProps) {
 
         {/* 已完成 */}
         {completedCount > 0 && (
-          <View className="flex-row items-center justify-between py-4 rounded-xl bg-success-light/30 px-3">
+          <View className="flex-row items-center justify-between py-4 px-3 border-l-4 border-success rounded-lg">
             <View className="flex-1">
               <Text className="text-base font-bold text-gray-900">
                 已完成
@@ -119,11 +114,8 @@ export function TodayTasksCard({ orders }: TodayTasksCardProps) {
               </Text>
             </View>
             <View className="h-3 bg-neutral-200 rounded-full overflow-hidden">
-              <LinearGradient
-                colors={['#10B981', '#00B900']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                className="h-full rounded-full"
+              <View 
+                className="h-full rounded-full bg-success"
                 style={{ width: `${progressPercent}%` }}
               />
             </View>

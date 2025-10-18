@@ -6,7 +6,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Card } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Order } from '@/types/order';
 import { isToday } from '@/utils/timeHelpers';
@@ -54,17 +53,9 @@ export function UrgentOrderPreview({ orders }: UrgentOrderPreviewProps) {
             className="mr-3"
           >
             <Card 
-              className="overflow-hidden"
+              className="bg-white border-l-4 border-error"
               style={[SHADOWS.card, { width: 280 }]}
             >
-              {/* 頂部紅色警告條 */}
-              <LinearGradient
-                colors={['#FEE2E2', '#FFFFFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                className="absolute inset-0 opacity-50"
-              />
-              
               <Card.Content className="p-5">
                 <View className="flex-row justify-between items-start mb-3">
                   <View className="flex-1">
@@ -76,8 +67,8 @@ export function UrgentOrderPreview({ orders }: UrgentOrderPreviewProps) {
                       {order.items.length > 1 && ` 等 ${order.items.length} 項`}
                     </Text>
                   </View>
-                  <View className="bg-error-light px-2.5 py-1 rounded-lg border border-error/20">
-                    <Text className="text-xs font-bold text-error-dark">
+                  <View className="border border-error/30 px-2.5 py-1 rounded-lg">
+                    <Text className="text-xs font-bold text-error">
                       今天
                     </Text>
                   </View>

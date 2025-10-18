@@ -35,8 +35,8 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
     return (
       <Card className="mx-4 bg-white" style={SHADOWS.card}>
         <Card.Content className="p-5 flex-row items-center">
-          <View className="mr-4">
-            <CloseCircleIcon size={48} color="#9CA3AF" />
+          <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mr-4">
+            <CloseCircleIcon size={24} color="#9CA3AF" />
           </View>
           <View className="flex-1">
             <Text className="text-lg font-bold text-gray-900 mb-1">尚未設定排班</Text>
@@ -92,8 +92,8 @@ export function TodayScheduleCard({ schedule }: TodayScheduleCardProps) {
     >
       <Card className="mx-4 bg-white" style={SHADOWS.card}>
         <Card.Content className="p-5 flex-row items-center">
-          <View className="mr-4">
-            <statusConfig.IconComponent size={48} color={statusConfig.iconColor} />
+          <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mr-4">
+            <statusConfig.IconComponent size={24} color={statusConfig.iconColor} />
           </View>
           
           <View className="flex-1">

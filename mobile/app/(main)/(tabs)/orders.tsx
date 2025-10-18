@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Chip } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OrderCard } from '@/components/OrderCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -40,9 +39,8 @@ export default function OrdersScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <LinearGradient
-        colors={['#FFFFFF', '#F9FAFB']}
-        className="pb-5 px-6"
+      <View
+        className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
         <Text className="text-3xl font-bold text-gray-900 mb-4">
@@ -79,7 +77,7 @@ export default function OrdersScreen() {
             已完成 ({completedCount})
           </Chip>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
