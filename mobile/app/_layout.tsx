@@ -1,5 +1,5 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
@@ -35,39 +35,38 @@ const paperLightTheme = {
  * 2. 等待 auth 狀態 hydration
  * 3. 根據 auth 狀態進行初始路由決策
  * 4. 管理 splash screen
+ * 
+ * 架構模式：集中式認證守衛
+ * - 在 hydration 完成前返回 null，避免子組件提前渲染
+ * - 使用條件渲染控制路由，避免在首次渲染時觸發導航副作用
  */
 export default function RootLayout() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const hasHydrated = useAuthStore((state) => state._hasHydrated);
-  const router = useRouter();
-  const segments = useSegments();
 
+  // 等待 hydration 完成前不渲染任何內容
+  // 這確保了子 layout 不會在 auth 狀態確定前被掛載
+  if (!hasHydrated) {
+    return null;
+  }
+
+  // Hydration 完成後隱藏 splash screen
   useEffect(() => {
-    if (!hasHydrated) return;
-
-    // 當 hydration 完成後，根據 auth 狀態進行初始導航
-    const inAuthGroup = segments[0] === '(auth)';
-    const inMainGroup = segments[0] === '(main)';
-
-    if (!isLoggedIn && !inAuthGroup) {
-      // 未登入且不在 auth group → 導向登入
-      router.replace('/(auth)/login');
-    } else if (isLoggedIn && !inMainGroup) {
-      // 已登入且不在 main group → 導向主頁
-      router.replace('/(main)/(tabs)');
-    }
-
-    // Hydration 完成後隱藏 splash screen
     SplashScreen.hideAsync();
-  }, [hasHydrated, isLoggedIn, segments, router]);
+  }, []);
 
   return (
     <SafeAreaProvider>
       <PaperProvider theme={paperLightTheme}>
         <ThemeProvider value={DefaultTheme}>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(main)" />
+            {!isLoggedIn ? (
+              // 未登入：只渲染 auth group
+              <Stack.Screen name="(auth)" />
+            ) : (
+              // 已登入：只渲染 main group
+              <Stack.Screen name="(main)" />
+            )}
           </Stack>
           <StatusBar style="auto" />
           <ToastContainer />
