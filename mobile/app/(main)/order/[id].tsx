@@ -1,14 +1,23 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Linking, Alert } from 'react-native';
 import { Button, Card, Divider } from 'react-native-paper';
-import { useLocalSearchParams } from 'expo-router';
-import { mockOrders } from '@/data/mockOrders';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useOrderStore } from '@/stores/useOrderStore';
 import { StatusBadge } from '@/components/StatusBadge';
+import { useToast } from '@/hooks/useToast';
+import { useHaptics } from '@/hooks/useHaptics';
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const toast = useToast();
+  const haptics = useHaptics();
   
-  const order = mockOrders.find(o => o.id === id);
+  const getOrderById = useOrderStore((state) => state.getOrderById);
+  const markOrderCompleted = useOrderStore((state) => state.markOrderCompleted);
+  const markOrderPending = useOrderStore((state) => state.markOrderPending);
+  
+  const order = getOrderById(id!);
 
   if (!order) {
     return (
@@ -26,6 +35,57 @@ export default function OrderDetailScreen() {
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  // 處理標記完成
+  const handleMarkCompleted = () => {
+    haptics.success();
+    markOrderCompleted(order.id);
+    toast.success('訂單已標記為完成 ✓');
+    // 延遲返回，讓用戶看到 toast
+    setTimeout(() => {
+      router.back();
+    }, 500);
+  };
+
+  // 處理聯絡客戶
+  const handleContactCustomer = async () => {
+    haptics.light();
+    
+    if (!order.customerPhone) {
+      toast.error('此訂單沒有客戶電話');
+      return;
+    }
+
+    Alert.alert(
+      '聯絡客戶',
+      `${order.customerName}\n${order.customerPhone}`,
+      [
+        {
+          text: '打電話',
+          onPress: () => {
+            Linking.openURL(`tel:${order.customerPhone}`);
+          },
+        },
+        {
+          text: '傳訊息',
+          onPress: () => {
+            Linking.openURL(`sms:${order.customerPhone}`);
+          },
+        },
+        {
+          text: '開啟 LINE',
+          onPress: () => {
+            // LINE 深層連結（需要知道 LINE ID，這裡先用一般方式）
+            Linking.openURL('line://');
+          },
+        },
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   return (
@@ -178,7 +238,7 @@ export default function OrderDetailScreen() {
         <View className="px-4 pb-6">
           <Button
             mode="contained"
-            onPress={() => {}}
+            onPress={handleMarkCompleted}
             className="mb-3"
             buttonColor="#00B900"
           >
@@ -186,10 +246,30 @@ export default function OrderDetailScreen() {
           </Button>
           <Button
             mode="outlined"
-            onPress={() => {}}
+            onPress={handleContactCustomer}
             textColor="#6B7280"
           >
             聯絡客戶
+          </Button>
+        </View>
+      )}
+
+      {/* 已完成訂單可以改回待處理 */}
+      {order.status === 'completed' && (
+        <View className="px-4 pb-6">
+          <Button
+            mode="outlined"
+            onPress={() => {
+              haptics.light();
+              markOrderPending(order.id);
+              toast.success('已改回待處理');
+              setTimeout(() => {
+                router.back();
+              }, 500);
+            }}
+            textColor="#6B7280"
+          >
+            改回待處理
           </Button>
         </View>
       )}

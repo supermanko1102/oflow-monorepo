@@ -1,28 +1,109 @@
-import React from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Switch, Alert } from 'react-native';
 import { List, Divider, Button } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useToast } from '@/hooks/useToast';
+import * as NotificationService from '@/utils/notificationService';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const toast = useToast();
   const logout = useAuthStore((state) => state.logout);
-  const autoMode = useSettingsStore((state) => state.autoMode);
   const notificationsEnabled = useSettingsStore((state) => state.notificationsEnabled);
-  const reminderToday = useSettingsStore((state) => state.reminderToday);
-  const reminder3Days = useSettingsStore((state) => state.reminder3Days);
-  const reminder7Days = useSettingsStore((state) => state.reminder7Days);
-  const setAutoMode = useSettingsStore((state) => state.setAutoMode);
   const setNotificationsEnabled = useSettingsStore((state) => state.setNotificationsEnabled);
-  const setReminderToday = useSettingsStore((state) => state.setReminderToday);
-  const setReminder3Days = useSettingsStore((state) => state.setReminder3Days);
-  const setReminder7Days = useSettingsStore((state) => state.setReminder7Days);
+
+  const [notificationSettings, setNotificationSettings] = useState<NotificationService.NotificationSettings>({
+    enabled: true,
+    hour: 8,
+    minute: 0,
+  });
+
+  // 載入通知設定
+  useEffect(() => {
+    loadNotificationSettings();
+  }, []);
+
+  const loadNotificationSettings = async () => {
+    const settings = await NotificationService.getNotificationSettings();
+    setNotificationSettings(settings);
+  };
 
   const handleLogout = () => {
     logout();
+  };
+
+  // 處理通知開關
+  const handleToggleNotifications = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    
+    if (value) {
+      // 請求權限
+      const granted = await NotificationService.requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(
+          '需要通知權限',
+          '請到系統設定中開啟通知權限',
+          [{ text: '確定' }]
+        );
+        setNotificationsEnabled(false);
+        return;
+      }
+      toast.success('已開啟通知');
+    } else {
+      await NotificationService.cancelAllNotifications();
+      toast.success('已關閉通知');
+    }
+
+    // 儲存設定
+    await NotificationService.saveNotificationSettings({
+      ...notificationSettings,
+      enabled: value,
+    });
+  };
+
+  // 處理通知時間設定
+  const handleSetNotificationTime = () => {
+    Alert.alert(
+      '設定每日通知時間',
+      `目前設定：每天 ${notificationSettings.hour.toString().padStart(2, '0')}:${notificationSettings.minute.toString().padStart(2, '0')}`,
+      [
+        {
+          text: '早上 7:00',
+          onPress: () => saveNotificationTime(7, 0),
+        },
+        {
+          text: '早上 8:00',
+          onPress: () => saveNotificationTime(8, 0),
+        },
+        {
+          text: '早上 9:00',
+          onPress: () => saveNotificationTime(9, 0),
+        },
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const saveNotificationTime = async (hour: number, minute: number) => {
+    const newSettings = {
+      ...notificationSettings,
+      hour,
+      minute,
+    };
+    setNotificationSettings(newSettings);
+    await NotificationService.saveNotificationSettings(newSettings);
+    toast.success(`已設定為每天 ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+  };
+
+  // 發送測試通知
+  const handleTestNotification = async () => {
+    await NotificationService.sendTestNotification();
+    toast.success('測試通知已發送');
   };
 
   return (
@@ -54,92 +135,39 @@ export default function SettingsScreen() {
         </List.Section>
       </View>
 
-      {/* Order Mode Section */}
-      <View className="bg-white mt-4">
-        <List.Section>
-          <List.Subheader>接單模式</List.Subheader>
-          <List.Item
-            title="全自動模式"
-            description={autoMode ? "AI 自動接單並建立訂單" : "需要手動確認才會建立訂單"}
-            left={props => <List.Icon {...props} icon="robot" />}
-            right={() => (
-              <Switch
-                value={autoMode}
-                onValueChange={setAutoMode}
-                trackColor={{ true: '#00B900' }}
-              />
-            )}
-          />
-          <Divider />
-          <List.Item
-            title="排班設定"
-            description="設定可接單/預約時段"
-            left={props => <List.Icon {...props} icon="calendar-clock" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => router.push('/(main)/schedule')}
-          />
-        </List.Section>
-      </View>
 
       {/* Notification Section */}
       <View className="bg-white mt-4">
         <List.Section>
           <List.Subheader>通知設定</List.Subheader>
           <List.Item
-            title="啟用通知"
-            description="接收訂單提醒通知"
+            title="啟用每日通知"
+            description="每天早上接收今日訂單摘要"
             left={props => <List.Icon {...props} icon="bell" />}
             right={() => (
               <Switch
                 value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                onValueChange={handleToggleNotifications}
                 trackColor={{ true: '#00B900' }}
               />
             )}
           />
           <Divider />
           <List.Item
-            title="當天提醒"
-            description="訂單當天早上提醒"
+            title="通知時間"
+            description={`每天 ${notificationSettings.hour.toString().padStart(2, '0')}:${notificationSettings.minute.toString().padStart(2, '0')}`}
+            left={props => <List.Icon {...props} icon="clock-outline" />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={handleSetNotificationTime}
+            disabled={!notificationsEnabled}
+          />
+          <Divider />
+          <List.Item
+            title="測試通知"
+            description="發送測試通知確認是否正常"
             left={props => <List.Icon {...props} icon="bell-ring" />}
-            right={() => (
-              <Switch
-                value={reminderToday}
-                onValueChange={setReminderToday}
-                disabled={!notificationsEnabled}
-                trackColor={{ true: '#00B900' }}
-              />
-            )}
-            disabled={!notificationsEnabled}
-          />
-          <Divider />
-          <List.Item
-            title="3 天前提醒"
-            description="提前 3 天提醒準備"
-            left={props => <List.Icon {...props} icon="bell-outline" />}
-            right={() => (
-              <Switch
-                value={reminder3Days}
-                onValueChange={setReminder3Days}
-                disabled={!notificationsEnabled}
-                trackColor={{ true: '#00B900' }}
-              />
-            )}
-            disabled={!notificationsEnabled}
-          />
-          <Divider />
-          <List.Item
-            title="7 天前提醒"
-            description="提前 7 天規劃行程"
-            left={props => <List.Icon {...props} icon="bell-outline" />}
-            right={() => (
-              <Switch
-                value={reminder7Days}
-                onValueChange={setReminder7Days}
-                disabled={!notificationsEnabled}
-                trackColor={{ true: '#00B900' }}
-              />
-            )}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={handleTestNotification}
             disabled={!notificationsEnabled}
           />
         </List.Section>

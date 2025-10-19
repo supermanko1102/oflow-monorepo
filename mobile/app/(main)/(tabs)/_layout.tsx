@@ -23,9 +23,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: '儀表板',
+          title: '今日',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
+            <MaterialCommunityIcons name="calendar-today" size={size} color={color} />
           ),
         }}
       />
@@ -39,11 +39,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="reminders"
+        name="schedule"
         options={{
-          title: '提醒',
+          title: '排程',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bell" size={size} color={color} />
+            <MaterialCommunityIcons name="calendar-clock" size={size} color={color} />
           ),
         }}
       />
@@ -59,6 +59,12 @@ export default function TabLayout() {
       {/* Hide old screens */}
       <Tabs.Screen
         name="explore"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="reminders"
         options={{
           href: null,
         }}

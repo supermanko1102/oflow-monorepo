@@ -22,14 +22,3 @@ export interface Order {
   notes?: string;
 }
 
-export type ReminderType = 'today' | '3days' | '7days';
-
-export interface Reminder {
-  id: string;
-  orderId: string;
-  order: Order;
-  reminderType: ReminderType;
-  reminderDate: string;
-  isRead: boolean;
-}
-
