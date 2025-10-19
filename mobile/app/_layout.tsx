@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../global.css';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -61,21 +62,17 @@ export default function RootLayout() {
   }, [hasHydrated, isLoggedIn, segments, router]);
 
   return (
-    <PaperProvider theme={paperLightTheme}>
-      <ThemeProvider value={DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(main)" />
-          <Stack.Screen 
-            name="modal" 
-            options={{ 
-              presentation: 'modal',
-            }} 
-          />
-        </Stack>
-        <StatusBar style="auto" />
-        <ToastContainer />
-      </ThemeProvider>
-    </PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider theme={paperLightTheme}>
+        <ThemeProvider value={DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(main)" />
+          </Stack>
+          <StatusBar style="auto" />
+          <ToastContainer />
+        </ThemeProvider>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }

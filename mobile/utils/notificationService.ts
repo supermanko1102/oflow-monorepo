@@ -1,6 +1,11 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
+// 檢查是否在 Expo Go 環境
+// 在 Expo Go 中，Android 推送通知功能受限（從 SDK 53 開始）
+const isExpoGo = Constants.appOwnership === 'expo';
 
 // 設定通知處理方式
 Notifications.setNotificationHandler({
@@ -27,6 +32,14 @@ export interface NotificationSettings {
  */
 export async function requestNotificationPermissions(): Promise<boolean> {
   try {
+    // 在 Expo Go 環境中提供警告訊息
+    if (isExpoGo && Platform.OS === 'android') {
+      console.warn(
+        '[Expo Go 限制] Android 推送通知功能在 Expo Go 中受限。' +
+        '本地通知仍可正常運作，但遠端推送需要使用 development build。'
+      );
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -40,8 +53,8 @@ export async function requestNotificationPermissions(): Promise<boolean> {
       return false;
     }
 
-    // iOS 需要額外設定
-    if (Platform.OS === 'ios') {
+    // Android 需要設定通知頻道
+    if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
@@ -53,6 +66,14 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('請求通知權限失敗:', error);
+    
+    // 在 Expo Go 環境提供更友善的錯誤訊息
+    if (isExpoGo && Platform.OS === 'android') {
+      console.error(
+        '這可能是因為在 Expo Go 中執行。請使用 development build 以獲得完整的通知功能。'
+      );
+    }
+    
     return false;
   }
 }
@@ -91,6 +112,9 @@ export async function saveNotificationSettings(settings: NotificationSettings): 
 
 /**
  * 排程每日晨報通知
+ * 
+ * 注意：本功能使用本地通知（Local Notifications），
+ * 在 Expo Go 和 development build 中都能正常運作
  */
 export async function scheduleDailyBriefing(
   orderCount: number,
@@ -120,7 +144,7 @@ export async function scheduleDailyBriefing(
       body += `，首筆 ${firstPickupTime} 取貨`;
     }
 
-    // 排程每日重複通知
+    // 排程每日重複通知（本地通知）
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: `早安！今天有 ${orderCount} 筆訂單`,
@@ -143,6 +167,14 @@ export async function scheduleDailyBriefing(
     return notificationId;
   } catch (error) {
     console.error('排程每日晨報失敗:', error);
+    
+    if (isExpoGo && Platform.OS === 'android') {
+      console.error(
+        '注意：雖然在 Expo Go 中 Android 推送通知受限，' +
+        '但本地排程通知應該仍可正常運作。如持續失敗，請使用 development build。'
+      );
+    }
+    
     return null;
   }
 }

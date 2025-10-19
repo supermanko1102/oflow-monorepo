@@ -56,19 +56,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Hide old screens */}
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="reminders"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }
