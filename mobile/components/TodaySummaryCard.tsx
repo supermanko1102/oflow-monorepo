@@ -15,7 +15,7 @@ export function TodaySummaryCard({
   firstPickupTime 
 }: TodaySummaryCardProps) {
   return (
-    <Card className="mx-4 mt-4 mb-3 bg-white">
+    <Card className="mx-4 mt-4 mb-3 ">
       <Card.Content className="p-4">
         <View className="flex-row justify-between items-center">
           {/* 訂單數量 */}
@@ -70,11 +70,11 @@ export function TodaySummaryCard({
           </View>
         </View>
 
-        {/* 如果今天沒訂單，顯示鼓勵訊息 */}
+        {/* 如果今天沒訂單 */}
         {orderCount === 0 && (
           <View className="mt-4 pt-4 border-t border-gray-100">
             <Text className="text-center text-gray-500 text-sm">
-              🎉 今天沒有訂單，好好休息一下！
+              今天沒有訂單
             </Text>
           </View>
         )}

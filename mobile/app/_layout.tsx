@@ -15,10 +15,15 @@ SplashScreen.preventAutoHideAsync();
 const paperLightTheme = {
   ...MD3LightTheme,
   colors: {
-    ...MD3LightTheme.colors,
-    primary: '#00B900',
-    primaryContainer: '#C8F5C8',
-  },
+    elevation: {              // 所有陰影層級都用白色
+      level0: '#F9FAFB',
+      level1: '#F9FAFB',
+      level2: '#F9FAFB',
+      level3: '#F9FAFB',
+      level4: '#F9FAFB',
+      level5: '#F9FAFB',
+    },
+  }
 };
 
 /**

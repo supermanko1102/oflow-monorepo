@@ -35,7 +35,7 @@ export function TodayTodoList({
         <View>
           <View className="px-4 py-3 bg-gray-100">
             <Text className="text-sm font-semibold text-gray-700">
-              ⏰ 待處理 ({pendingOrders.length})
+              待處理 ({pendingOrders.length})
             </Text>
           </View>
 
@@ -59,7 +59,7 @@ export function TodayTodoList({
             activeOpacity={0.7}
           >
             <Text className="text-sm font-semibold text-gray-700">
-              ✅ 已完成 ({completedOrders.length})
+              已完成 ({completedOrders.length})
             </Text>
             <MaterialCommunityIcons
               name={showCompleted ? 'chevron-up' : 'chevron-down'}
@@ -79,21 +79,21 @@ export function TodayTodoList({
         </View>
       )}
 
-      {/* 全部完成的鼓勵訊息 */}
+      {/* 全部完成訊息 */}
       {pendingOrders.length === 0 && completedOrders.length > 0 && (
-        <View className="mx-4 mt-4 mb-6 p-4 bg-green-50 rounded-lg border border-green-100">
+        <View className="mx-4 mt-4 mb-6 p-4 bg-white rounded-lg border border-gray-200">
           <View className="flex-row items-center">
             <MaterialCommunityIcons
               name="check-circle"
               size={24}
               color="#00B900"
             />
-            <Text className="ml-2 text-base font-semibold text-green-900">
-              太棒了！今天的訂單都完成了 🎉
+            <Text className="ml-2 text-base font-semibold text-gray-900">
+              今天的訂單都完成了
             </Text>
           </View>
-          <Text className="mt-2 text-sm text-green-700">
-            總共完成 {completedOrders.length} 筆訂單，辛苦了！
+          <Text className="mt-2 text-sm text-gray-600">
+            總共完成 {completedOrders.length} 筆訂單
           </Text>
         </View>
       )}

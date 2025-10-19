@@ -73,7 +73,7 @@ export function FutureOrdersSection({ futureOrders }: FutureOrdersSectionProps) 
     <View className="mt-4">
       <View className="px-4 py-3 bg-gray-100">
         <Text className="text-sm font-semibold text-gray-700">
-          📅 未來訂單
+          未來訂單
         </Text>
       </View>
 

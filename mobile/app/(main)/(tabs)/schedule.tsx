@@ -75,7 +75,7 @@ export default function ScheduleTabScreen() {
             <Card 
               className={`border-2 ${
                 autoMode 
-                  ? 'border-line-green bg-green-50' 
+                  ? 'border-line-green bg-white' 
                   : 'border-gray-200 bg-white'
               }`}
             >
@@ -116,9 +116,9 @@ export default function ScheduleTabScreen() {
                 </View>
 
                 {autoMode && !schedule && (
-                  <View className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <Text className="text-sm text-yellow-800">
-                      ⚠️ 請先設定排班時間才能啟用全自動模式
+                  <View className="mt-3 p-3 bg-gray-100 rounded-lg border border-gray-200">
+                    <Text className="text-sm text-gray-700">
+                      請先設定排班時間才能啟用全自動模式
                     </Text>
                   </View>
                 )}
@@ -131,7 +131,7 @@ export default function ScheduleTabScreen() {
             <Card 
               className={`border-2 ${
                 !autoMode 
-                  ? 'border-line-green bg-green-50' 
+                  ? 'border-line-green bg-white' 
                   : 'border-gray-200 bg-white'
               }`}
             >
@@ -198,29 +198,11 @@ export default function ScheduleTabScreen() {
           </List.Section>
         </View>
 
-        {/* 說明卡片 */}
-        <View className="mx-4 mt-4 mb-6">
-          <Card className="bg-blue-50 border border-blue-100">
-            <Card.Content className="p-4">
-              <View className="flex-row items-start">
-                <MaterialCommunityIcons
-                  name="lightbulb-on-outline"
-                  size={20}
-                  color="#2563EB"
-                />
-                <View className="flex-1 ml-3">
-                  <Text className="text-sm font-semibold text-blue-900 mb-2">
-                    💡 建議使用方式
-                  </Text>
-                  <Text className="text-sm text-blue-800 leading-5">
-                    • 剛開始：使用「半自動模式」，熟悉系統運作{'\n'}
-                    • 穩定後：切換至「全自動模式」，節省時間{'\n'}
-                    • 排班設定後，系統只在營業時間內接單
-                  </Text>
-                </View>
-              </View>
-            </Card.Content>
-          </Card>
+        {/* 說明 */}
+        <View className="mx-4 mt-4 mb-6 px-4">
+          <Text className="text-sm text-gray-600 leading-5">
+            建議剛開始使用「半自動模式」熟悉系統，穩定後再切換至「全自動模式」。排班設定後，系統只在營業時間內接單。
+          </Text>
         </View>
       </ScrollView>
     </View>

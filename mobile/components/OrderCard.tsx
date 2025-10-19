@@ -40,7 +40,7 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
   const handleComplete = (e: any) => {
     e.stopPropagation();
     haptics.success();
-    toast.success('訂單已標記為完成 ✅');
+    toast.success('訂單已標記為完成');
     onComplete?.(order.id);
   };
 

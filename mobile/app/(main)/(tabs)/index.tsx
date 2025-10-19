@@ -82,7 +82,7 @@ export default function TodayScreen() {
       toast.success('已標記為待處理');
     } else {
       markOrderCompleted(orderId);
-      toast.success('已標記為完成 ✓');
+      toast.success('已標記為完成');
     }
   }, [todayPendingOrders, todayCompletedOrders, markOrderCompleted, markOrderPending, toast]);
 

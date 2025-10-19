@@ -123,7 +123,7 @@ export async function scheduleDailyBriefing(
     // 排程每日重複通知
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: `☀️ 早安！今天有 ${orderCount} 筆訂單`,
+        title: `早安！今天有 ${orderCount} 筆訂單`,
         body: body,
         sound: true,
         data: { 
@@ -154,8 +154,8 @@ export async function sendTestNotification(): Promise<void> {
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '🧪 測試通知',
-        body: '通知系統運作正常！',
+        title: '測試通知',
+        body: '通知系統運作正常',
         sound: true,
         data: { type: 'test' },
       },
