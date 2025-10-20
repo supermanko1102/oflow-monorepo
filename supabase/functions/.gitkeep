@@ -1,0 +1,30 @@
+# Edge Functions 資料夾
+
+這個資料夾將存放 Supabase Edge Functions（Deno Runtime）。
+
+## 未來規劃的 Functions
+
+- `line-webhook/` - 接收 LINE 訊息
+- `ai-parser/` - AI 解析訂單
+- `orders-api/` - 訂單 CRUD API
+- `teams-api/` - 團隊管理 API
+- `team-members-api/` - 成員管理 API
+- `bind-line-channel/` - 綁定 LINE 官方帳號
+- `notifications/` - 推播提醒
+- `revenuecat-webhook/` - 訂閱系統 Webhook
+
+## 開發 Edge Functions
+
+```bash
+# 建立新 Function
+supabase functions new function-name
+
+# 本地測試
+supabase functions serve function-name
+
+# 部署到雲端
+supabase functions deploy function-name
+```
+
+詳細資訊請參考：[Supabase Edge Functions 文件](https://supabase.com/docs/guides/functions)
+

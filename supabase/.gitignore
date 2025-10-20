@@ -1,0 +1,10 @@
+# 環境變數檔案（包含敏感資訊）
+.env
+
+# Supabase CLI 本地資料
+.branches
+.temp
+
+# 系統檔案
+.DS_Store
+
