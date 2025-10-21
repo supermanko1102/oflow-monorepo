@@ -1,50 +1,131 @@
 import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
 import { MOCK_CURRENT_USER_ID } from "@/data/mockTeams";
+import * as lineLoginService from "@/services/lineLoginService";
+import * as userSyncService from "@/services/userSyncService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { useRouter } from "expo-router";
-import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loginWithLine = useAuthStore((state) => state.loginWithLine);
   const login = useAuthStore((state) => state.login);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
   const fetchUserTeams = useTeamStore((state) => state.fetchUserTeams);
   const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
 
-  const handleLineLogin = () => {
-    // 模擬 LINE 登入
-    const mockUserId = MOCK_CURRENT_USER_ID;
-    const mockUserName = "王小明";
-    const mockUserPictureUrl = null;
+  /**
+   * 處理 LINE Login 流程
+   */
+  const handleLineLogin = async () => {
+    try {
+      setIsLoading(true);
 
-    // 1. 執行登入
-    login(mockUserId, mockUserName, mockUserPictureUrl);
+      // 1. 啟動 LINE OAuth 流程並取得 access token
+      console.log("[Login] 開始 LINE 登入流程...");
+      const authResult = await lineLoginService.initiateLineLogin();
 
-    // 2. 載入用戶的團隊列表
-    fetchUserTeams(mockUserId);
+      // 2. 取得 LINE 使用者資料
+      console.log("[Login] 取得使用者資料...");
+      const lineProfile = await lineLoginService.getLineUserProfile(
+        authResult.accessToken
+      );
 
-    // 3. 根據團隊數量決定導航
-    // 注意：這裡需要延遲執行，因為 fetchUserTeams 是同步的但 store 更新是異步的
-    setTimeout(() => {
+      // 3. 同步至 Supabase
+      console.log("[Login] 同步至 Supabase...");
+      const supabaseUser = await userSyncService.syncUserWithSupabase(
+        lineProfile
+      );
+
+      // 4. 更新本地 store
+      console.log("[Login] 更新本地狀態...");
+      loginWithLine(
+        lineProfile.userId,
+        supabaseUser.id,
+        lineProfile.displayName,
+        lineProfile.pictureUrl || null,
+        authResult.accessToken
+      );
+
+      // 5. 載入團隊資料
+      console.log("[Login] 載入團隊資料...");
+      await fetchUserTeams(supabaseUser.id);
+
+      // 6. 根據團隊數量決定導航
       const userTeams = useTeamStore.getState().teams;
 
       if (userTeams.length === 0) {
         // 無團隊：前往團隊設置頁
+        console.log("[Login] 無團隊，導向團隊設置頁");
         router.replace("/(auth)/team-setup");
       } else if (userTeams.length === 1) {
         // 單一團隊：直接進入
         const team = userTeams[0];
+        console.log("[Login] 單一團隊，直接進入:", team.name);
         setCurrentTeamId(team.id);
         setCurrentTeam(team.id);
         router.replace("/(main)/(tabs)");
       } else {
         // 多個團隊：前往團隊選擇頁
+        console.log("[Login] 多個團隊，導向選擇頁");
         router.replace("/(auth)/team-select");
       }
-    }, 100);
+    } catch (error: any) {
+      console.error("[Login] 登入失敗:", error);
+
+      // 友善的錯誤訊息
+      let errorMessage = "登入失敗，請稍後再試";
+
+      if (error.message === "使用者取消登入") {
+        errorMessage = "已取消登入";
+      } else if (error.message?.includes("網路")) {
+        errorMessage = "網路連線有問題，請檢查網路設定";
+      }
+
+      Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Mock 登入（開發用）
+   */
+  const handleMockLogin = async () => {
+    try {
+      setIsLoading(true);
+
+      const mockUserId = MOCK_CURRENT_USER_ID;
+      const mockUserName = "王小明";
+      const mockUserPictureUrl = null;
+
+      login(mockUserId, mockUserName, mockUserPictureUrl);
+      await fetchUserTeams(mockUserId);
+
+      setTimeout(() => {
+        const userTeams = useTeamStore.getState().teams;
+
+        if (userTeams.length === 0) {
+          router.replace("/(auth)/team-setup");
+        } else if (userTeams.length === 1) {
+          const team = userTeams[0];
+          setCurrentTeamId(team.id);
+          setCurrentTeam(team.id);
+          router.replace("/(main)/(tabs)");
+        } else {
+          router.replace("/(auth)/team-select");
+        }
+      }, 100);
+    } catch (error) {
+      console.error("[Login] Mock 登入失敗:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,10 +183,36 @@ export default function LoginScreen() {
 
         {/* CTA */}
         <View className="w-full mb-6">
-          <Button onPress={handleLineLogin} variant="primary" fullWidth>
-            使用 LINE 登入
+          <Button
+            onPress={handleLineLogin}
+            variant="primary"
+            fullWidth
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <View className="flex-row items-center justify-center">
+                <ActivityIndicator color="white" className="mr-2" />
+                <Text className="text-white font-semibold">登入中...</Text>
+              </View>
+            ) : (
+              "使用 LINE 登入"
+            )}
           </Button>
         </View>
+
+        {/* Mock 登入（開發用） */}
+        {__DEV__ && (
+          <View className="w-full mb-6">
+            <Button
+              onPress={handleMockLogin}
+              variant="secondary"
+              fullWidth
+              disabled={isLoading}
+            >
+              開發模式登入 (Mock)
+            </Button>
+          </View>
+        )}
 
         {/* Footer */}
         <View className="mt-4">

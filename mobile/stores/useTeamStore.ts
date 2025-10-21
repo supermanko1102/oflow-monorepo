@@ -1,13 +1,14 @@
 import {
   generateInviteCode,
+  getUserTeams as getMockUserTeams,
   getTeamById,
   getTeamByInviteCode,
   getTeamMembers,
-  getUserTeams,
   MOCK_CURRENT_USER_ID,
   mockTeamMembers,
   mockTeams,
 } from "@/data/mockTeams";
+import { getUserTeams as getSupabaseUserTeams } from "@/services/userSyncService";
 import { Team, TeamMember, TeamRole, UserTeam } from "@/types/team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
@@ -20,7 +21,7 @@ interface TeamState {
   _hasHydrated: boolean;
 
   // 查詢方法
-  fetchUserTeams: (userId: string) => void;
+  fetchUserTeams: (userId: string) => Promise<void>;
   fetchTeamMembers: (teamId: string) => void;
   setCurrentTeam: (teamId: string) => void;
 
@@ -63,9 +64,43 @@ export const useTeamStore = create<TeamState>()(
       _hasHydrated: false,
 
       // 查詢用戶所屬的所有團隊
-      fetchUserTeams: (userId: string) => {
-        const teams = getUserTeams(userId);
-        set({ teams });
+      fetchUserTeams: async (userId: string) => {
+        try {
+          // 判斷是 UUID (Supabase) 還是 mock ID
+          const isSupabaseId =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              userId
+            );
+
+          if (isSupabaseId) {
+            // 從 Supabase 取得團隊
+            console.log("[Team Store] 從 Supabase 載入團隊...");
+            const supabaseTeams = await getSupabaseUserTeams(userId);
+
+            // 轉換為 UserTeam 格式
+            const teams: UserTeam[] = supabaseTeams.map((team: any) => ({
+              id: team.id,
+              name: team.name,
+              lineOfficialAccountId: team.line_channel_id || null,
+              createdAt: team.created_at,
+              inviteCode: "", // 邀請碼需要額外查詢
+              myRole: team.role || "member",
+              memberCount: team.member_count || 1,
+            }));
+
+            set({ teams });
+          } else {
+            // 使用 mock 資料（向後相容）
+            console.log("[Team Store] 使用 Mock 資料...");
+            const teams = getMockUserTeams(userId);
+            set({ teams });
+          }
+        } catch (error) {
+          console.error("[Team Store] 載入團隊失敗:", error);
+          // 降級使用 mock 資料
+          const teams = getMockUserTeams(MOCK_CURRENT_USER_ID);
+          set({ teams });
+        }
       },
 
       // 查詢團隊成員列表
