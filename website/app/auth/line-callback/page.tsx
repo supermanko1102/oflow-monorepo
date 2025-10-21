@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 /**
  * LINE Login Callback Handler
- * 
+ *
  * 此頁面的唯一職責：接收 LINE OAuth callback 並立即重定向回 app
  * 不顯示任何 UI，讓 WebBrowser.openAuthSessionAsync() 自動捕獲返回值
  */
@@ -18,7 +18,11 @@ export default function LineCallbackPage() {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
-    console.log("[LINE Callback] 收到參數:", { code: !!code, state: !!state, error });
+    console.log("[LINE Callback] 收到參數:", {
+      code: !!code,
+      state: !!state,
+      error,
+    });
 
     // 檢查是否有錯誤
     if (error) {
@@ -36,7 +40,9 @@ export default function LineCallbackPage() {
     }
 
     // 立即重定向回 app（使用 replace 避免留下歷史記錄）
-    const deepLink = `oflow://?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+    const deepLink = `oflow://?code=${encodeURIComponent(
+      code
+    )}&state=${encodeURIComponent(state)}`;
     console.log("[LINE Callback] 立即重定向:", deepLink);
     window.location.replace(deepLink);
   }, [searchParams]);
