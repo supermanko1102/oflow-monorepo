@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "NK45C26RDB.com.oflow.mobile",
+        "paths": ["/auth/line-callback"]
+      }
+    ]
+  }
+}
+
