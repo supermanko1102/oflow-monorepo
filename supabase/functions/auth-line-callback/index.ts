@@ -280,7 +280,21 @@ serve(async (req) => {
     const session = signInData.session;
     console.log("[Auth] Session tokens 產生成功");
 
-    // 11. 回傳結果
+    // 11. 查詢使用者的團隊列表
+    console.log("[Auth] 查詢使用者團隊...");
+    const { data: userTeams, error: teamsError } = await supabaseAdmin.rpc(
+      "get_user_teams",
+      { p_user_id: publicUser.id }
+    );
+
+    if (teamsError) {
+      console.error("[Auth] 團隊查詢失敗:", teamsError);
+      // 不阻擋登入，只記錄錯誤
+    }
+
+    console.log("[Auth] 找到", userTeams?.length || 0, "個團隊");
+
+    // 12. 回傳結果
     return new Response(
       JSON.stringify({
         success: true,
@@ -292,10 +306,12 @@ serve(async (req) => {
         },
         user: {
           id: authUser.id,
+          public_user_id: publicUser.id,
           line_user_id: lineProfile.userId,
           display_name: lineProfile.displayName,
           picture_url: lineProfile.pictureUrl || null,
         },
+        teams: userTeams || [],
       }),
       {
         headers: {

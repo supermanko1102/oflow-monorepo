@@ -58,6 +58,7 @@ export interface SupabaseSession {
   refresh_token: string;
   expires_in?: number;
   expires_at?: number;
+  teams?: any[]; // 團隊列表（從登入回應中取得）
 }
 
 /**
@@ -131,6 +132,7 @@ export const handleAuthCallback = async (
     const urlParams = new URL(url);
     const accessToken = urlParams.searchParams.get("access_token");
     const refreshToken = urlParams.searchParams.get("refresh_token");
+    const teamsData = urlParams.searchParams.get("teams");
     const error = urlParams.searchParams.get("error");
 
     // 檢查是否有錯誤
@@ -143,15 +145,26 @@ export const handleAuthCallback = async (
       throw new Error("未收到有效的 session tokens");
     }
 
+    // 解析團隊資料
+    let teams: any[] = [];
+    if (teamsData) {
+      try {
+        teams = JSON.parse(decodeURIComponent(teamsData));
+      } catch (e) {
+        console.warn("[Auth] 團隊資料解析失敗:", e);
+      }
+    }
+
     // 清除儲存的 PKCE 參數
     await AsyncStorage.removeItem("line_pkce_code_verifier");
     await AsyncStorage.removeItem("line_pkce_state");
 
-    console.log("[Auth] Session tokens 接收成功");
+    console.log("[Auth] Session tokens 接收成功，團隊數:", teams.length);
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
+      teams,
     };
   } catch (error) {
     // 清除儲存的 PKCE 參數

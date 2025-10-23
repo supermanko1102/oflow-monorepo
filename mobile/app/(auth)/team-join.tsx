@@ -16,11 +16,8 @@ import {
 export default function TeamJoinScreen() {
   const router = useRouter();
   const toast = useToast();
-  const userId = useAuthStore((state) => state.userId);
-  const userName = useAuthStore((state) => state.userName);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
   const joinTeam = useTeamStore((state) => state.joinTeam);
-  const fetchUserTeams = useTeamStore((state) => state.fetchUserTeams);
   const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
 
   const [inviteCode, setInviteCode] = useState("");
@@ -32,39 +29,26 @@ export default function TeamJoinScreen() {
       return;
     }
 
-    if (inviteCode.trim().length !== 6) {
-      toast.error("邀請碼應為 6 位數字");
-      return;
-    }
-
-    if (!userId || !userName) {
-      toast.error("用戶資訊不完整");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // 加入團隊
-      const team = joinTeam(inviteCode.trim(), userId, userName);
-
-      if (!team) {
-        toast.error("邀請碼無效，請檢查後重試");
-        setIsSubmitting(false);
-        return;
-      }
+      // 加入團隊（現在是 async API）
+      const team = await joinTeam(inviteCode.trim());
 
       // 設定為當前團隊
       setCurrentTeamId(team.id);
-      fetchUserTeams(userId);
       setCurrentTeam(team.id);
 
       toast.success(`已成功加入「${team.name}」！`);
 
       // 導航到主頁
       router.replace("/(main)/(tabs)");
-    } catch (error) {
-      toast.error("加入失敗，請稍後再試");
+    } catch (error: any) {
+      console.error("[Team Join] 加入失敗:", error);
+      const message = error.message || "加入失敗，請稍後再試";
+      toast.error(
+        message.includes("Invalid") ? "邀請碼無效，請檢查後重試" : message
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -97,9 +81,8 @@ export default function TeamJoinScreen() {
               <TextInput
                 value={inviteCode}
                 onChangeText={setInviteCode}
-                placeholder="輸入 6 位數邀請碼"
-                keyboardType="number-pad"
-                maxLength={6}
+                placeholder="輸入邀請碼"
+                autoCapitalize="characters"
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-4 text-2xl text-center text-gray-900 tracking-widest font-bold"
                 placeholderTextColor="#9CA3AF"
               />
@@ -138,7 +121,7 @@ export default function TeamJoinScreen() {
               onPress={handleJoin}
               variant="primary"
               fullWidth
-              disabled={isSubmitting || inviteCode.length !== 6}
+              disabled={isSubmitting || !inviteCode.trim()}
             >
               {isSubmitting ? "加入中..." : "加入團隊"}
             </Button>

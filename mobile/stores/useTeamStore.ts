@@ -1,14 +1,10 @@
 import {
-  generateInviteCode,
-  getUserTeams as getMockUserTeams,
   getTeamById,
-  getTeamByInviteCode,
-  getTeamMembers,
   MOCK_CURRENT_USER_ID,
   mockTeamMembers,
   mockTeams,
 } from "@/data/mockTeams";
-import { getUserTeams as getSupabaseUserTeams } from "@/services/userSyncService";
+import * as teamService from "@/services/teamService";
 import { Team, TeamMember, TeamRole, UserTeam } from "@/types/team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
@@ -21,23 +17,18 @@ interface TeamState {
   _hasHydrated: boolean;
 
   // 查詢方法
-  fetchUserTeams: (userId: string) => Promise<void>;
-  fetchTeamMembers: (teamId: string) => void;
+  fetchUserTeams: () => Promise<void>;
+  setTeamsFromLogin: (teams: any[]) => void;
+  fetchTeamMembers: (teamId: string) => Promise<void>;
   setCurrentTeam: (teamId: string) => void;
 
   // 團隊操作
   createTeam: (
     name: string,
-    lineOfficialAccountId: string | null,
-    userId: string,
-    userName: string
-  ) => Team;
-  joinTeam: (
-    inviteCode: string,
-    userId: string,
-    userName: string
-  ) => Team | null;
-  leaveTeam: (teamId: string, userId: string) => void;
+    lineOfficialAccountId: string | null
+  ) => Promise<Team>;
+  joinTeam: (inviteCode: string) => Promise<Team>;
+  leaveTeam: (teamId: string) => Promise<void>;
   deleteTeam: (teamId: string) => void;
 
   // 成員管理
@@ -49,7 +40,7 @@ interface TeamState {
     teamId: string,
     updates: Partial<Pick<Team, "name" | "lineOfficialAccountId">>
   ) => void;
-  regenerateInviteCode: (teamId: string) => string;
+  regenerateInviteCode: (teamId: string) => Promise<string>;
 
   // Hydration
   setHasHydrated: (state: boolean) => void;
@@ -64,49 +55,67 @@ export const useTeamStore = create<TeamState>()(
       _hasHydrated: false,
 
       // 查詢用戶所屬的所有團隊
-      fetchUserTeams: async (userId: string) => {
+      fetchUserTeams: async () => {
         try {
-          // 判斷是 UUID (Supabase) 還是 mock ID
-          const isSupabaseId =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-              userId
-            );
+          console.log("[Team Store] 從 API 載入團隊...");
+          const apiTeams = await teamService.getUserTeams();
 
-          if (isSupabaseId) {
-            // 從 Supabase 取得團隊
-            console.log("[Team Store] 從 Supabase 載入團隊...");
-            const supabaseTeams = await getSupabaseUserTeams(userId);
+          // 轉換為 UserTeam 格式
+          const teams: UserTeam[] = apiTeams.map((team: any) => ({
+            id: team.team_id,
+            name: team.team_name,
+            lineOfficialAccountId: team.line_channel_name || null,
+            createdAt: new Date().toISOString(),
+            inviteCode: "", // 邀請碼需要額外查詢
+            myRole: team.role || "member",
+            memberCount: team.member_count || 1,
+          }));
 
-            // 轉換為 UserTeam 格式
-            const teams: UserTeam[] = supabaseTeams.map((team: any) => ({
-              id: team.id,
-              name: team.name,
-              lineOfficialAccountId: team.line_channel_id || null,
-              createdAt: team.created_at,
-              inviteCode: "", // 邀請碼需要額外查詢
-              myRole: team.role || "member",
-              memberCount: team.member_count || 1,
-            }));
-
-            set({ teams });
-          } else {
-            // 使用 mock 資料（向後相容）
-            console.log("[Team Store] 使用 Mock 資料...");
-            const teams = getMockUserTeams(userId);
-            set({ teams });
-          }
+          set({ teams });
         } catch (error) {
           console.error("[Team Store] 載入團隊失敗:", error);
-          // 降級使用 mock 資料
-          const teams = getMockUserTeams(MOCK_CURRENT_USER_ID);
-          set({ teams });
+          throw error;
         }
       },
 
+      // 從登入回應設定團隊資料
+      setTeamsFromLogin: (apiTeams: any[]) => {
+        console.log("[Team Store] 從登入回應設定團隊...");
+        const teams: UserTeam[] = apiTeams.map((team: any) => ({
+          id: team.team_id,
+          name: team.team_name,
+          lineOfficialAccountId: team.line_channel_name || null,
+          createdAt: new Date().toISOString(),
+          inviteCode: "",
+          myRole: team.role || "member",
+          memberCount: team.member_count || 1,
+        }));
+
+        set({ teams });
+      },
+
       // 查詢團隊成員列表
-      fetchTeamMembers: (teamId: string) => {
-        const members = getTeamMembers(teamId);
-        set({ teamMembers: members });
+      fetchTeamMembers: async (teamId: string) => {
+        try {
+          console.log("[Team Store] 從 API 載入團隊成員...");
+          const apiMembers = await teamService.getTeamMembers(teamId);
+
+          // 轉換為 TeamMember 格式
+          const members: TeamMember[] = apiMembers.map((member: any) => ({
+            id: member.member_id,
+            userId: member.user_id,
+            userName: member.user_name || "未命名",
+            userPictureUrl: member.user_picture_url,
+            teamId: teamId,
+            role: member.role as TeamRole,
+            joinedAt: member.joined_at,
+          }));
+
+          set({ teamMembers: members });
+        } catch (error) {
+          console.error("[Team Store] 載入團隊成員失敗:", error);
+          throw error;
+        }
       },
 
       // 設定當前團隊
@@ -119,85 +128,77 @@ export const useTeamStore = create<TeamState>()(
       },
 
       // 建立新團隊
-      createTeam: (
+      createTeam: async (
         name: string,
-        lineOfficialAccountId: string | null,
-        userId: string,
-        userName: string
+        lineOfficialAccountId: string | null
       ) => {
-        const newTeam: Team = {
-          id: `team_${Date.now()}`,
-          name,
-          lineOfficialAccountId,
-          createdAt: new Date().toISOString(),
-          inviteCode: generateInviteCode(),
-        };
+        try {
+          console.log("[Team Store] 建立團隊:", name);
+          const apiTeam = await teamService.createTeam({
+            team_name: name,
+            line_channel_id: lineOfficialAccountId,
+          });
 
-        const newMember: TeamMember = {
-          id: `member_${Date.now()}`,
-          userId,
-          userName,
-          userPictureUrl: null,
-          teamId: newTeam.id,
-          role: "owner",
-          joinedAt: new Date().toISOString(),
-        };
+          // 轉換為 Team 格式
+          const newTeam: Team = {
+            id: apiTeam.id,
+            name: apiTeam.name,
+            lineOfficialAccountId: null,
+            createdAt: new Date().toISOString(),
+            inviteCode: apiTeam.invite_code,
+          };
 
-        // 模擬資料更新（實際會調用 API）
-        mockTeams.push(newTeam);
-        mockTeamMembers.push(newMember);
+          // 重新載入團隊列表
+          await get().fetchUserTeams();
 
-        // 更新 store
-        get().fetchUserTeams(userId);
-
-        return newTeam;
+          return newTeam;
+        } catch (error) {
+          console.error("[Team Store] 建立團隊失敗:", error);
+          throw error;
+        }
       },
 
       // 加入團隊
-      joinTeam: (inviteCode: string, userId: string, userName: string) => {
-        const team = getTeamByInviteCode(inviteCode);
-        if (!team) {
-          return null;
-        }
+      joinTeam: async (inviteCode: string) => {
+        try {
+          console.log("[Team Store] 加入團隊:", inviteCode);
+          const apiTeam = await teamService.joinTeam(inviteCode);
 
-        // 檢查是否已是成員
-        const existingMember = mockTeamMembers.find(
-          (m) => m.teamId === team.id && m.userId === userId
-        );
-        if (existingMember) {
+          // 轉換為 Team 格式
+          const team: Team = {
+            id: apiTeam.team_id,
+            name: apiTeam.team_name,
+            lineOfficialAccountId: apiTeam.line_channel_name || null,
+            createdAt: new Date().toISOString(),
+            inviteCode: "",
+          };
+
+          // 重新載入團隊列表
+          await get().fetchUserTeams();
+
           return team;
+        } catch (error) {
+          console.error("[Team Store] 加入團隊失敗:", error);
+          throw error;
         }
-
-        const newMember: TeamMember = {
-          id: `member_${Date.now()}`,
-          userId,
-          userName,
-          userPictureUrl: null,
-          teamId: team.id,
-          role: "member",
-          joinedAt: new Date().toISOString(),
-        };
-
-        mockTeamMembers.push(newMember);
-        get().fetchUserTeams(userId);
-
-        return team;
       },
 
       // 離開團隊
-      leaveTeam: (teamId: string, userId: string) => {
-        const memberIndex = mockTeamMembers.findIndex(
-          (m) => m.teamId === teamId && m.userId === userId
-        );
-
-        if (memberIndex !== -1) {
-          mockTeamMembers.splice(memberIndex, 1);
-          get().fetchUserTeams(userId);
+      leaveTeam: async (teamId: string) => {
+        try {
+          console.log("[Team Store] 離開團隊:", teamId);
+          await teamService.leaveTeam(teamId);
 
           // 如果離開的是當前團隊，清除 currentTeam
           if (get().currentTeam?.id === teamId) {
             set({ currentTeam: null, teamMembers: [] });
           }
+
+          // 重新載入團隊列表
+          await get().fetchUserTeams();
+        } catch (error) {
+          console.error("[Team Store] 離開團隊失敗:", error);
+          throw error;
         }
       },
 
@@ -268,19 +269,23 @@ export const useTeamStore = create<TeamState>()(
       },
 
       // 重新生成邀請碼
-      regenerateInviteCode: (teamId: string) => {
-        const team = mockTeams.find((t) => t.id === teamId);
-        if (team) {
-          const newCode = generateInviteCode();
-          team.inviteCode = newCode;
+      regenerateInviteCode: async (teamId: string) => {
+        try {
+          console.log("[Team Store] 取得邀請碼:", teamId);
+          const inviteCode = await teamService.getInviteCode(teamId);
 
+          // 更新 currentTeam 中的邀請碼
           if (get().currentTeam?.id === teamId) {
-            set({ currentTeam: { ...team } });
+            set({
+              currentTeam: { ...get().currentTeam!, inviteCode },
+            });
           }
 
-          return newCode;
+          return inviteCode;
+        } catch (error) {
+          console.error("[Team Store] 取得邀請碼失敗:", error);
+          throw error;
         }
-        return "";
       },
 
       setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),

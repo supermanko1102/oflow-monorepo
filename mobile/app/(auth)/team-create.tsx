@@ -16,11 +16,8 @@ import {
 export default function TeamCreateScreen() {
   const router = useRouter();
   const toast = useToast();
-  const userId = useAuthStore((state) => state.userId);
-  const userName = useAuthStore((state) => state.userName);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
   const createTeam = useTeamStore((state) => state.createTeam);
-  const fetchUserTeams = useTeamStore((state) => state.fetchUserTeams);
   const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
 
   const [teamName, setTeamName] = useState("");
@@ -33,33 +30,26 @@ export default function TeamCreateScreen() {
       return;
     }
 
-    if (!userId || !userName) {
-      toast.error("用戶資訊不完整");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // 建立團隊
-      const newTeam = createTeam(
+      // 建立團隊（現在是 async API）
+      const newTeam = await createTeam(
         teamName.trim(),
-        lineAccountId.trim() || null,
-        userId,
-        userName
+        lineAccountId.trim() || null
       );
 
       // 設定為當前團隊
       setCurrentTeamId(newTeam.id);
-      fetchUserTeams(userId);
       setCurrentTeam(newTeam.id);
 
       toast.success("團隊建立成功！");
 
       // 導航到主頁
       router.replace("/(main)/(tabs)");
-    } catch (error) {
-      toast.error("建立失敗，請稍後再試");
+    } catch (error: any) {
+      console.error("[Team Create] 建立失敗:", error);
+      toast.error(error.message || "建立失敗，請稍後再試");
     } finally {
       setIsSubmitting(false);
     }

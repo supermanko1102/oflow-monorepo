@@ -1,6 +1,5 @@
 import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
-import { MOCK_CURRENT_USER_ID } from "@/data/mockTeams";
 import { supabase } from "@/lib/supabase";
 import * as lineLoginService from "@/services/lineLoginService";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -15,9 +14,8 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
-  const login = useAuthStore((state) => state.login);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const fetchUserTeams = useTeamStore((state) => state.fetchUserTeams);
+  const setTeamsFromLogin = useTeamStore((state) => state.setTeamsFromLogin);
   const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
 
   /**
@@ -62,12 +60,13 @@ export default function LoginScreen() {
           session.access_token
         );
 
-        // 5. 載入團隊資料（使用 auth user ID）
-        console.log("[Login] 載入團隊資料...");
-        await fetchUserTeams(sessionData.user.id);
+        // 5. 從登入回應設定團隊資料（不需要額外查詢）
+        console.log("[Login] 設定團隊資料...");
+        const teams = session.teams || [];
+        setTeamsFromLogin(teams);
 
         // 6. 根據團隊數量決定導航
-        const userTeams = useTeamStore.getState().teams;
+        const userTeams = teams;
 
         if (userTeams.length === 0) {
           // 無團隊：前往團隊設置頁
@@ -110,7 +109,7 @@ export default function LoginScreen() {
         setIsLoading(false);
       }
     },
-    [loginWithLine, fetchUserTeams, setCurrentTeamId, setCurrentTeam, router]
+    [loginWithLine, setTeamsFromLogin, setCurrentTeamId, setCurrentTeam, router]
   );
 
   /**
@@ -164,38 +163,14 @@ export default function LoginScreen() {
   };
 
   /**
-   * Mock 登入（開發用）
+   * Mock 登入（已停用 - 新架構需要真實 access token）
    */
   const handleMockLogin = async () => {
-    try {
-      setIsLoading(true);
-
-      const mockUserId = MOCK_CURRENT_USER_ID;
-      const mockUserName = "王小明";
-      const mockUserPictureUrl = null;
-
-      login(mockUserId, mockUserName, mockUserPictureUrl);
-      await fetchUserTeams(mockUserId);
-
-      setTimeout(() => {
-        const userTeams = useTeamStore.getState().teams;
-
-        if (userTeams.length === 0) {
-          router.replace("/(auth)/team-setup");
-        } else if (userTeams.length === 1) {
-          const team = userTeams[0];
-          setCurrentTeamId(team.id);
-          setCurrentTeam(team.id);
-          router.replace("/(main)/(tabs)");
-        } else {
-          router.replace("/(auth)/team-select");
-        }
-      }, 100);
-    } catch (error) {
-      console.error("[Login] Mock 登入失敗:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    Alert.alert(
+      "Mock 登入已停用",
+      "新架構需要真實的 LINE 登入。請使用「使用 LINE 登入」按鈕。",
+      [{ text: "確定" }]
+    );
   };
 
   return (
