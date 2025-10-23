@@ -4,7 +4,7 @@
 /// <reference types="https://deno.land/x/edge_runtime@v1.35.0/types/index.d.ts" />
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,11 +72,20 @@ serve(async (req) => {
 
     // 4. 用授權碼交換 LINE Access Token
     console.log("[Auth] 交換 LINE access token...");
+
+    // 構建完整的 redirect_uri（必須與授權請求時完全一致）
+    const baseRedirectUri =
+      redirect_uri || "https://oflow-website.vercel.app/auth/line-callback";
+    const fullRedirectUri = code_verifier
+      ? `${baseRedirectUri}?code_verifier=${encodeURIComponent(code_verifier)}`
+      : baseRedirectUri;
+
+    console.log("[Auth] Redirect URI:", fullRedirectUri);
+
     const tokenParams = new URLSearchParams({
       grant_type: "authorization_code",
       code: code,
-      redirect_uri:
-        redirect_uri || "https://oflow-website.vercel.app/auth/line-callback",
+      redirect_uri: fullRedirectUri,
       client_id: LINE_CHANNEL_ID,
       client_secret: LINE_CHANNEL_SECRET,
     });
@@ -121,24 +130,33 @@ serve(async (req) => {
     // 6. 檢查 Supabase Auth 中是否已有此使用者
     const email = `${lineProfile.userId}@line.oflow.app`;
 
-    // 嘗試用 email 查詢現有使用者
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find((u) => u.email === email);
+    // 先從 public.users 表查詢（更可靠，有 line_user_id 索引）
+    const { data: existingPublicUser } = await supabaseAdmin
+      .from("users")
+      .select("auth_user_id")
+      .eq("line_user_id", lineProfile.userId)
+      .maybeSingle();
 
     let authUser;
 
-    if (existingUser) {
+    if (existingPublicUser?.auth_user_id) {
       // 7a. 使用者已存在，更新 metadata
-      console.log("[Auth] 使用者已存在，更新資料...");
+      console.log(
+        "[Auth] 使用者已存在，更新資料...",
+        existingPublicUser.auth_user_id
+      );
       const { data: updateData, error: updateError } =
-        await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-          user_metadata: {
-            line_user_id: lineProfile.userId,
-            display_name: lineProfile.displayName,
-            picture_url: lineProfile.pictureUrl || null,
-            last_login_at: new Date().toISOString(),
-          },
-        });
+        await supabaseAdmin.auth.admin.updateUserById(
+          existingPublicUser.auth_user_id,
+          {
+            user_metadata: {
+              line_user_id: lineProfile.userId,
+              display_name: lineProfile.displayName,
+              picture_url: lineProfile.pictureUrl || null,
+              last_login_at: new Date().toISOString(),
+            },
+          }
+        );
 
       if (updateError) {
         throw updateError;
@@ -161,15 +179,63 @@ serve(async (req) => {
         });
 
       if (createError) {
-        throw createError;
-      }
+        // 如果是使用者已存在的錯誤，嘗試查詢該使用者
+        if (
+          createError.message?.includes("already been registered") ||
+          createError.message?.includes("already exists")
+        ) {
+          console.log("[Auth] 使用者已存在（透過錯誤檢測），嘗試查詢...");
+          // 使用 listUsers 並過濾
+          const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
+          const foundUser = allUsers?.users?.find((u) => u.email === email);
 
-      authUser = createData.user;
+          if (foundUser) {
+            console.log("[Auth] 找到現有使用者，更新資料...");
+            const { data: updateData, error: updateError } =
+              await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
+                user_metadata: {
+                  line_user_id: lineProfile.userId,
+                  display_name: lineProfile.displayName,
+                  picture_url: lineProfile.pictureUrl || null,
+                  last_login_at: new Date().toISOString(),
+                },
+              });
+
+            if (updateError) {
+              throw updateError;
+            }
+
+            authUser = updateData.user;
+          } else {
+            throw new Error(
+              "User exists but could not be found: " + createError.message
+            );
+          }
+        } else {
+          throw createError;
+        }
+      } else {
+        authUser = createData.user;
+      }
     }
 
     console.log("[Auth] Supabase Auth user ID:", authUser.id);
 
-    // 8. 同步至 public.users 表
+    // 8. 為用戶設定臨時密碼（用於產生 session）
+    const tempPassword = crypto.randomUUID();
+    console.log("[Auth] 更新用戶密碼...");
+
+    const { error: passwordError } =
+      await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+        password: tempPassword,
+      });
+
+    if (passwordError) {
+      console.error("[Auth] 密碼更新失敗:", passwordError);
+      throw passwordError;
+    }
+
+    // 9. 同步至 public.users 表
     console.log("[Auth] 同步至 public.users 表...");
     const { data: publicUser, error: upsertError } = await supabaseAdmin
       .from("users")
@@ -197,28 +263,32 @@ serve(async (req) => {
 
     console.log("[Auth] public.users 同步成功:", publicUser.id);
 
-    // 9. 產生 Supabase Session Token
+    // 10. 產生 Supabase Session Token
+    // 使用密碼登入來產生真實的 session tokens
     console.log("[Auth] 產生 session token...");
-    const { data: sessionData, error: sessionError } =
-      await supabaseAdmin.auth.admin.createSession({
-        user_id: authUser.id,
+    const { data: signInData, error: signInError } =
+      await supabaseAdmin.auth.signInWithPassword({
+        email: email,
+        password: tempPassword,
       });
 
-    if (sessionError) {
-      throw sessionError;
+    if (signInError || !signInData.session) {
+      console.error("[Auth] Session 產生失敗:", signInError);
+      throw new Error("Failed to generate session: " + signInError?.message);
     }
 
-    console.log("[Auth] Session 建立成功");
+    const session = signInData.session;
+    console.log("[Auth] Session tokens 產生成功");
 
-    // 10. 回傳結果
+    // 11. 回傳結果
     return new Response(
       JSON.stringify({
         success: true,
         session: {
-          access_token: sessionData.access_token,
-          refresh_token: sessionData.refresh_token,
-          expires_in: sessionData.expires_in,
-          expires_at: sessionData.expires_at,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+          expires_at: session.expires_at,
         },
         user: {
           id: authUser.id,
