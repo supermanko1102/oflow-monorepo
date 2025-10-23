@@ -1,58 +1,118 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
- * LINE Login Callback Handler
+ * LINE Login Callback Handler (Backend-Powered)
  *
- * 此頁面的唯一職責：接收 LINE OAuth callback 並立即重定向回 app
- * 不顯示任何 UI，讓 WebBrowser.openAuthSessionAsync() 自動捕獲返回值
+ * 新流程：
+ * 1. 接收 LINE OAuth callback (code, state, code_verifier)
+ * 2. 呼叫 Supabase Edge Function 交換 token 並建立 user
+ * 3. 取得 Supabase session token
+ * 4. 重定向回 app 並傳遞 session token
  */
 export default function LineCallbackPage() {
   const searchParams = useSearchParams();
+  const [status, setStatus] = useState("處理中...");
 
   useEffect(() => {
-    // 取得 URL 參數
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
+    const handleCallback = async () => {
+      try {
+        // 取得 URL 參數
+        const code = searchParams.get("code");
+        const state = searchParams.get("state");
+        const codeVerifier = searchParams.get("code_verifier");
+        const error = searchParams.get("error");
 
-    console.log("[LINE Callback] 收到參數:", {
-      code: !!code,
-      state: !!state,
-      error,
-    });
+        console.log("[LINE Callback] 收到參數:", {
+          code: !!code,
+          state: !!state,
+          codeVerifier: !!codeVerifier,
+          error,
+        });
 
-    // 檢查是否有錯誤
-    if (error) {
-      console.error("[LINE Callback] 授權錯誤:", error);
-      // 即使有錯誤也要跳回 app，讓 app 處理錯誤
-      window.location.replace(`oflow://?error=${encodeURIComponent(error)}`);
-      return;
-    }
+        // 檢查是否有錯誤
+        if (error) {
+          console.error("[LINE Callback] 授權錯誤:", error);
+          window.location.replace(
+            `oflow://auth?error=${encodeURIComponent(error)}`
+          );
+          return;
+        }
 
-    // 檢查必要參數
-    if (!code || !state) {
-      console.error("[LINE Callback] 缺少必要參數");
-      window.location.replace("oflow://?error=missing_parameters");
-      return;
-    }
+        // 檢查必要參數
+        if (!code || !state) {
+          console.error("[LINE Callback] 缺少必要參數");
+          window.location.replace("oflow://auth?error=missing_parameters");
+          return;
+        }
 
-    // 立即重定向回 app（使用 replace 避免留下歷史記錄）
-    const deepLink = `oflow://?code=${encodeURIComponent(
-      code
-    )}&state=${encodeURIComponent(state)}`;
-    console.log("[LINE Callback] 立即重定向:", deepLink);
-    window.location.replace(deepLink);
+        // 呼叫 Edge Function
+        setStatus("正在驗證身份...");
+        console.log("[LINE Callback] 呼叫 Edge Function...");
+
+        const supabaseUrl =
+          process.env.NEXT_PUBLIC_SUPABASE_URL ||
+          "https://your-project.supabase.co";
+        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/auth-line-callback`;
+
+        const response = await fetch(edgeFunctionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code,
+            state,
+            code_verifier: codeVerifier,
+            redirect_uri: window.location.origin + "/auth/line-callback",
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Edge Function 呼叫失敗");
+        }
+
+        const result = await response.json();
+
+        if (!result.success || !result.session) {
+          throw new Error("未收到有效的 session");
+        }
+
+        console.log("[LINE Callback] 取得 session 成功");
+
+        // 建立 deep link 並傳遞 session tokens
+        setStatus("登入成功！正在跳轉...");
+        const deepLink = `oflow://auth?access_token=${encodeURIComponent(
+          result.session.access_token
+        )}&refresh_token=${encodeURIComponent(result.session.refresh_token)}`;
+
+        console.log("[LINE Callback] 重定向回 app");
+        window.location.replace(deepLink);
+      } catch (error) {
+        console.error("[LINE Callback] 處理失敗:", error);
+        setStatus("登入失敗");
+
+        // 錯誤也要回傳給 app
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        window.location.replace(
+          `oflow://auth?error=${encodeURIComponent(errorMessage)}`
+        );
+      }
+    };
+
+    handleCallback();
   }, [searchParams]);
 
-  // 顯示極簡載入畫面（通常用戶不會看到，因為會立即跳轉）
+  // 顯示載入畫面
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="text-center">
         <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-green-600"></div>
-        <p className="text-gray-600">正在跳轉回 App...</p>
+        <p className="text-gray-600">{status}</p>
       </div>
     </div>
   );
