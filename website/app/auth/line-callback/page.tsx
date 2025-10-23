@@ -93,12 +93,16 @@ export default function LineCallbackPage() {
         }
 
         console.log("[LINE Callback] 取得 session 成功");
+        console.log("[LINE Callback] 團隊數:", result.teams?.length || 0);
 
-        // 建立 deep link 並傳遞 session tokens
+        // 建立 deep link 並傳遞 session tokens 和團隊資料
         setStatus("登入成功！正在跳轉...");
+        const teamsJson = JSON.stringify(result.teams || []);
         const deepLink = `oflow://auth?access_token=${encodeURIComponent(
           result.session.access_token
-        )}&refresh_token=${encodeURIComponent(result.session.refresh_token)}`;
+        )}&refresh_token=${encodeURIComponent(
+          result.session.refresh_token
+        )}&teams=${encodeURIComponent(teamsJson)}`;
 
         console.log("[LINE Callback] 重定向回 app");
         window.location.replace(deepLink);
