@@ -90,14 +90,22 @@ export default function LoginScreen() {
 
         // 友善的錯誤訊息
         let errorMessage = "登入失敗，請稍後再試";
+        let showDetails = false;
 
         if (error.message?.includes("網路")) {
           errorMessage = "網路連線有問題，請檢查網路設定";
         } else if (error.message?.includes("Session")) {
           errorMessage = "登入驗證失敗，請重新嘗試";
+        } else if (error.message?.includes("Configuration")) {
+          errorMessage = "系統設定錯誤，請聯絡管理員";
+          showDetails = __DEV__; // 開發模式下顯示詳細錯誤
         }
 
-        Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
+        const alertMessage = showDetails
+          ? `${errorMessage}\n\n錯誤詳情: ${error.message}`
+          : errorMessage;
+
+        Alert.alert("登入失敗", alertMessage, [{ text: "確定" }]);
       } finally {
         setIsLoading(false);
       }

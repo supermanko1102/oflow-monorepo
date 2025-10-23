@@ -48,13 +48,23 @@ export default function LineCallbackPage() {
           return;
         }
 
+        // 檢查必要的環境變數
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+        if (!supabaseUrl) {
+          console.error("[LINE Callback] NEXT_PUBLIC_SUPABASE_URL 未設定");
+          setStatus("設定錯誤");
+          window.location.replace(
+            "oflow://auth?error=Configuration%20error%20-%20SUPABASE_URL%20not%20set"
+          );
+          return;
+        }
+
         // 呼叫 Edge Function
         setStatus("正在驗證身份...");
         console.log("[LINE Callback] 呼叫 Edge Function...");
+        console.log("[LINE Callback] Supabase URL:", supabaseUrl);
 
-        const supabaseUrl =
-          process.env.NEXT_PUBLIC_SUPABASE_URL ||
-          "https://your-project.supabase.co";
         const edgeFunctionUrl = `${supabaseUrl}/functions/v1/auth-line-callback`;
 
         const response = await fetch(edgeFunctionUrl, {
