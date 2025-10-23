@@ -1,8 +1,8 @@
 import { supabase } from "@/lib/supabase";
-import type { LineUserProfile } from "./lineLoginService";
 
 export interface SupabaseUser {
   id: string;
+  auth_user_id: string | null;
   line_user_id: string;
   line_display_name: string | null;
   line_picture_url: string | null;
@@ -14,83 +14,15 @@ export interface SupabaseUser {
 }
 
 /**
- * 將 LINE 使用者資料同步至 Supabase
- * - 若使用者不存在，則新增
- * - 若使用者已存在，則更新資料
+ * ⚠️ DEPRECATED: User sync 現在由 Edge Function 處理
+ *
+ * 此函數已不再使用，因為：
+ * 1. LINE token 交換現在在 backend 進行
+ * 2. Supabase Auth user 建立在 Edge Function 中處理
+ * 3. public.users 同步也在 Edge Function 中完成
+ *
+ * 保留此檔案僅供參考，未來可能移除。
  */
-export const syncUserWithSupabase = async (
-  lineProfile: LineUserProfile
-): Promise<SupabaseUser> => {
-  try {
-    console.log("[User Sync] 開始同步使用者:", lineProfile.userId);
-
-    // 1. 檢查使用者是否已存在
-    const { data: existingUser, error: queryError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("line_user_id", lineProfile.userId)
-      .single();
-
-    if (queryError && queryError.code !== "PGRST116") {
-      // PGRST116 = 找不到資料，這是正常的
-      console.error("[User Sync] 查詢使用者錯誤:", queryError);
-      throw new Error(`查詢使用者失敗: ${queryError.message}`);
-    }
-
-    if (existingUser) {
-      // 2a. 使用者已存在，更新資料
-      console.log("[User Sync] 使用者已存在，更新資料...");
-
-      const { data: updatedUser, error: updateError } = await supabase
-        .from("users")
-        .update({
-          line_display_name: lineProfile.displayName,
-          line_picture_url: lineProfile.pictureUrl || null,
-          line_email: lineProfile.email || null,
-          last_login_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("line_user_id", lineProfile.userId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error("[User Sync] 更新使用者錯誤:", updateError);
-        throw new Error(`更新使用者失敗: ${updateError.message}`);
-      }
-
-      console.log("[User Sync] 使用者更新成功:", updatedUser.id);
-      return updatedUser;
-    } else {
-      // 2b. 使用者不存在，新增資料
-      console.log("[User Sync] 使用者不存在，建立新使用者...");
-
-      const { data: newUser, error: insertError } = await supabase
-        .from("users")
-        .insert({
-          line_user_id: lineProfile.userId,
-          line_display_name: lineProfile.displayName,
-          line_picture_url: lineProfile.pictureUrl || null,
-          line_email: lineProfile.email || null,
-          preferred_language: "zh-TW",
-          last_login_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error("[User Sync] 新增使用者錯誤:", insertError);
-        throw new Error(`新增使用者失敗: ${insertError.message}`);
-      }
-
-      console.log("[User Sync] 使用者建立成功:", newUser.id);
-      return newUser;
-    }
-  } catch (error) {
-    console.error("[User Sync] 同步失敗:", error);
-    throw error;
-  }
-};
 
 /**
  * 更新使用者的當前團隊
@@ -187,4 +119,3 @@ export const getUserTeams = async (userId: string): Promise<any[]> => {
     throw error;
   }
 };
-

@@ -25,14 +25,6 @@ port = 54323
 enabled = true
 site_url = "oflow://auth/callback"
 
-# LINE Login OAuth 設定
-[auth.external.line]
-enabled = true
-# 請在 Supabase Dashboard 的 Authentication > Providers 中設定
-# 需要從 LINE Developers Console 取得：
-# - Client ID (Channel ID)
-# - Client Secret (Channel Secret)
-
 [storage]
 # 儲存設定（未來用於上傳商品圖片等）
 enabled = true

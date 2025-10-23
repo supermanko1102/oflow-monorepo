@@ -1,11 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 
 // LINE Login 端點
 const LINE_AUTHORIZE_ENDPOINT = "https://access.line.me/oauth2/v2.1/authorize";
-const LINE_TOKEN_ENDPOINT = "https://api.line.me/oauth2/v2.1/token";
-const LINE_PROFILE_ENDPOINT = "https://api.line.me/v2/profile";
 
 // 取得 LINE Channel ID
 const getLineChannelId = (): string => {
@@ -53,27 +52,21 @@ const generateState = async (): Promise<string> => {
   return base64URLEncode(randomBytes);
 };
 
-// LINE 使用者資料介面
-export interface LineUserProfile {
-  userId: string;
-  displayName: string;
-  pictureUrl?: string;
-  email?: string;
-}
-
-// OAuth 結果介面
-export interface LineAuthResult {
-  accessToken: string;
-  idToken?: string;
-  refreshToken?: string;
-  expiresIn?: number;
+// Supabase Session 介面（從 backend 回傳）
+export interface SupabaseSession {
+  access_token: string;
+  refresh_token: string;
+  expires_in?: number;
+  expires_at?: number;
 }
 
 /**
  * 啟動 LINE Login OAuth 流程
  * 使用 Authorization Code Flow with PKCE
+ * 注意：此函數只啟動授權流程，不等待結果
+ * 結果會透過 deep link callback 返回，需要在 app 中監聽
  */
-export const initiateLineLogin = async (): Promise<LineAuthResult> => {
+export const initiateLineLogin = async (): Promise<void> => {
   try {
     const channelId = getLineChannelId();
 
@@ -83,19 +76,25 @@ export const initiateLineLogin = async (): Promise<LineAuthResult> => {
     // 產生 state
     const state = await generateState();
 
-    // 建立 redirect URI（使用 HTTPS URL）
-    // LINE Login 要求使用 HTTPS，不接受 custom scheme
-    const redirectUri =
-      Constants.expoConfig?.extra?.lineRedirectUri ||
-      "https://YOUR_VERCEL_DOMAIN.vercel.app/auth/line-callback";
+    // 儲存 code_verifier 到 AsyncStorage（供 callback 使用）
+    await AsyncStorage.setItem("line_pkce_code_verifier", codeVerifier);
+    await AsyncStorage.setItem("line_pkce_state", state);
+
+    // 使用 Vercel 作為 OAuth callback 端點
+    const redirectUri = "https://oflow-website.vercel.app/auth/line-callback";
 
     console.log("[LINE Login] Redirect URI:", redirectUri);
 
-    // 構建授權 URL
+    // 構建授權 URL（將 code_verifier 附加到 redirect_uri）
+    // Backend 會需要這個來交換 token
+    const redirectUriWithVerifier = `${redirectUri}?code_verifier=${encodeURIComponent(
+      codeVerifier
+    )}`;
+
     const authUrl = `${LINE_AUTHORIZE_ENDPOINT}?${new URLSearchParams({
       response_type: "code",
       client_id: channelId,
-      redirect_uri: redirectUri,
+      redirect_uri: redirectUriWithVerifier,
       state: state,
       scope: "profile openid email",
       code_challenge: codeChallenge,
@@ -105,156 +104,60 @@ export const initiateLineLogin = async (): Promise<LineAuthResult> => {
 
     console.log("[LINE Login] 啟動 OAuth 流程...");
 
-    // 開啟瀏覽器進行授權
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+    // 開啟瀏覽器進行授權（不等待結果）
+    await WebBrowser.openBrowserAsync(authUrl);
 
-    // 檢查結果
-    if (result.type !== "success") {
-      if (result.type === "cancel") {
-        throw new Error("使用者取消登入");
-      }
-      throw new Error(`授權失敗: ${result.type}`);
-    }
-
-    // 從回傳的 URL 解析參數
-    if (!result.url) {
-      throw new Error("未收到回傳 URL");
-    }
-
-    const urlParams = new URL(result.url);
-    const code = urlParams.searchParams.get("code");
-    const returnedState = urlParams.searchParams.get("state");
-
-    if (!code) {
-      throw new Error("未收到授權碼");
-    }
-
-    // 驗證 state (防止 CSRF)
-    if (returnedState !== state) {
-      throw new Error("State 不符，可能遭受 CSRF 攻擊");
-    }
-
-    console.log("[LINE Login] 授權成功，開始交換 token...");
-
-    // 交換 access token
-    const tokenResult = await exchangeCodeForToken(
-      code,
-      codeVerifier,
-      redirectUri
-    );
-
-    console.log("[LINE Login] Token 交換成功");
-
-    return tokenResult;
+    console.log("[LINE Login] 等待用戶授權...");
   } catch (error) {
+    // 清除儲存的 PKCE 參數
+    await AsyncStorage.removeItem("line_pkce_code_verifier");
+    await AsyncStorage.removeItem("line_pkce_state");
     console.error("[LINE Login] 錯誤:", error);
     throw error;
   }
 };
 
 /**
- * 使用授權碼交換 access token
+ * 處理 Auth callback（由 deep link 觸發）
+ * 新架構：直接接收 Supabase session tokens（不再處理 LINE code）
  */
-const exchangeCodeForToken = async (
-  code: string,
-  codeVerifier: string,
-  redirectUri: string
-): Promise<LineAuthResult> => {
+export const handleAuthCallback = async (
+  url: string
+): Promise<SupabaseSession> => {
   try {
-    const channelId = getLineChannelId();
+    console.log("[Auth] 處理 callback:", url);
 
-    const response = await fetch(LINE_TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: redirectUri,
-        client_id: channelId,
-        code_verifier: codeVerifier,
-      }).toString(),
-    });
+    // 解析 URL 參數
+    const urlParams = new URL(url);
+    const accessToken = urlParams.searchParams.get("access_token");
+    const refreshToken = urlParams.searchParams.get("refresh_token");
+    const error = urlParams.searchParams.get("error");
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `Token 交換失敗: ${errorData.error_description || errorData.error}`
-      );
+    // 檢查是否有錯誤
+    if (error) {
+      throw new Error(`授權失敗: ${error}`);
     }
 
-    const data = await response.json();
-
-    return {
-      accessToken: data.access_token,
-      idToken: data.id_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
-    };
-  } catch (error) {
-    console.error("[LINE Login] Token 交換錯誤:", error);
-    throw error;
-  }
-};
-
-/**
- * 取得 LINE 使用者資料
- */
-export const getLineUserProfile = async (
-  accessToken: string
-): Promise<LineUserProfile> => {
-  try {
-    console.log("[LINE Login] 取得使用者資料...");
-
-    const response = await fetch(LINE_PROFILE_ENDPOINT, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`取得使用者資料失敗: ${response.status}`);
+    // 檢查必要參數
+    if (!accessToken || !refreshToken) {
+      throw new Error("未收到有效的 session tokens");
     }
 
-    const data = await response.json();
+    // 清除儲存的 PKCE 參數
+    await AsyncStorage.removeItem("line_pkce_code_verifier");
+    await AsyncStorage.removeItem("line_pkce_state");
 
-    console.log("[LINE Login] 使用者資料:", {
-      userId: data.userId,
-      displayName: data.displayName,
-    });
+    console.log("[Auth] Session tokens 接收成功");
 
     return {
-      userId: data.userId,
-      displayName: data.displayName,
-      pictureUrl: data.pictureUrl,
-      email: data.email, // 需要 email scope
+      access_token: accessToken,
+      refresh_token: refreshToken,
     };
   } catch (error) {
-    console.error("[LINE Login] 取得使用者資料錯誤:", error);
+    // 清除儲存的 PKCE 參數
+    await AsyncStorage.removeItem("line_pkce_code_verifier");
+    await AsyncStorage.removeItem("line_pkce_state");
+    console.error("[Auth] Callback 處理錯誤:", error);
     throw error;
   }
-};
-
-/**
- * 驗證 ID Token (可選)
- * 若需要更高安全性，可以驗證 ID Token 的簽章
- */
-export const verifyIdToken = async (idToken: string): Promise<any> => {
-  // 這裡可以實作 JWT 驗證
-  // 1. 解析 JWT
-  // 2. 驗證簽章
-  // 3. 驗證 exp, iat, aud, iss 等欄位
-  // 目前先簡單解析
-  const parts = idToken.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Invalid ID Token");
-  }
-
-  const payload = JSON.parse(
-    atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-  );
-
-  return payload;
 };

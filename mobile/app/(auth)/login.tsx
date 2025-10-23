@@ -1,12 +1,13 @@
 import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
 import { MOCK_CURRENT_USER_ID } from "@/data/mockTeams";
+import { supabase } from "@/lib/supabase";
 import * as lineLoginService from "@/services/lineLoginService";
-import * as userSyncService from "@/services/userSyncService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTeamStore } from "@/stores/useTeamStore";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
 export default function LoginScreen() {
@@ -20,76 +21,137 @@ export default function LoginScreen() {
   const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
 
   /**
-   * 處理 LINE Login 流程
+   * 處理 Auth callback（從 deep link 觸發）
+   * 新架構：接收 Supabase session tokens 並設定
+   */
+  const handleCallback = useCallback(
+    async (url: string) => {
+      try {
+        console.log("[Login] 收到 deep link callback:", url);
+
+        // 1. 解析 session tokens
+        const session = await lineLoginService.handleAuthCallback(url);
+
+        // 2. 設定 Supabase session
+        console.log("[Login] 設定 Supabase session...");
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.setSession({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          });
+
+        if (sessionError || !sessionData.user) {
+          throw new Error(sessionError?.message || "Session 設定失敗");
+        }
+
+        console.log("[Login] Supabase session 設定成功");
+
+        // 3. 從 user metadata 取得 LINE 資料
+        const lineUserId = sessionData.user.user_metadata?.line_user_id || "";
+        const displayName =
+          sessionData.user.user_metadata?.display_name || "使用者";
+        const pictureUrl = sessionData.user.user_metadata?.picture_url || null;
+
+        // 4. 更新本地 store
+        console.log("[Login] 更新本地狀態...");
+        loginWithLine(
+          lineUserId,
+          sessionData.user.id,
+          displayName,
+          pictureUrl,
+          session.access_token
+        );
+
+        // 5. 載入團隊資料（使用 auth user ID）
+        console.log("[Login] 載入團隊資料...");
+        await fetchUserTeams(sessionData.user.id);
+
+        // 6. 根據團隊數量決定導航
+        const userTeams = useTeamStore.getState().teams;
+
+        if (userTeams.length === 0) {
+          // 無團隊：前往團隊設置頁
+          console.log("[Login] 無團隊，導向團隊設置頁");
+          router.replace("/(auth)/team-setup");
+        } else if (userTeams.length === 1) {
+          // 單一團隊：直接進入
+          const team = userTeams[0];
+          console.log("[Login] 單一團隊，直接進入:", team.name);
+          setCurrentTeamId(team.id);
+          setCurrentTeam(team.id);
+          router.replace("/(main)/(tabs)");
+        } else {
+          // 多個團隊：前往團隊選擇頁
+          console.log("[Login] 多個團隊，導向選擇頁");
+          router.replace("/(auth)/team-select");
+        }
+      } catch (error: any) {
+        console.error("[Login] Callback 處理失敗:", error);
+
+        // 友善的錯誤訊息
+        let errorMessage = "登入失敗，請稍後再試";
+
+        if (error.message?.includes("網路")) {
+          errorMessage = "網路連線有問題，請檢查網路設定";
+        } else if (error.message?.includes("Session")) {
+          errorMessage = "登入驗證失敗，請重新嘗試";
+        }
+
+        Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [loginWithLine, fetchUserTeams, setCurrentTeamId, setCurrentTeam, router]
+  );
+
+  /**
+   * 監聽 deep link URL 事件
+   */
+  useEffect(() => {
+    // 監聽 URL 事件（app 在背景時）
+    const subscription = Linking.addEventListener("url", (event) => {
+      console.log("[Login] Deep link 事件:", event.url);
+      // 新架構：監聽 oflow://auth?access_token=...
+      if (event.url.includes("oflow://auth")) {
+        handleCallback(event.url);
+      }
+    });
+
+    // 檢查初始 URL（app 從關閉狀態啟動）
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes("oflow://auth")) {
+        console.log("[Login] 初始 URL:", url);
+        handleCallback(url);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleCallback]);
+
+  /**
+   * 處理 LINE Login 流程（只啟動授權）
    */
   const handleLineLogin = async () => {
     try {
       setIsLoading(true);
 
-      // 1. 啟動 LINE OAuth 流程並取得 access token
+      // 啟動 LINE OAuth 流程（開啟瀏覽器）
       console.log("[Login] 開始 LINE 登入流程...");
-      const authResult = await lineLoginService.initiateLineLogin();
+      await lineLoginService.initiateLineLogin();
 
-      // 2. 取得 LINE 使用者資料
-      console.log("[Login] 取得使用者資料...");
-      const lineProfile = await lineLoginService.getLineUserProfile(
-        authResult.accessToken
-      );
-
-      // 3. 同步至 Supabase
-      console.log("[Login] 同步至 Supabase...");
-      const supabaseUser = await userSyncService.syncUserWithSupabase(
-        lineProfile
-      );
-
-      // 4. 更新本地 store
-      console.log("[Login] 更新本地狀態...");
-      loginWithLine(
-        lineProfile.userId,
-        supabaseUser.id,
-        lineProfile.displayName,
-        lineProfile.pictureUrl || null,
-        authResult.accessToken
-      );
-
-      // 5. 載入團隊資料
-      console.log("[Login] 載入團隊資料...");
-      await fetchUserTeams(supabaseUser.id);
-
-      // 6. 根據團隊數量決定導航
-      const userTeams = useTeamStore.getState().teams;
-
-      if (userTeams.length === 0) {
-        // 無團隊：前往團隊設置頁
-        console.log("[Login] 無團隊，導向團隊設置頁");
-        router.replace("/(auth)/team-setup");
-      } else if (userTeams.length === 1) {
-        // 單一團隊：直接進入
-        const team = userTeams[0];
-        console.log("[Login] 單一團隊，直接進入:", team.name);
-        setCurrentTeamId(team.id);
-        setCurrentTeam(team.id);
-        router.replace("/(main)/(tabs)");
-      } else {
-        // 多個團隊：前往團隊選擇頁
-        console.log("[Login] 多個團隊，導向選擇頁");
-        router.replace("/(auth)/team-select");
-      }
+      // 注意：此時不要 setIsLoading(false)
+      // 保持 loading 狀態直到收到 callback
+      console.log("[Login] 等待用戶授權...");
     } catch (error: any) {
-      console.error("[Login] 登入失敗:", error);
-
-      // 友善的錯誤訊息
-      let errorMessage = "登入失敗，請稍後再試";
-
-      if (error.message === "使用者取消登入") {
-        errorMessage = "已取消登入";
-      } else if (error.message?.includes("網路")) {
-        errorMessage = "網路連線有問題，請檢查網路設定";
-      }
-
-      Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
-    } finally {
+      console.error("[Login] 登入啟動失敗:", error);
       setIsLoading(false);
+
+      Alert.alert("登入失敗", "無法啟動 LINE 登入，請稍後再試", [
+        { text: "確定" },
+      ]);
     }
   };
 

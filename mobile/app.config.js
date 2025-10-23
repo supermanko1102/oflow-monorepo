@@ -10,12 +10,8 @@ module.exports = {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.oflow.mobile",
-      associatedDomains: [
-        // TODO: 部署 website 後，將此替換為實際的 Vercel 域名
-        // 例如: "applinks:oflow-monorepo.vercel.app"
-        "applinks:https://oflow-website.vercel.app",
-      ],
+      bundleIdentifier: "com.oflow.app",
+      associatedDomains: ["applinks:oflow-website.vercel.app"],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -29,7 +25,7 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "com.oflow.mobile",
+      package: "com.oflow.app",
     },
     web: {
       output: "static",
@@ -62,11 +58,6 @@ module.exports = {
       lineChannelId: process.env.EXPO_PUBLIC_LINE_CHANNEL_ID,
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      // LINE Login redirect URI (使用 Universal Link)
-      // TODO: 部署 website 後，將此替換為實際的 Vercel 域名
-      lineRedirectUri:
-        process.env.EXPO_PUBLIC_LINE_REDIRECT_URI ||
-        "https://oflow-website.vercel.app/auth/line-callback",
     },
     owner: "alexanderko",
   },
