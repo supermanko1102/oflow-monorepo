@@ -1,21 +1,55 @@
+import { LoadingState } from "@/components/LoadingState";
+import { useTeams } from "@/hooks/queries/useTeams";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTeamStore } from "@/stores/useTeamStore";
-import { UserTeam } from "@/types/team";
 import { useRouter } from "expo-router";
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function TeamSelectScreen() {
   const router = useRouter();
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const teams = useTeamStore((state) => state.teams);
-  const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
+  
+  // Auth & Team Store (client state)
+  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
 
-  const handleSelectTeam = (team: UserTeam) => {
-    setCurrentTeamId(team.id);
-    setCurrentTeam(team.id);
+  // React Query (server state)
+  const { data: teams, isLoading, error, refetch } = useTeams();
+
+  const handleSelectTeam = (teamId: string) => {
+    // 設定到兩個 stores（為了向後相容）
+    setAuthCurrentTeamId(teamId);
+    setCurrentTeamId(teamId);
     router.replace("/(main)/(tabs)");
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator size="large" color="#00B900" />
+        <Text className="mt-4 text-gray-600">載入團隊中...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-6">
+        <Text className="text-xl font-bold text-gray-900 mb-2">載入失敗</Text>
+        <Text className="text-gray-600 text-center mb-6">
+          {error instanceof Error ? error.message : "無法載入團隊列表"}
+        </Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          className="bg-green-600 px-6 py-3 rounded-lg"
+        >
+          <Text className="text-white font-semibold">重試</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const getRoleText = (role: string) => {
     switch (role) {
@@ -58,42 +92,50 @@ export default function TeamSelectScreen() {
 
         {/* 團隊列表 */}
         <View className="space-y-3">
-          {teams.map((team) => (
-            <TouchableOpacity
-              key={team.id}
-              onPress={() => handleSelectTeam(team)}
-              className="bg-white border-2 border-gray-200 rounded-xl p-4 active:bg-gray-50"
-            >
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xl font-bold text-gray-900">
-                  {team.name}
-                </Text>
-                <View
-                  className={`px-3 py-1 rounded-full ${getRoleBadgeColor(
-                    team.myRole
-                  )}`}
-                >
-                  <Text className="text-xs font-semibold">
-                    {getRoleText(team.myRole)}
+          {teams && teams.length > 0 ? (
+            teams.map((team) => (
+              <TouchableOpacity
+                key={team.team_id}
+                onPress={() => handleSelectTeam(team.team_id)}
+                className="bg-white border-2 border-gray-200 rounded-xl p-4 active:bg-gray-50"
+              >
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-xl font-bold text-gray-900">
+                    {team.team_name}
                   </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center">
-                <Text className="text-sm text-gray-500">
-                  {team.memberCount} 位成員
-                </Text>
-                {team.lineOfficialAccountId && (
-                  <>
-                    <Text className="text-gray-300 mx-2">•</Text>
-                    <Text className="text-sm text-gray-500">
-                      {team.lineOfficialAccountId}
+                  <View
+                    className={`px-3 py-1 rounded-full ${getRoleBadgeColor(
+                      team.role
+                    )}`}
+                  >
+                    <Text className="text-xs font-semibold">
+                      {getRoleText(team.role)}
                     </Text>
-                  </>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+                  </View>
+                </View>
+
+                <View className="flex-row items-center">
+                  <Text className="text-sm text-gray-500">
+                    {team.member_count} 位成員
+                  </Text>
+                  {team.line_channel_name && (
+                    <>
+                      <Text className="text-gray-300 mx-2">•</Text>
+                      <Text className="text-sm text-gray-500">
+                        {team.line_channel_name}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View className="py-12 items-center">
+              <Text className="text-gray-500 text-center">
+                你還沒有加入任何團隊
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* 建立新團隊選項 */}

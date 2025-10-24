@@ -1,4 +1,5 @@
 import { Button } from "@/components/native/Button";
+import { useJoinTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTeamStore } from "@/stores/useTeamStore";
@@ -16,12 +17,15 @@ import {
 export default function TeamJoinScreen() {
   const router = useRouter();
   const toast = useToast();
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const joinTeam = useTeamStore((state) => state.joinTeam);
-  const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
+  
+  // Client state
+  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+
+  // React Query mutation
+  const joinTeamMutation = useJoinTeam();
 
   const [inviteCode, setInviteCode] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleJoin = async () => {
     if (!inviteCode.trim()) {
@@ -29,17 +33,15 @@ export default function TeamJoinScreen() {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
-      // 加入團隊（現在是 async API）
-      const team = await joinTeam(inviteCode.trim());
+      // 加入團隊（使用 React Query mutation）
+      const team = await joinTeamMutation.mutateAsync(inviteCode.trim());
 
       // 設定為當前團隊
-      setCurrentTeamId(team.id);
-      setCurrentTeam(team.id);
+      setAuthCurrentTeamId(team.team_id);
+      setCurrentTeamId(team.team_id);
 
-      toast.success(`已成功加入「${team.name}」！`);
+      toast.success(`已成功加入「${team.team_name}」！`);
 
       // 導航到主頁
       router.replace("/(main)/(tabs)");
@@ -49,8 +51,6 @@ export default function TeamJoinScreen() {
       toast.error(
         message.includes("Invalid") ? "邀請碼無效，請檢查後重試" : message
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -121,16 +121,16 @@ export default function TeamJoinScreen() {
               onPress={handleJoin}
               variant="primary"
               fullWidth
-              disabled={isSubmitting || !inviteCode.trim()}
+              disabled={joinTeamMutation.isPending || !inviteCode.trim()}
             >
-              {isSubmitting ? "加入中..." : "加入團隊"}
+              {joinTeamMutation.isPending ? "加入中..." : "加入團隊"}
             </Button>
 
             <Button
               onPress={() => router.back()}
               variant="secondary"
               fullWidth
-              disabled={isSubmitting}
+              disabled={joinTeamMutation.isPending}
             >
               返回
             </Button>

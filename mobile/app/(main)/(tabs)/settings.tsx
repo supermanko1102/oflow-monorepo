@@ -1,6 +1,14 @@
 import { InviteCodeDialog } from "@/components/team/InviteCodeDialog";
 import { MemberList } from "@/components/team/MemberList";
 import { TeamSelector } from "@/components/team/TeamSelector";
+import {
+  useInviteCode,
+  useLeaveTeam,
+  useTeamMembers,
+  useTeams,
+} from "@/hooks/queries/useTeams";
+import { queryKeys } from "@/hooks/queries/queryKeys";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -9,6 +17,7 @@ import * as NotificationService from "@/utils/notificationService";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   Switch,
@@ -24,27 +33,30 @@ export default function SettingsScreen() {
   const router = useRouter();
   const toast = useToast();
 
-  // Auth store
+  // Auth store (client state)
   const userId = useAuthStore((state) => state.userId);
   const userName = useAuthStore((state) => state.userName);
-  const currentTeamId = useAuthStore((state) => state.currentTeamId);
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const authCurrentTeamId = useAuthStore((state) => state.currentTeamId);
+  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
   const logout = useAuthStore((state) => state.logout);
 
-  // Team store
-  const teams = useTeamStore((state) => state.teams);
-  const currentTeam = useTeamStore((state) => state.currentTeam);
-  const teamMembers = useTeamStore((state) => state.teamMembers);
-  const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
-  const fetchUserTeams = useTeamStore((state) => state.fetchUserTeams);
-  const updateMemberRole = useTeamStore((state) => state.updateMemberRole);
-  const removeMember = useTeamStore((state) => state.removeMember);
-  const leaveTeam = useTeamStore((state) => state.leaveTeam);
-  const deleteTeam = useTeamStore((state) => state.deleteTeam);
-  const updateTeamInfo = useTeamStore((state) => state.updateTeamInfo);
-  const regenerateInviteCode = useTeamStore(
-    (state) => state.regenerateInviteCode
-  );
+  // Team store (client state)
+  const currentTeamId = useTeamStore((state) => state.currentTeamId);
+  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+
+  // React Query (server state)
+  const { data: teams, isLoading: teamsLoading } = useTeams();
+  const {
+    data: teamMembers,
+    isLoading: membersLoading,
+    refetch: refetchMembers,
+  } = useTeamMembers(currentTeamId || "", !!currentTeamId);
+  const [showInviteCode, setShowInviteCode] = useState(false);
+  const {
+    data: inviteCodeData,
+    isLoading: inviteCodeLoading,
+  } = useInviteCode(currentTeamId || "", showInviteCode && !!currentTeamId);
+  const leaveTeamMutation = useLeaveTeam();
 
   // Settings store
   const notificationsEnabled = useSettingsStore(
@@ -65,8 +77,11 @@ export default function SettingsScreen() {
       minute: 0,
     });
 
+  // 從 teams 中找到當前團隊
+  const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
+  
   // 取得當前用戶在團隊中的角色
-  const myRole = teams.find((t) => t.id === currentTeamId)?.myRole || "member";
+  const myRole = currentTeam?.role || "member";
   const canManageTeam = myRole === "owner" || myRole === "admin";
   const isOwner = myRole === "owner";
 
@@ -82,40 +97,45 @@ export default function SettingsScreen() {
 
   // 團隊相關處理函數
   const handleSwitchTeam = (teamId: string) => {
+    setAuthCurrentTeamId(teamId);
     setCurrentTeamId(teamId);
-    setCurrentTeam(teamId);
     toast.success("已切換團隊");
   };
 
-  const handleLeaveTeam = () => {
-    if (!currentTeamId || !userId) return;
+  const handleLeaveTeam = async () => {
+    if (!currentTeamId) return;
 
     Alert.alert(
       "離開團隊",
-      `確定要離開「${currentTeam?.name}」嗎？\n\n離開後將無法存取該團隊的訂單資料。`,
+      `確定要離開「${currentTeam?.team_name}」嗎？\n\n離開後將無法存取該團隊的訂單資料。`,
       [
         { text: "取消", style: "cancel" },
         {
           text: "離開",
           style: "destructive",
-          onPress: () => {
-            leaveTeam(currentTeamId, userId);
+          onPress: async () => {
+            try {
+              // 使用 React Query mutation
+              await leaveTeamMutation.mutateAsync(currentTeamId);
 
-            // 重新載入團隊列表
-            fetchUserTeams(userId);
+              toast.success("已離開團隊");
 
-            // 如果還有其他團隊，切換到第一個；否則返回團隊設置頁
-            setTimeout(() => {
-              const remainingTeams = useTeamStore.getState().teams;
-              if (remainingTeams.length > 0) {
-                handleSwitchTeam(remainingTeams[0].id);
-              } else {
-                setCurrentTeamId(null);
-                router.replace("/(auth)/team-setup");
-              }
-            }, 100);
-
-            toast.success("已離開團隊");
+              // React Query 會自動 invalidate teams list
+              // 等待 teams 重新載入後再導航
+              setTimeout(() => {
+                // 從 queryClient 取得最新的 teams
+                const updatedTeams = queryClient.getQueryData(queryKeys.teams.list());
+                if (updatedTeams && Array.isArray(updatedTeams) && updatedTeams.length > 0) {
+                  handleSwitchTeam(updatedTeams[0].team_id);
+                } else {
+                  setAuthCurrentTeamId(null);
+                  setCurrentTeamId(null);
+                  router.replace("/(auth)/team-setup");
+                }
+              }, 500);
+            } catch (error: any) {
+              toast.error(error.message || "離開團隊失敗");
+            }
           },
         },
       ]
@@ -123,34 +143,24 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteTeam = () => {
-    if (!currentTeamId || !userId) return;
+    if (!currentTeamId) return;
 
     Alert.alert(
       "刪除團隊",
-      `確定要刪除「${currentTeam?.name}」嗎？\n\n⚠️ 此操作無法復原！\n所有訂單、顧客資料都將被永久刪除。`,
+      `確定要刪除「${currentTeam?.team_name}」嗎？\n\n⚠️ 此操作無法復原！\n所有訂單、顧客資料都將被永久刪除。`,
       [
         { text: "取消", style: "cancel" },
         {
           text: "刪除",
           style: "destructive",
           onPress: () => {
-            deleteTeam(currentTeamId);
-
-            // 重新載入團隊列表
-            fetchUserTeams(userId);
-
-            // 如果還有其他團隊，切換到第一個；否則返回團隊設置頁
-            setTimeout(() => {
-              const remainingTeams = useTeamStore.getState().teams;
-              if (remainingTeams.length > 0) {
-                handleSwitchTeam(remainingTeams[0].id);
-              } else {
-                setCurrentTeamId(null);
-                router.replace("/(auth)/team-setup");
-              }
-            }, 100);
-
-            toast.success("團隊已刪除");
+            // TODO: 實作 deleteTeam Edge Function endpoint
+            toast.error("刪除團隊功能尚未實作");
+            
+            // 未來實作：
+            // await deleteTeamMutation.mutateAsync(currentTeamId);
+            // toast.success("團隊已刪除");
+            // router.replace("/(auth)/team-setup");
           },
         },
       ]
@@ -165,8 +175,12 @@ export default function SettingsScreen() {
       {
         text: "確定",
         onPress: () => {
-          regenerateInviteCode(currentTeamId);
-          toast.success("已重新生成邀請碼");
+          // TODO: 實作 regenerateInviteCode Edge Function endpoint
+          toast.error("重新生成邀請碼功能尚未實作");
+          
+          // 未來實作：
+          // await regenerateInviteCodeMutation.mutateAsync(currentTeamId);
+          // toast.success("已重新生成邀請碼");
         },
       },
     ]);
@@ -289,14 +303,14 @@ export default function SettingsScreen() {
           <List.Subheader>團隊資訊</List.Subheader>
           <List.Item
             title="當前團隊"
-            description={currentTeam?.name || "未選擇團隊"}
+            description={currentTeam?.team_name || "未選擇團隊"}
             left={(props) => <List.Icon {...props} icon="account-group" />}
             right={(props) =>
-              teams.length > 1 ? (
+              teams && teams.length > 1 ? (
                 <List.Icon {...props} icon="chevron-right" />
               ) : null
             }
-            onPress={() => teams.length > 1 && setTeamSelectorVisible(true)}
+            onPress={() => teams && teams.length > 1 && setTeamSelectorVisible(true)}
           />
           <Divider />
           <List.Item
@@ -310,12 +324,12 @@ export default function SettingsScreen() {
             }
             left={(props) => <List.Icon {...props} icon="shield-account" />}
           />
-          {currentTeam?.lineOfficialAccountId && (
+          {currentTeam?.line_channel_name && (
             <>
               <Divider />
               <List.Item
                 title="LINE 官方帳號"
-                description={currentTeam.lineOfficialAccountId}
+                description={currentTeam.line_channel_name}
                 left={(props) => <List.Icon {...props} icon="link" />}
               />
             </>
@@ -330,7 +344,10 @@ export default function SettingsScreen() {
             <View className="flex-row justify-between items-center px-4 py-2">
               <List.Subheader style={{ margin: 0 }}>成員管理</List.Subheader>
               <TouchableOpacity
-                onPress={() => setInviteDialogVisible(true)}
+                onPress={() => {
+                  setShowInviteCode(true);
+                  setInviteDialogVisible(true);
+                }}
                 className="px-3 py-1 bg-line-green rounded"
               >
                 <Text className="text-white text-xs font-semibold">
@@ -338,23 +355,38 @@ export default function SettingsScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            <MemberList
-              members={teamMembers}
-              currentUserId={userId || ""}
-              currentUserRole={myRole}
-              onUpdateRole={(targetUserId, newRole) => {
-                if (currentTeamId) {
-                  updateMemberRole(currentTeamId, targetUserId, newRole);
-                  toast.success("角色已更新");
-                }
-              }}
-              onRemoveMember={(targetUserId) => {
-                if (currentTeamId) {
-                  removeMember(currentTeamId, targetUserId);
-                  toast.success("成員已移除");
-                }
-              }}
-            />
+            {membersLoading ? (
+              <View className="p-4 items-center">
+                <ActivityIndicator size="small" color="#00B900" />
+                <Text className="text-gray-500 mt-2">載入成員中...</Text>
+              </View>
+            ) : teamMembers && teamMembers.length > 0 ? (
+              <MemberList
+                members={teamMembers.map((m) => ({
+                  id: m.member_id,
+                  userId: m.user_id,
+                  userName: m.user_name,
+                  userPictureUrl: m.user_picture_url,
+                  teamId: currentTeamId!,
+                  role: m.role as any,
+                  joinedAt: m.joined_at,
+                }))}
+                currentUserId={userId || ""}
+                currentUserRole={myRole as any}
+                onUpdateRole={(targetUserId, newRole) => {
+                  // TODO: 實作 updateMemberRole Edge Function endpoint
+                  toast.error("更新成員角色功能尚未實作");
+                }}
+                onRemoveMember={(targetUserId) => {
+                  // TODO: 實作 removeMember Edge Function endpoint
+                  toast.error("移除成員功能尚未實作");
+                }}
+              />
+            ) : (
+              <View className="p-4">
+                <Text className="text-gray-500 text-center">目前沒有成員</Text>
+              </View>
+            )}
           </List.Section>
         </View>
       )}
@@ -481,20 +513,33 @@ export default function SettingsScreen() {
       <View className="h-8" />
 
       {/* Dialogs */}
-      <TeamSelector
-        visible={teamSelectorVisible}
-        teams={teams}
-        currentTeamId={currentTeamId}
-        onDismiss={() => setTeamSelectorVisible(false)}
-        onSelectTeam={handleSwitchTeam}
-      />
+      {teams && (
+        <TeamSelector
+          visible={teamSelectorVisible}
+          teams={teams.map((t) => ({
+            id: t.team_id,
+            name: t.team_name,
+            lineOfficialAccountId: t.line_channel_name,
+            createdAt: new Date().toISOString(),
+            inviteCode: "",
+            myRole: t.role as any,
+            memberCount: t.member_count,
+          }))}
+          currentTeamId={currentTeamId}
+          onDismiss={() => setTeamSelectorVisible(false)}
+          onSelectTeam={handleSwitchTeam}
+        />
+      )}
 
-      {currentTeam && (
+      {currentTeam && inviteCodeData && (
         <InviteCodeDialog
           visible={inviteDialogVisible}
-          inviteCode={currentTeam.inviteCode}
-          teamName={currentTeam.name}
-          onDismiss={() => setInviteDialogVisible(false)}
+          inviteCode={inviteCodeData}
+          teamName={currentTeam.team_name}
+          onDismiss={() => {
+            setInviteDialogVisible(false);
+            setShowInviteCode(false);
+          }}
           onRegenerate={isOwner ? handleRegenerateInviteCode : undefined}
         />
       )}

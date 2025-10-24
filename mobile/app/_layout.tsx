@@ -1,5 +1,8 @@
+import { QueryDevTools } from "@/components/QueryDevTools";
 import { ToastContainer } from "@/components/Toast";
+import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -61,23 +64,26 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={paperLightTheme}>
-        <ThemeProvider value={DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            {!isLoggedIn || !currentTeamId ? (
-              // 未登入或無當前團隊：渲染 auth group
-              // （包含登入、團隊設置、團隊選擇等頁面）
-              <Stack.Screen name="(auth)" />
-            ) : (
-              // 已登入且有當前團隊：渲染 main group
-              <Stack.Screen name="(main)" />
-            )}
-          </Stack>
-          <StatusBar style="auto" />
-          <ToastContainer />
-        </ThemeProvider>
-      </PaperProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <PaperProvider theme={paperLightTheme}>
+          <ThemeProvider value={DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              {!isLoggedIn || !currentTeamId ? (
+                // 未登入或無當前團隊：渲染 auth group
+                // （包含登入、團隊設置、團隊選擇等頁面）
+                <Stack.Screen name="(auth)" />
+              ) : (
+                // 已登入且有當前團隊：渲染 main group
+                <Stack.Screen name="(main)" />
+              )}
+            </Stack>
+            <StatusBar style="auto" />
+            <ToastContainer />
+          </ThemeProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
+      <QueryDevTools />
+    </QueryClientProvider>
   );
 }

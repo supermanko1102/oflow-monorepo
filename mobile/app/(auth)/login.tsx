@@ -1,5 +1,7 @@
 import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
+import { prefetchTeams } from "@/hooks/queries/useTeams";
+import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import * as lineLoginService from "@/services/lineLoginService";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -14,9 +16,8 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const setTeamsFromLogin = useTeamStore((state) => state.setTeamsFromLogin);
-  const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
+  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
 
   /**
    * 處理 Auth callback（從 deep link 觸發）
@@ -60,24 +61,24 @@ export default function LoginScreen() {
           session.access_token
         );
 
-        // 5. 從登入回應設定團隊資料（不需要額外查詢）
-        console.log("[Login] 設定團隊資料...");
+        // 5. Prefetch teams data (使用 React Query)
+        console.log("[Login] Prefetch 團隊資料...");
+        await prefetchTeams(queryClient);
+
+        // 6. 從登入回應取得團隊資訊
         const teams = session.teams || [];
-        setTeamsFromLogin(teams);
 
-        // 6. 根據團隊數量決定導航
-        const userTeams = teams;
-
-        if (userTeams.length === 0) {
+        // 7. 根據團隊數量決定導航
+        if (teams.length === 0) {
           // 無團隊：前往團隊設置頁
           console.log("[Login] 無團隊，導向團隊設置頁");
           router.replace("/(auth)/team-setup");
-        } else if (userTeams.length === 1) {
+        } else if (teams.length === 1) {
           // 單一團隊：直接進入
-          const team = userTeams[0];
-          console.log("[Login] 單一團隊，直接進入:", team.name);
-          setCurrentTeamId(team.id);
-          setCurrentTeam(team.id);
+          const team = teams[0];
+          console.log("[Login] 單一團隊，直接進入:", team.team_name);
+          setAuthCurrentTeamId(team.team_id);
+          setCurrentTeamId(team.team_id);
           router.replace("/(main)/(tabs)");
         } else {
           // 多個團隊：前往團隊選擇頁
@@ -109,7 +110,7 @@ export default function LoginScreen() {
         setIsLoading(false);
       }
     },
-    [loginWithLine, setTeamsFromLogin, setCurrentTeamId, setCurrentTeam, router]
+    [loginWithLine, setAuthCurrentTeamId, setCurrentTeamId, router]
   );
 
   /**

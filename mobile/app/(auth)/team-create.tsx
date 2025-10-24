@@ -1,4 +1,5 @@
 import { Button } from "@/components/native/Button";
+import { useCreateTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTeamStore } from "@/stores/useTeamStore";
@@ -16,13 +17,16 @@ import {
 export default function TeamCreateScreen() {
   const router = useRouter();
   const toast = useToast();
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const createTeam = useTeamStore((state) => state.createTeam);
-  const setCurrentTeam = useTeamStore((state) => state.setCurrentTeam);
+  
+  // Client state
+  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+
+  // React Query mutation
+  const createTeamMutation = useCreateTeam();
 
   const [teamName, setTeamName] = useState("");
   const [lineAccountId, setLineAccountId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreate = async () => {
     if (!teamName.trim()) {
@@ -30,18 +34,16 @@ export default function TeamCreateScreen() {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
-      // 建立團隊（現在是 async API）
-      const newTeam = await createTeam(
-        teamName.trim(),
-        lineAccountId.trim() || null
-      );
+      // 建立團隊（使用 React Query mutation）
+      const newTeam = await createTeamMutation.mutateAsync({
+        team_name: teamName.trim(),
+        line_channel_id: lineAccountId.trim() || null,
+      });
 
       // 設定為當前團隊
+      setAuthCurrentTeamId(newTeam.id);
       setCurrentTeamId(newTeam.id);
-      setCurrentTeam(newTeam.id);
 
       toast.success("團隊建立成功！");
 
@@ -50,8 +52,6 @@ export default function TeamCreateScreen() {
     } catch (error: any) {
       console.error("[Team Create] 建立失敗:", error);
       toast.error(error.message || "建立失敗，請稍後再試");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -127,16 +127,16 @@ export default function TeamCreateScreen() {
               onPress={handleCreate}
               variant="primary"
               fullWidth
-              disabled={isSubmitting}
+              disabled={createTeamMutation.isPending}
             >
-              {isSubmitting ? "建立中..." : "建立團隊"}
+              {createTeamMutation.isPending ? "建立中..." : "建立團隊"}
             </Button>
 
             <Button
               onPress={() => router.back()}
               variant="secondary"
               fullWidth
-              disabled={isSubmitting}
+              disabled={createTeamMutation.isPending}
             >
               返回
             </Button>
