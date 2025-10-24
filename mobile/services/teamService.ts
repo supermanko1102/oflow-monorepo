@@ -240,3 +240,36 @@ export async function getInviteCode(teamId: string): Promise<string> {
     throw error;
   }
 }
+
+/**
+ * 更新團隊 LINE 官方帳號設定
+ */
+export interface UpdateLineSettingsParams {
+  team_id: string;
+  line_channel_id: string;
+  line_channel_secret: string;
+  line_channel_access_token: string;
+  line_channel_name?: string;
+}
+
+export interface UpdateLineSettingsResponse {
+  webhook_url: string;
+  message: string;
+}
+
+export async function updateLineSettings(
+  params: UpdateLineSettingsParams
+): Promise<UpdateLineSettingsResponse> {
+  try {
+    const response = await callTeamAPI<UpdateLineSettingsResponse>(
+      "POST",
+      "update-line-settings",
+      undefined,
+      params
+    );
+    return response;
+  } catch (error) {
+    console.error("[Team Service] 更新 LINE 設定失敗:", error);
+    throw error;
+  }
+}

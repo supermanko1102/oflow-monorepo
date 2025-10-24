@@ -292,6 +292,86 @@ serve(async (req) => {
         );
       }
 
+      // 更新團隊 LINE 官方帳號設定
+      if (action === "update-line-settings") {
+        const {
+          team_id,
+          line_channel_id,
+          line_channel_secret,
+          line_channel_access_token,
+          line_channel_name,
+        } = body;
+
+        if (!team_id) {
+          throw new Error("Missing team_id");
+        }
+
+        console.log("[Team Operations] 更新 LINE 設定:", team_id);
+
+        // 檢查用戶是否為該團隊的 owner 或 admin
+        const { data: member, error: memberError } = await supabaseAdmin
+          .from("team_members")
+          .select("role, can_manage_settings")
+          .eq("team_id", team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (memberError || !member) {
+          throw new Error("You are not a member of this team");
+        }
+
+        if (
+          member.role !== "owner" &&
+          member.role !== "admin" &&
+          !member.can_manage_settings
+        ) {
+          throw new Error("You don't have permission to update team settings");
+        }
+
+        // 驗證必要欄位
+        if (
+          !line_channel_id ||
+          !line_channel_secret ||
+          !line_channel_access_token
+        ) {
+          throw new Error(
+            "Missing required LINE settings: channel_id, channel_secret, and access_token are required"
+          );
+        }
+
+        // 更新團隊的 LINE 設定
+        const { error: updateError } = await supabaseAdmin
+          .from("teams")
+          .update({
+            line_channel_id,
+            line_channel_secret,
+            line_channel_access_token,
+            line_channel_name: line_channel_name || null,
+            line_connected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", team_id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // 回傳 Webhook URL
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const webhookUrl = `${SUPABASE_URL}/functions/v1/line-webhook`;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            webhook_url: webhookUrl,
+            message: "LINE settings updated successfully",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       throw new Error(`Unknown POST action: ${action}`);
     }
 

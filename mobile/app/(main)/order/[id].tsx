@@ -62,18 +62,6 @@ export default function OrderDetailScreen() {
       `${order.customerName}\n${order.customerPhone}`,
       [
         {
-          text: '打電話',
-          onPress: () => {
-            Linking.openURL(`tel:${order.customerPhone}`);
-          },
-        },
-        {
-          text: '傳訊息',
-          onPress: () => {
-            Linking.openURL(`sms:${order.customerPhone}`);
-          },
-        },
-        {
           text: '開啟 LINE',
           onPress: () => {
             // LINE 深層連結（需要知道 LINE ID，這裡先用一般方式）

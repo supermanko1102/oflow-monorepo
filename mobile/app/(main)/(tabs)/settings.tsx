@@ -22,11 +22,13 @@ import {
   ScrollView,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Button, Divider, List } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { updateLineSettings } from "@/services/teamService";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -69,6 +71,7 @@ export default function SettingsScreen() {
   // UI state
   const [teamSelectorVisible, setTeamSelectorVisible] = useState(false);
   const [inviteDialogVisible, setInviteDialogVisible] = useState(false);
+  const [lineSettingsExpanded, setLineSettingsExpanded] = useState(false);
 
   const [notificationSettings, setNotificationSettings] =
     useState<NotificationService.NotificationSettings>({
@@ -76,6 +79,16 @@ export default function SettingsScreen() {
       hour: 8,
       minute: 0,
     });
+
+  // LINE 官方帳號設定狀態
+  const [lineSettings, setLineSettings] = useState({
+    channelId: "",
+    channelSecret: "",
+    accessToken: "",
+    channelName: "",
+  });
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [isUpdatingLine, setIsUpdatingLine] = useState(false);
 
   // 從 teams 中找到當前團隊
   const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
@@ -270,6 +283,60 @@ export default function SettingsScreen() {
     toast.success("測試通知已發送");
   };
 
+  // 處理 LINE 官方帳號設定
+  const handleUpdateLineSettings = async () => {
+    if (!currentTeamId) return;
+
+    if (
+      !lineSettings.channelId ||
+      !lineSettings.channelSecret ||
+      !lineSettings.accessToken
+    ) {
+      toast.error("請填寫所有必要欄位");
+      return;
+    }
+
+    try {
+      setIsUpdatingLine(true);
+      const response = await updateLineSettings({
+        team_id: currentTeamId,
+        line_channel_id: lineSettings.channelId,
+        line_channel_secret: lineSettings.channelSecret,
+        line_channel_access_token: lineSettings.accessToken,
+        line_channel_name: lineSettings.channelName || undefined,
+      });
+
+      setWebhookUrl(response.webhook_url);
+      toast.success("LINE 官方帳號設定已更新");
+
+      // 刷新團隊資料
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams.all() });
+
+      // 顯示 Webhook URL（完整顯示在 UI 中，用戶可以長按複製）
+      Alert.alert(
+        "設定成功",
+        "LINE 官方帳號已成功連接！\n\n請查看下方的 Webhook URL 並設定到 LINE Developers Console。",
+        [{ text: "確定" }]
+      );
+    } catch (error: any) {
+      toast.error(error.message || "更新 LINE 設定失敗");
+    } finally {
+      setIsUpdatingLine(false);
+    }
+  };
+
+  const handleCopyWebhookUrl = () => {
+    if (webhookUrl) {
+      Alert.alert(
+        "Webhook URL",
+        webhookUrl,
+        [
+          { text: "確定" }
+        ]
+      );
+    }
+  };
+
   return (
     <ScrollView className="flex-1 bg-gray-50">
       {/* Header */}
@@ -336,6 +403,132 @@ export default function SettingsScreen() {
           )}
         </List.Section>
       </View>
+
+      {/* LINE Official Account Settings (Owner/Admin only) */}
+      {canManageTeam && currentTeamId && (
+        <View className="bg-white mt-4">
+          <List.Section>
+            <List.Subheader>LINE 官方帳號設定</List.Subheader>
+            <List.Item
+              title="設定 LINE 官方帳號"
+              description={
+                currentTeam?.line_channel_name
+                  ? `已連接：${currentTeam.line_channel_name}`
+                  : "尚未設定"
+              }
+              left={(props) => <List.Icon {...props} icon="message-text" />}
+              right={(props) => (
+                <List.Icon
+                  {...props}
+                  icon={lineSettingsExpanded ? "chevron-up" : "chevron-down"}
+                />
+              )}
+              onPress={() => setLineSettingsExpanded(!lineSettingsExpanded)}
+            />
+            {lineSettingsExpanded && (
+              <View className="px-4 pb-4">
+                <Text className="text-gray-600 text-sm mb-4">
+                  將 LINE 官方帳號與團隊連接，即可自動接收顧客訊息並生成訂單
+                </Text>
+
+                <Text className="text-gray-700 font-semibold mb-2">
+                  Channel ID
+                </Text>
+                <TextInput
+                  value={lineSettings.channelId}
+                  onChangeText={(text) =>
+                    setLineSettings({ ...lineSettings, channelId: text })
+                  }
+                  placeholder="輸入 LINE Channel ID"
+                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                />
+
+                <Text className="text-gray-700 font-semibold mb-2">
+                  Channel Secret
+                </Text>
+                <TextInput
+                  value={lineSettings.channelSecret}
+                  onChangeText={(text) =>
+                    setLineSettings({ ...lineSettings, channelSecret: text })
+                  }
+                  placeholder="輸入 LINE Channel Secret"
+                  secureTextEntry
+                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                />
+
+                <Text className="text-gray-700 font-semibold mb-2">
+                  Channel Access Token
+                </Text>
+                <TextInput
+                  value={lineSettings.accessToken}
+                  onChangeText={(text) =>
+                    setLineSettings({ ...lineSettings, accessToken: text })
+                  }
+                  placeholder="輸入 LINE Channel Access Token"
+                  secureTextEntry
+                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                />
+
+                <Text className="text-gray-700 font-semibold mb-2">
+                  官方帳號名稱（選填）
+                </Text>
+                <TextInput
+                  value={lineSettings.channelName}
+                  onChangeText={(text) =>
+                    setLineSettings({ ...lineSettings, channelName: text })
+                  }
+                  placeholder="例如：@ocake"
+                  className="border border-gray-300 rounded px-3 py-2 mb-4"
+                />
+
+                <Button
+                  mode="contained"
+                  onPress={handleUpdateLineSettings}
+                  loading={isUpdatingLine}
+                  disabled={isUpdatingLine}
+                  buttonColor="#00B900"
+                  className="mb-2"
+                >
+                  儲存設定
+                </Button>
+
+                {webhookUrl && (
+                  <View className="mt-4 p-3 bg-gray-100 rounded">
+                    <Text className="text-gray-700 font-semibold mb-2">
+                      Webhook URL
+                    </Text>
+                    <Text className="text-gray-600 text-xs mb-2">
+                      請將此 URL 設定到 LINE Developers Console
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleCopyWebhookUrl}
+                      className="bg-white p-2 rounded border border-gray-300"
+                    >
+                      <Text 
+                        className="text-gray-800 text-xs" 
+                        numberOfLines={3}
+                        selectable={true}
+                      >
+                        {webhookUrl}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text className="text-line-green text-xs mt-2 text-center">
+                      長按文字可複製
+                    </Text>
+                  </View>
+                )}
+
+                <View className="mt-4 p-3 bg-blue-50 rounded">
+                  <Text className="text-blue-800 text-xs">
+                    💡 提示：在 LINE Developers Console 中設定 Webhook URL 後，
+                    顧客傳送訊息給你的官方帳號時，系統會自動解析並建立訂單。
+                  </Text>
+                </View>
+              </View>
+            )}
+          </List.Section>
+        </View>
+      )}
 
       {/* Member Management Section (Owner/Admin only) */}
       {canManageTeam && currentTeamId && (
