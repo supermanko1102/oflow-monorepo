@@ -29,7 +29,9 @@ cd /Users/yuna/oflow-monorepo/supabase
 supabase db push
 ```
 
-這會執行 `007_order_functions.sql`，建立必要的資料庫函數。
+這會執行以下 migrations：
+- `007_order_functions.sql`：建立訂單相關資料庫函數
+- `008_add_bot_user_id.sql`：新增 `line_bot_user_id` 欄位（自動解決 Channel ID 與 Bot User ID 的對應問題）
 
 ### 步驟 2: 設定 Supabase Secrets
 
@@ -83,11 +85,13 @@ supabase functions list
 4. 找到「LINE 官方帳號設定」區塊
 5. 點擊展開
 6. 輸入從 LINE Developers Console 取得的資訊：
-   - **Channel ID**：例如 `1234567890`
+   - **Channel ID**：例如 `2008352338`（純數字）
    - **Channel Secret**：例如 `abcdef1234567890abcdef1234567890`
    - **Channel Access Token**：例如 `ABC123...` (長字串)
    - **官方帳號名稱**（選填）：例如 `@ocake`
 7. 點擊「儲存設定」
+   - 💡 系統會**自動呼叫 LINE API** 取得 Bot User ID（`U` 開頭的 ID）
+   - 💡 Bot User ID 用於 Webhook 路由，無需手動輸入
 8. 記下顯示的 **Webhook URL**（長按文字可複製）
 
 ### 步驟 6: 在 LINE Developers Console 設定 Webhook

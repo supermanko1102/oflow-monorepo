@@ -181,17 +181,19 @@ serve(async (req) => {
       }
     );
 
-    // 根據 Channel ID 查找對應的團隊
+    // ✅ 根據 Bot User ID (destination) 查找對應的團隊
+    console.log("[LINE Webhook] 查找團隊，Bot User ID:", destination);
     const { data: team, error: teamError } = await supabaseAdmin
       .from("teams")
       .select(
         "id, name, business_type, line_channel_secret, line_channel_access_token, auto_mode"
       )
-      .eq("line_channel_id", destination)
+      .eq("line_bot_user_id", destination) // 使用 line_bot_user_id
       .single();
 
     if (teamError || !team) {
-      console.error("[LINE Webhook] 找不到對應團隊:", destination);
+      console.error("[LINE Webhook] 找不到對應團隊 (Bot User ID):", destination);
+      console.error("[LINE Webhook] 錯誤詳情:", teamError);
       // 回傳 200 避免 LINE 重複發送
       return new Response(
         JSON.stringify({ message: "Team not found" }),

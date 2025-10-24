@@ -339,7 +339,41 @@ serve(async (req) => {
           );
         }
 
-        // 更新團隊的 LINE 設定
+        // 🚀 呼叫 LINE Bot Info API 取得 Bot User ID
+        console.log("[Team Operations] 呼叫 LINE Bot Info API...");
+        let lineBotUserId: string | null = null;
+
+        try {
+          const botInfoResponse = await fetch("https://api.line.me/v2/bot/info", {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${line_channel_access_token}`,
+            },
+          });
+
+          if (!botInfoResponse.ok) {
+            const errorText = await botInfoResponse.text();
+            console.error("[Team Operations] LINE Bot Info API 錯誤:", errorText);
+            throw new Error(
+              `無法驗證 LINE Channel Access Token: ${botInfoResponse.status} ${errorText}`
+            );
+          }
+
+          const botInfo = await botInfoResponse.json();
+          lineBotUserId = botInfo.userId;
+          console.log("[Team Operations] 取得 Bot User ID:", lineBotUserId);
+
+          if (!lineBotUserId) {
+            throw new Error("無法從 LINE API 取得 Bot User ID");
+          }
+        } catch (error) {
+          console.error("[Team Operations] 取得 Bot User ID 失敗:", error);
+          throw new Error(
+            `驗證 LINE 設定失敗: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+
+        // 更新團隊的 LINE 設定（包含 Bot User ID）
         const { error: updateError } = await supabaseAdmin
           .from("teams")
           .update({
@@ -347,6 +381,7 @@ serve(async (req) => {
             line_channel_secret,
             line_channel_access_token,
             line_channel_name: line_channel_name || null,
+            line_bot_user_id: lineBotUserId, // ✅ 儲存 Bot User ID
             line_connected_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
