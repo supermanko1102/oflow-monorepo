@@ -4,9 +4,19 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import Constants from "expo-constants";
 
-const TEAM_OPERATIONS_URL =
-  "https://tlxbxlhzcqctsvndvlge.supabase.co/functions/v1/team-operations";
+/**
+ * 動態取得 Team Operations Edge Function URL
+ * 確保使用與 Supabase client 相同的設定
+ */
+function getTeamOperationsUrl(): string {
+  const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
+  if (!supabaseUrl) {
+    throw new Error("Supabase URL not configured in app.config.js");
+  }
+  return `${supabaseUrl}/functions/v1/team-operations`;
+}
 
 interface Team {
   team_id: string;
@@ -71,35 +81,67 @@ async function callTeamAPI<T>(
   params?: Record<string, string>,
   body?: any
 ): Promise<T> {
-  const accessToken = await getAccessToken();
+  try {
+    const accessToken = await getAccessToken();
+    
+    // 動態取得 Edge Function URL
+    const baseUrl = getTeamOperationsUrl();
 
-  // 建立 URL
-  const url = new URL(TEAM_OPERATIONS_URL);
-  url.searchParams.set("action", action);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
+    // 建立 URL
+    const url = new URL(baseUrl);
+    url.searchParams.set("action", action);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    console.log(`[Team Service] ${method} ${action}`, {
+      url: url.toString(),
+      params: params || {},
+      body: body || {},
     });
+
+    const response = await fetch(url.toString(), {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    // 檢查 HTTP status
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Team Service] HTTP ${response.status}:`, errorText);
+      throw new Error(
+        `API 請求失敗 (${response.status}): ${errorText || response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "API 呼叫失敗");
+    }
+
+    console.log(`[Team Service] ${method} ${action} 成功`);
+    return data;
+  } catch (error) {
+    // 加強錯誤訊息
+    if (error instanceof TypeError && error.message === "Network request failed") {
+      console.error("[Team Service] Network 錯誤 - 可能原因:");
+      console.error("  1. Edge Function 尚未部署");
+      console.error("  2. Supabase URL 設定錯誤");
+      console.error("  3. 網路連線問題");
+      console.error("  4. CORS 設定問題");
+      throw new Error(
+        "無法連線到伺服器，請檢查網路連線或聯絡管理員"
+      );
+    }
+    throw error;
   }
-
-  console.log(`[Team Service] ${method} ${action}`, body || params || "");
-
-  const response = await fetch(url.toString(), {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || "API 呼叫失敗");
-  }
-
-  return data;
 }
 
 /**
