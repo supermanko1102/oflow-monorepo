@@ -1,6 +1,17 @@
+/**
+ * @deprecated 此 store 已棄用，請使用 React Query hooks 代替
+ * 
+ * 新的訂單管理方式：
+ * - 使用 `useOrders` 查詢訂單列表
+ * - 使用 `useOrderDetail` 查詢訂單詳情
+ * - 使用 `useUpdateOrderStatus` 更新訂單狀態
+ * - 使用 `useUpdateOrder` 更新訂單資料
+ * 
+ * 參考：mobile/hooks/queries/useOrders.ts
+ */
+
 import { create } from 'zustand';
 import { Order } from '@/types/order';
-import { mockOrders } from '@/data/mockOrders';
 
 interface OrderStore {
   orders: Order[];
@@ -19,7 +30,7 @@ interface OrderStore {
 }
 
 export const useOrderStore = create<OrderStore>((set, get) => ({
-  orders: mockOrders,
+  orders: [], // 已不再使用 mock data
   
   getOrderById: (id: string) => {
     return get().orders.find(order => order.id === id);

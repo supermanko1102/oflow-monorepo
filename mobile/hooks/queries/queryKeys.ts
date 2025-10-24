@@ -33,11 +33,18 @@ export const queryKeys = {
     inviteCode: (teamId: string) => [...queryKeys.teams.all(), 'inviteCode', teamId] as const,
   },
   
-  // Orders 相關 queries (預留，未來使用)
+  // Orders 相關 queries
   orders: {
+    // 所有 orders 相關的 queries
     all: () => ['orders'] as const,
-    list: (filters?: any) => [...queryKeys.orders.all(), 'list', filters] as const,
-    detail: (orderId: string) => [...queryKeys.orders.all(), 'detail', orderId] as const,
+    
+    // 團隊訂單列表（支援篩選）
+    list: (teamId: string, filters?: any) => 
+      [...queryKeys.orders.all(), 'list', teamId, filters] as const,
+    
+    // 單一訂單詳情
+    detail: (orderId: string) => 
+      [...queryKeys.orders.all(), 'detail', orderId] as const,
   },
   
   // Schedule 相關 queries (預留，未來使用)

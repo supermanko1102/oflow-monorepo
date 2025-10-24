@@ -2,25 +2,32 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useOrderStore } from '@/stores/useOrderStore';
+import { useOrders, useUpdateOrderStatus } from '@/hooks/queries/useOrders';
 import { TodaySummaryCard } from '@/components/TodaySummaryCard';
 import { TodayTodoList } from '@/components/TodayTodoList';
 import { FutureOrdersSection } from '@/components/FutureOrdersSection';
+import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
 import { useToast } from '@/hooks/useToast';
 import { useHaptics } from '@/hooks/useHaptics';
 import { SHADOWS } from '@/constants/design';
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
-  const merchantName = useAuthStore((state) => state.merchantName);
+  const merchantName = useAuthStore((state) => state.userName);
+  const currentTeamId = useAuthStore((state) => state.currentTeamId);
   const toast = useToast();
   const haptics = useHaptics();
-  const [refreshing, setRefreshing] = useState(false);
 
-  // 從 store 取得訂單和方法
-  const orders = useOrderStore((state) => state.orders);
-  const markOrderCompleted = useOrderStore((state) => state.markOrderCompleted);
-  const markOrderPending = useOrderStore((state) => state.markOrderPending);
+  // 使用 React Query 查詢訂單
+  const { data: orders = [], isLoading, refetch, isFetching } = useOrders(
+    currentTeamId,
+    undefined,
+    !!currentTeamId
+  );
+
+  // 更新訂單狀態的 mutation
+  const updateOrderStatus = useUpdateOrderStatus();
 
   // 在組件中計算訂單
   const todayPendingOrders = React.useMemo(() => {
@@ -62,29 +69,33 @@ export default function TodayScreen() {
   }, [orders]);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
     haptics.light();
-    
-    // 模擬資料重新載入
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setRefreshing(false);
+    await refetch();
     toast.success('資料已更新');
-  }, [haptics, toast]);
+  }, [haptics, toast, refetch]);
 
   // 處理訂單完成切換
-  const handleToggleComplete = useCallback((orderId: string) => {
+  const handleToggleComplete = useCallback(async (orderId: string) => {
     const order = [...todayPendingOrders, ...todayCompletedOrders].find(o => o.id === orderId);
     if (!order) return;
 
-    if (order.status === 'completed') {
-      markOrderPending(orderId);
-      toast.success('已標記為待處理');
-    } else {
-      markOrderCompleted(orderId);
-      toast.success('已標記為完成');
+    try {
+      const newStatus = order.status === 'completed' ? 'pending' : 'completed';
+      await updateOrderStatus.mutateAsync({
+        order_id: orderId,
+        status: newStatus,
+      });
+      
+      haptics.success();
+      if (newStatus === 'completed') {
+        toast.success('已標記為完成');
+      } else {
+        toast.success('已標記為待處理');
+      }
+    } catch (error) {
+      toast.error('更新失敗，請稍後再試');
     }
-  }, [todayPendingOrders, todayCompletedOrders, markOrderCompleted, markOrderPending, toast]);
+  }, [todayPendingOrders, todayCompletedOrders, updateOrderStatus, haptics, toast]);
 
   const today = new Date();
 
@@ -114,6 +125,23 @@ export default function TodayScreen() {
     ? todayPendingOrders[0].pickupTime 
     : undefined;
 
+  // Loading state
+  if (isLoading && !orders.length) {
+    return <LoadingState message="載入中..." />;
+  }
+
+  // 沒有選擇團隊
+  if (!currentTeamId) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50">
+        <EmptyState
+          title="請先選擇團隊"
+          description="前往設定選擇或建立團隊"
+        />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-gray-50">
       {/* Sticky Header */}
@@ -134,7 +162,7 @@ export default function TodayScreen() {
         className="flex-1"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isFetching}
             onRefresh={onRefresh}
             tintColor="#00B900"
             colors={['#00B900']}

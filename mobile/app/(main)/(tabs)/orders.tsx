@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Searchbar } from 'react-native-paper';
 import { Chip } from '@/components/native/Chip';
 import { OrderCard } from '@/components/OrderCard';
 import { EmptyState } from '@/components/EmptyState';
-import { useOrderStore } from '@/stores/useOrderStore';
+import { LoadingState } from '@/components/LoadingState';
+import { useOrders, useUpdateOrderStatus } from '@/hooks/queries/useOrders';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { OrderStatus, Order } from '@/types/order';
 import { useToast } from '@/hooks/useToast';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -19,21 +21,27 @@ export default function OrdersScreen() {
   const [statusFilter, setStatusFilter] = useState<FilterType>('pending');
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
   const haptics = useHaptics();
 
-  const allOrders = useOrderStore((state) => state.orders);
+  // 從 auth store 取得當前團隊 ID
+  const currentTeamId = useAuthStore((state) => state.currentTeamId);
+
+  // 使用 React Query 查詢訂單
+  const { data: allOrders = [], isLoading, refetch, isFetching } = useOrders(
+    currentTeamId,
+    undefined,
+    !!currentTeamId
+  );
+
+  // 更新訂單狀態的 mutation
+  const updateOrderStatus = useUpdateOrderStatus();
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
     haptics.light();
-    
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    setRefreshing(false);
+    await refetch();
     toast.success('訂單已更新');
-  }, [haptics, toast]);
+  }, [haptics, toast, refetch]);
 
   // 日期篩選輔助函數
   const isToday = (dateStr: string): boolean => {
@@ -98,8 +106,38 @@ export default function OrdersScreen() {
     });
   }, [allOrders, statusFilter, dateFilter, searchQuery]);
 
+  // 處理訂單完成
+  const handleOrderComplete = useCallback(async (orderId: string) => {
+    try {
+      await updateOrderStatus.mutateAsync({
+        order_id: orderId,
+        status: 'completed',
+      });
+      haptics.success();
+    } catch (error) {
+      toast.error('更新失敗，請稍後再試');
+    }
+  }, [updateOrderStatus, haptics, toast]);
+
   const pendingCount = allOrders.filter(o => o.status === 'pending').length;
   const completedCount = allOrders.filter(o => o.status === 'completed').length;
+
+  // Loading state
+  if (isLoading && !allOrders.length) {
+    return <LoadingState message="載入訂單中..." />;
+  }
+
+  // 沒有選擇團隊
+  if (!currentTeamId) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50">
+        <EmptyState
+          title="請先選擇團隊"
+          description="前往設定選擇或建立團隊"
+        />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -191,12 +229,14 @@ export default function OrdersScreen() {
       ) : (
         <FlatList
           data={filteredOrders}
-          renderItem={({ item }) => <OrderCard order={item} />}
+          renderItem={({ item }) => (
+            <OrderCard order={item} onComplete={handleOrderComplete} />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 16 }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isFetching}
               onRefresh={onRefresh}
               tintColor="#00B900"
               colors={['#00B900']}

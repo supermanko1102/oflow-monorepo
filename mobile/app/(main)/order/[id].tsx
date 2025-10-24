@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, ScrollView, Linking, Alert } from 'react-native';
 import { Button, Card, Divider } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useOrderStore } from '@/stores/useOrderStore';
+import { useOrderDetail, useUpdateOrderStatus } from '@/hooks/queries/useOrders';
+import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/useToast';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -13,16 +15,25 @@ export default function OrderDetailScreen() {
   const toast = useToast();
   const haptics = useHaptics();
   
-  const getOrderById = useOrderStore((state) => state.getOrderById);
-  const markOrderCompleted = useOrderStore((state) => state.markOrderCompleted);
-  const markOrderPending = useOrderStore((state) => state.markOrderPending);
+  // 使用 React Query 查詢訂單詳情
+  const { data: order, isLoading, error } = useOrderDetail(id || null);
   
-  const order = getOrderById(id!);
+  // 更新訂單狀態的 mutation
+  const updateOrderStatus = useUpdateOrderStatus();
 
-  if (!order) {
+  // Loading state
+  if (isLoading) {
+    return <LoadingState message="載入訂單詳情..." />;
+  }
+
+  // Error or not found
+  if (error || !order) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <Text className="text-lg text-gray-600">訂單不存在</Text>
+        <EmptyState
+          title="訂單不存在"
+          description="此訂單可能已被刪除或您沒有權限查看"
+        />
       </View>
     );
   }
@@ -38,14 +49,21 @@ export default function OrderDetailScreen() {
   };
 
   // 處理標記完成
-  const handleMarkCompleted = () => {
-    haptics.success();
-    markOrderCompleted(order.id);
-    toast.success('訂單已標記為完成 ✓');
-    // 延遲返回，讓用戶看到 toast
-    setTimeout(() => {
-      router.back();
-    }, 500);
+  const handleMarkCompleted = async () => {
+    try {
+      await updateOrderStatus.mutateAsync({
+        order_id: order.id,
+        status: 'completed',
+      });
+      haptics.success();
+      toast.success('訂單已標記為完成 ✓');
+      // 延遲返回，讓用戶看到 toast
+      setTimeout(() => {
+        router.back();
+      }, 500);
+    } catch (error) {
+      toast.error('更新失敗，請稍後再試');
+    }
   };
 
   // 處理聯絡客戶
@@ -86,7 +104,7 @@ export default function OrderDetailScreen() {
               訂單編號
             </Text>
             <Text className="text-base font-mono text-gray-700">
-              #{order.id}
+              {order.orderNumber}
             </Text>
           </View>
           <View className="flex-row gap-2">
@@ -229,6 +247,8 @@ export default function OrderDetailScreen() {
             onPress={handleMarkCompleted}
             className="mb-3"
             buttonColor="#00B900"
+            disabled={updateOrderStatus.isPending}
+            loading={updateOrderStatus.isPending}
           >
             標記為已完成
           </Button>
@@ -247,15 +267,23 @@ export default function OrderDetailScreen() {
         <View className="px-4 pb-6">
           <Button
             mode="outlined"
-            onPress={() => {
-              haptics.light();
-              markOrderPending(order.id);
-              toast.success('已改回待處理');
-              setTimeout(() => {
-                router.back();
-              }, 500);
+            onPress={async () => {
+              try {
+                await updateOrderStatus.mutateAsync({
+                  order_id: order.id,
+                  status: 'pending',
+                });
+                haptics.light();
+                toast.success('已改回待處理');
+                setTimeout(() => {
+                  router.back();
+                }, 500);
+              } catch (error) {
+                toast.error('更新失敗，請稍後再試');
+              }
             }}
             textColor="#6B7280"
+            disabled={updateOrderStatus.isPending}
           >
             改回待處理
           </Button>
