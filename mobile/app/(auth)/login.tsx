@@ -246,20 +246,6 @@ export default function LoginScreen() {
           </Button>
         </View>
 
-        {/* Mock 登入（開發用） */}
-        {__DEV__ && (
-          <View className="w-full mb-6">
-            <Button
-              onPress={handleMockLogin}
-              variant="secondary"
-              fullWidth
-              disabled={isLoading}
-            >
-              開發模式登入 (Mock)
-            </Button>
-          </View>
-        )}
-
         {/* Footer */}
         <View className="mt-4">
           <Text className="text-xs text-gray-500 text-center">
