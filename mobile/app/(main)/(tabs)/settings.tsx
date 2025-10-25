@@ -28,6 +28,7 @@ import {
 import { Button, Divider, List } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { updateLineSettings } from "@/services/teamService";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -192,9 +193,18 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 1. 先呼叫 Zustand logout（會自動持久化）
     logout();
-    router.replace("/(auth)/login");
+    
+    // 2. 清除 Supabase session
+    await supabase.auth.signOut();
+    
+    // 3. 清除 React Query cache
+    queryClient.clear();
+    
+    // 4. Root Layout 會自動偵測 isLoggedIn = false 並導向 login
+    // 不需要手動 router.replace()
   };
 
   // 處理通知開關

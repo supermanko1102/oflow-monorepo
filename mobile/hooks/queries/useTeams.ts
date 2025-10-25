@@ -20,6 +20,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 /**
  * 查詢使用者的所有團隊
  * 
+ * @param options - 查詢選項
+ * @param options.enabled - 是否啟用查詢（預設為 true）
+ * 
  * 使用時機：
  * - 團隊選擇頁
  * - 團隊切換器
@@ -29,10 +32,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
  * - staleTime: 5 分鐘（較長，團隊列表不常變動）
  * - 登入後會自動 prefetch
  */
-export function useTeams() {
+export function useTeams(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.teams.list(),
     queryFn: teamService.getUserTeams,
+    enabled: options?.enabled ?? true,
     staleTime: 5 * 60 * 1000, // 5 分鐘
   });
 }

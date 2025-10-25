@@ -33,21 +33,20 @@ const paperLightTheme = {
 };
 
 /**
- * 內部組件：處理團隊狀態同步和路由
+ * 內部組件：處理團隊狀態同步和路由守衛
  * 必須在 QueryClientProvider 內部才能使用 React Query
  */
 function RootNavigator() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
-  // 使用 React Query 取得團隊列表（自動 cache、refetch）
-  const { data: teams } = useTeams();
+  // 使用 React Query 取得團隊列表（只在已登入時才啟用）
+  const { data: teams } = useTeams({ enabled: isLoggedIn });
 
   // 團隊狀態同步邏輯
   useEffect(() => {
-    if (!hasHydrated || !isLoggedIn || !teams) return;
+    if (!isLoggedIn || !teams) return;
     
     // 情境 1: 本地沒有但後端有單一團隊 → 自動設定
     if (!currentTeamId && teams.length === 1) {
@@ -60,18 +59,22 @@ function RootNavigator() {
       console.log('[Root] 團隊無效，清除');
       setCurrentTeamId(null);
     }
-  }, [hasHydrated, isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
+  }, [isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
 
+  console.log('[Root] 路由狀態:', { isLoggedIn, currentTeamId });
+
+  // 使用 Stack.Protected 進行路由保護
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {!isLoggedIn || !currentTeamId ? (
-        // 未登入或無當前團隊：渲染 auth group
-        // （包含登入、團隊設置、團隊選擇等頁面）
-        <Stack.Screen name="(auth)" />
-      ) : (
-        // 已登入且有當前團隊：渲染 main group
+      {/* Protected: 已登入且有團隊時才能訪問 */}
+      <Stack.Protected guard={isLoggedIn && !!currentTeamId}>
         <Stack.Screen name="(main)" />
-      )}
+      </Stack.Protected>
+
+      {/* Protected: 未登入或無團隊時才能訪問 auth 相關頁面 */}
+      <Stack.Protected guard={!isLoggedIn || !currentTeamId}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
     </Stack>
   );
 }
