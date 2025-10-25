@@ -24,7 +24,7 @@ export default function OrdersScreen() {
   const toast = useToast();
   const haptics = useHaptics();
 
-  // 從 auth store 取得當前團隊 ID
+  // 從 auth store 取得當前團隊 ID（統一使用 AuthStore）
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
 
   // 使用 React Query 查詢訂單

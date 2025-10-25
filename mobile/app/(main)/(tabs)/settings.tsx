@@ -12,7 +12,6 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { useTeamStore } from "@/stores/useTeamStore";
 import * as NotificationService from "@/utils/notificationService";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -35,16 +34,12 @@ export default function SettingsScreen() {
   const router = useRouter();
   const toast = useToast();
 
-  // Auth store (client state)
+  // Auth store (client state) - 統一使用 AuthStore
   const userId = useAuthStore((state) => state.userId);
   const userName = useAuthStore((state) => state.userName);
-  const authCurrentTeamId = useAuthStore((state) => state.currentTeamId);
-  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const currentTeamId = useAuthStore((state) => state.currentTeamId);
+  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
   const logout = useAuthStore((state) => state.logout);
-
-  // Team store (client state)
-  const currentTeamId = useTeamStore((state) => state.currentTeamId);
-  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
 
   // React Query (server state)
   const { data: teams, isLoading: teamsLoading } = useTeams();
@@ -110,7 +105,6 @@ export default function SettingsScreen() {
 
   // 團隊相關處理函數
   const handleSwitchTeam = (teamId: string) => {
-    setAuthCurrentTeamId(teamId);
     setCurrentTeamId(teamId);
     toast.success("已切換團隊");
   };
@@ -141,7 +135,6 @@ export default function SettingsScreen() {
                 if (updatedTeams && Array.isArray(updatedTeams) && updatedTeams.length > 0) {
                   handleSwitchTeam(updatedTeams[0].team_id);
                 } else {
-                  setAuthCurrentTeamId(null);
                   setCurrentTeamId(null);
                   router.replace("/(auth)/team-setup");
                 }

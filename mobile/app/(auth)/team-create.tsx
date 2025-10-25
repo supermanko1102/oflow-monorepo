@@ -2,7 +2,6 @@ import { Button } from "@/components/native/Button";
 import { useCreateTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useTeamStore } from "@/stores/useTeamStore";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -18,9 +17,8 @@ export default function TeamCreateScreen() {
   const router = useRouter();
   const toast = useToast();
   
-  // Client state
-  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+  // Auth Store (統一使用 AuthStore)
+  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   // React Query mutation
   const createTeamMutation = useCreateTeam();
@@ -42,7 +40,6 @@ export default function TeamCreateScreen() {
       });
 
       // 設定為當前團隊
-      setAuthCurrentTeamId(newTeam.id);
       setCurrentTeamId(newTeam.id);
 
       toast.success("團隊建立成功！");

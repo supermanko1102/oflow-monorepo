@@ -2,7 +2,6 @@ import { Button } from "@/components/native/Button";
 import { useJoinTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useTeamStore } from "@/stores/useTeamStore";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -18,9 +17,8 @@ export default function TeamJoinScreen() {
   const router = useRouter();
   const toast = useToast();
   
-  // Client state
-  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+  // Auth Store (統一使用 AuthStore)
+  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   // React Query mutation
   const joinTeamMutation = useJoinTeam();
@@ -38,7 +36,6 @@ export default function TeamJoinScreen() {
       const team = await joinTeamMutation.mutateAsync(inviteCode.trim());
 
       // 設定為當前團隊
-      setAuthCurrentTeamId(team.team_id);
       setCurrentTeamId(team.team_id);
 
       toast.success(`已成功加入「${team.team_name}」！`);

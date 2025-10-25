@@ -5,7 +5,6 @@ import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import * as lineLoginService from "@/services/lineLoginService";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useTeamStore } from "@/stores/useTeamStore";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -16,8 +15,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
-  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   /**
    * 處理 Auth callback（從 deep link 觸發）
@@ -77,7 +75,6 @@ export default function LoginScreen() {
           // 單一團隊：直接進入
           const team = teams[0];
           console.log("[Login] 單一團隊，直接進入:", team.team_name);
-          setAuthCurrentTeamId(team.team_id);
           setCurrentTeamId(team.team_id);
           router.replace("/(main)/(tabs)");
         } else {
@@ -110,7 +107,7 @@ export default function LoginScreen() {
         setIsLoading(false);
       }
     },
-    [loginWithLine, setAuthCurrentTeamId, setCurrentTeamId, router]
+    [loginWithLine, setCurrentTeamId, router]
   );
 
   /**

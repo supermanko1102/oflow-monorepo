@@ -15,7 +15,7 @@ import { SHADOWS } from '@/constants/design';
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const merchantName = useAuthStore((state) => state.userName);
-  const currentTeamId = useAuthStore((state) => state.currentTeamId);
+  const currentTeamId = useAuthStore((state) => state.currentTeamId); // 統一使用 AuthStore
   const toast = useToast();
   const haptics = useHaptics();
 

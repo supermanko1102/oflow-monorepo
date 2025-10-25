@@ -1,7 +1,6 @@
 import { LoadingState } from "@/components/LoadingState";
 import { useTeams } from "@/hooks/queries/useTeams";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useTeamStore } from "@/stores/useTeamStore";
 import { useRouter } from "expo-router";
 import React from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -9,16 +8,14 @@ import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } fr
 export default function TeamSelectScreen() {
   const router = useRouter();
   
-  // Auth & Team Store (client state)
-  const setAuthCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
-  const setCurrentTeamId = useTeamStore((state) => state.setCurrentTeamId);
+  // Auth Store (統一使用 AuthStore)
+  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   // React Query (server state)
   const { data: teams, isLoading, error, refetch } = useTeams();
 
   const handleSelectTeam = (teamId: string) => {
-    // 設定到兩個 stores（為了向後相容）
-    setAuthCurrentTeamId(teamId);
+    // 設定當前團隊
     setCurrentTeamId(teamId);
     router.replace("/(main)/(tabs)");
   };
