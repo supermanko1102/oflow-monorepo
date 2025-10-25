@@ -137,7 +137,8 @@ export default function LoginScreen() {
   }, [handleCallback]);
 
   /**
-   * 處理 LINE Login 流程（只啟動授權）
+   * 處理 LINE Login 流程
+   * 使用 openAuthSessionAsync 會直接返回 redirect URL
    */
   const handleLineLogin = async () => {
     try {
@@ -145,16 +146,23 @@ export default function LoginScreen() {
 
       // 啟動 LINE OAuth 流程（開啟瀏覽器）
       console.log("[Login] 開始 LINE 登入流程...");
-      await lineLoginService.initiateLineLogin();
+      const redirectUrl = await lineLoginService.initiateLineLogin();
 
-      // 注意：此時不要 setIsLoading(false)
-      // 保持 loading 狀態直到收到 callback
-      console.log("[Login] 等待用戶授權...");
+      // 處理返回結果
+      if (redirectUrl) {
+        console.log("[Login] 收到 redirect URL，開始處理 callback...");
+        await handleCallback(redirectUrl);
+      } else {
+        // 用戶取消授權
+        console.log("[Login] 用戶取消登入");
+        setIsLoading(false);
+        Alert.alert("登入已取消", "您已取消 LINE 登入", [{ text: "確定" }]);
+      }
     } catch (error: any) {
-      console.error("[Login] 登入啟動失敗:", error);
+      console.error("[Login] 登入失敗:", error);
       setIsLoading(false);
 
-      Alert.alert("登入失敗", "無法啟動 LINE 登入，請稍後再試", [
+      Alert.alert("登入失敗", "無法完成 LINE 登入，請稍後再試", [
         { text: "確定" },
       ]);
     }

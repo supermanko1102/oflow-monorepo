@@ -64,10 +64,11 @@ export interface SupabaseSession {
 /**
  * 啟動 LINE Login OAuth 流程
  * 使用 Authorization Code Flow with PKCE
- * 注意：此函數只啟動授權流程，不等待結果
- * 結果會透過 deep link callback 返回，需要在 app 中監聽
+ * 
+ * 使用 openAuthSessionAsync 會自動攔截 redirect URL 並返回
+ * 返回的 URL 需要由調用方處理（不會觸發 deep link listener）
  */
-export const initiateLineLogin = async (): Promise<void> => {
+export const initiateLineLogin = async (): Promise<string | null> => {
   try {
     const channelId = getLineChannelId();
 
@@ -105,10 +106,26 @@ export const initiateLineLogin = async (): Promise<void> => {
 
     console.log("[LINE Login] 啟動 OAuth 流程...");
 
-    // 開啟瀏覽器進行授權（不等待結果）
-    await WebBrowser.openBrowserAsync(authUrl);
+    // 開啟授權會話（OAuth 專用，會在重定向後自動關閉）
+    const result = await WebBrowser.openAuthSessionAsync(
+      authUrl,
+      "oflow://" // 當重定向到這個 scheme 時，瀏覽器會自動關閉
+    );
 
-    console.log("[LINE Login] 等待用戶授權...");
+    console.log("[LINE Login] Auth session 結果:", result.type);
+
+    // 處理返回結果
+    if (result.type === "success" && result.url) {
+      console.log("[LINE Login] 成功取得 redirect URL");
+      return result.url;
+    } else if (result.type === "cancel") {
+      console.log("[LINE Login] 用戶取消授權");
+      await AsyncStorage.removeItem("line_pkce_code_verifier");
+      await AsyncStorage.removeItem("line_pkce_state");
+      return null;
+    } else {
+      throw new Error(`授權失敗: ${result.type}`);
+    }
   } catch (error) {
     // 清除儲存的 PKCE 參數
     await AsyncStorage.removeItem("line_pkce_code_verifier");
