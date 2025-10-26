@@ -64,7 +64,7 @@ async function verifyTeamMembership(
 }
 
 // 將資料庫訂單格式轉換為前端格式
-function transformOrderToClient(order: any) {
+function transformOrderToClient(order: any, conversation?: any[]) {
   return {
     id: order.id,
     orderNumber: order.order_number,
@@ -79,7 +79,9 @@ function transformOrderToClient(order: any) {
     source: order.source,
     notes: order.notes,
     customerNotes: order.customer_notes,
-    lineConversation: order.original_message ? [order.original_message] : [],
+    conversationId: order.conversation_id,
+    // 如果有對話記錄，使用新格式；否則回退到舊格式
+    lineConversation: conversation || (order.original_message ? [order.original_message] : []),
     createdAt: order.created_at,
     updatedAt: order.updated_at,
     confirmedAt: order.confirmed_at,
@@ -222,8 +224,31 @@ serve(async (req) => {
         // 驗證團隊成員身份
         await verifyTeamMembership(supabaseAdmin, user.id, order.team_id);
 
+        // 取得對話記錄（如果有 conversation_id）
+        let conversationMessages = null;
+        if (order.conversation_id) {
+          console.log("[Order Operations] 查詢對話記錄:", order.conversation_id);
+          
+          const { data: conversation, error: convError } = await supabaseAdmin
+            .rpc("get_order_conversation", {
+              p_order_id: orderId,
+            });
+
+          if (convError) {
+            console.error("[Order Operations] 對話記錄查詢失敗:", convError);
+            // 不中斷流程，只是沒有對話記錄
+          } else if (conversation && conversation.length > 0) {
+            conversationMessages = conversation.map((msg: any) => ({
+              role: msg.role,
+              message: msg.message,
+              timestamp: msg.message_timestamp,
+            }));
+            console.log("[Order Operations] 對話記錄數量:", conversationMessages.length);
+          }
+        }
+
         // 轉換為前端格式
-        const transformedOrder = transformOrderToClient(order);
+        const transformedOrder = transformOrderToClient(order, conversationMessages);
 
         return new Response(
           JSON.stringify({

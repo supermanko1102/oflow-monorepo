@@ -8,6 +8,13 @@ export interface OrderItem {
   notes?: string;
 }
 
+// LINE 對話訊息介面
+export interface LineMessage {
+  role: 'customer' | 'ai';
+  message: string;
+  timestamp: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string; // 訂單編號（如 ORD-20251020-001）
@@ -22,7 +29,8 @@ export interface Order {
   source: OrderSource;
   notes?: string; // 商家內部備註
   customerNotes?: string; // 顧客備註
-  lineConversation?: string[]; // LINE 對話記錄
+  conversationId?: string; // 對話 ID
+  lineConversation?: LineMessage[] | string[]; // LINE 對話記錄（支援新舊格式）
   createdAt: string;
   updatedAt?: string;
   confirmedAt?: string;

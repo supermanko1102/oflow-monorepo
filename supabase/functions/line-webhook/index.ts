@@ -1,5 +1,5 @@
-// OFlow LINE Webhook Handler
-// 接收 LINE Messaging API Webhook 事件，解析訊息並自動生成訂單
+// OFlow LINE Webhook Handler (Multi-turn Conversation)
+// 接收 LINE Messaging API Webhook 事件，支援多輪對話建立訂單
 
 /// <reference types="https://deno.land/x/edge_runtime@v1.35.0/types/index.d.ts" />
 
@@ -98,10 +98,12 @@ async function replyLineMessage(
   }
 }
 
-// 呼叫 AI 解析服務
+// 呼叫 AI 解析服務（支援對話歷史）
 async function parseMessageWithAI(
   message: string,
-  teamContext: any
+  teamContext: any,
+  conversationHistory: any[],
+  collectedData: any
 ): Promise<any> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -118,6 +120,8 @@ async function parseMessageWithAI(
         body: JSON.stringify({
           message,
           team_context: teamContext,
+          conversation_history: conversationHistory,
+          collected_data: collectedData,
         }),
       }
     );
@@ -181,20 +185,19 @@ serve(async (req) => {
       }
     );
 
-    // ✅ 根據 Bot User ID (destination) 查找對應的團隊
+    // 根據 Bot User ID (destination) 查找對應的團隊
     console.log("[LINE Webhook] 查找團隊，Bot User ID:", destination);
     const { data: team, error: teamError } = await supabaseAdmin
       .from("teams")
       .select(
         "id, name, business_type, line_channel_secret, line_channel_access_token, auto_mode"
       )
-      .eq("line_bot_user_id", destination) // 使用 line_bot_user_id
+      .eq("line_bot_user_id", destination)
       .single();
 
     if (teamError || !team) {
       console.error("[LINE Webhook] 找不到對應團隊 (Bot User ID):", destination);
       console.error("[LINE Webhook] 錯誤詳情:", teamError);
-      // 回傳 200 避免 LINE 重複發送
       return new Response(
         JSON.stringify({ message: "Team not found" }),
         {
@@ -205,13 +208,9 @@ serve(async (req) => {
     }
 
     console.log("[LINE Webhook] 找到團隊:", team.name);
-    console.log("[LINE Webhook] Channel Secret 長度:", team.line_channel_secret?.length);
 
     // 驗證 LINE 簽章
     console.log("[LINE Webhook] 開始驗證簽章...");
-    console.log("[LINE Webhook] Signature from LINE:", signature);
-    console.log("[LINE Webhook] Body 長度:", bodyText.length);
-    
     const isValidSignature = await verifyLineSignature(
       bodyText,
       signature,
@@ -220,15 +219,10 @@ serve(async (req) => {
 
     if (!isValidSignature) {
       console.error("[LINE Webhook] ❌ 簽章驗證失敗");
-      console.error("[LINE Webhook] Expected channel secret:", team.line_channel_secret);
-      console.error("[LINE Webhook] 請確認 LINE Developers Console 的 Channel Secret 與資料庫中的是否一致");
-      
-      // 回傳 200 避免 LINE 重複發送（但記錄錯誤）
       return new Response(
         JSON.stringify({
           success: false,
           error: "Invalid signature",
-          message: "簽章驗證失敗，請檢查 Channel Secret 是否正確"
         }),
         {
           status: 200,
@@ -257,7 +251,28 @@ serve(async (req) => {
         console.log("[LINE Webhook] 訊息內容:", messageText);
         console.log("[LINE Webhook] 使用者 ID:", lineUserId);
 
-        // 儲存訊息到資料庫
+        // ═══════════════════════════════════════════════════════
+        // Step 1: 取得或建立對話
+        // ═══════════════════════════════════════════════════════
+        console.log("[LINE Webhook] 取得或建立對話...");
+        const { data: conversation, error: convError } = await supabaseAdmin
+          .rpc("get_or_create_conversation", {
+            p_team_id: team.id,
+            p_line_user_id: lineUserId,
+          })
+          .single();
+
+        if (convError || !conversation) {
+          console.error("[LINE Webhook] 對話取得/建立失敗:", convError);
+          throw new Error("Failed to get or create conversation");
+        }
+
+        console.log("[LINE Webhook] 對話 ID:", conversation.id);
+        console.log("[LINE Webhook] 對話狀態:", conversation.status);
+
+        // ═══════════════════════════════════════════════════════
+        // Step 2: 儲存客人訊息到資料庫
+        // ═══════════════════════════════════════════════════════
         const { data: savedMessage, error: saveError } = await supabaseAdmin
           .from("line_messages")
           .insert({
@@ -266,6 +281,8 @@ serve(async (req) => {
             line_user_id: lineUserId,
             message_type: "text",
             message_text: messageText,
+            role: "customer",
+            conversation_id: conversation.id,
             ai_parsed: false,
           })
           .select()
@@ -276,17 +293,38 @@ serve(async (req) => {
           throw saveError;
         }
 
-        console.log("[LINE Webhook] 訊息已儲存");
+        console.log("[LINE Webhook] 客人訊息已儲存");
 
-        // 呼叫 AI 解析
+        // ═══════════════════════════════════════════════════════
+        // Step 3: 取得對話歷史（最近 5 條）
+        // ═══════════════════════════════════════════════════════
+        const { data: historyData, error: historyError } = await supabaseAdmin
+          .rpc("get_conversation_history", {
+            p_conversation_id: conversation.id,
+            p_limit: 5,
+          });
+
+        if (historyError) {
+          console.error("[LINE Webhook] 對話歷史查詢失敗:", historyError);
+        }
+
+        const conversationHistory = historyData || [];
+        console.log("[LINE Webhook] 對話歷史數量:", conversationHistory.length);
+
+        // ═══════════════════════════════════════════════════════
+        // Step 4: 呼叫 AI 解析（傳遞歷史和已收集資訊）
+        // ═══════════════════════════════════════════════════════
         const aiResult = await parseMessageWithAI(messageText, {
           name: team.name,
           business_type: team.business_type,
-        });
+        }, conversationHistory, conversation.collected_data);
 
         console.log("[LINE Webhook] AI 解析結果:", {
           intent: aiResult.intent,
           confidence: aiResult.confidence,
+          is_continuation: aiResult.is_continuation,
+          is_complete: aiResult.is_complete,
+          missing_fields: aiResult.missing_fields,
         });
 
         // 更新訊息的 AI 解析結果
@@ -299,167 +337,198 @@ serve(async (req) => {
           })
           .eq("id", savedMessage.id);
 
-        // 如果是訂單且信心度夠高，自動建立訂單
-        if (
-          aiResult.intent === "order" &&
-          aiResult.confidence >= 0.8 &&
-          aiResult.order &&
-          aiResult.order.items &&
-          aiResult.order.items.length > 0
-        ) {
-          console.log("[LINE Webhook] 信心度足夠，開始建立訂單...");
+        // ═══════════════════════════════════════════════════════
+        // Step 5: 根據 AI 結果處理
+        // ═══════════════════════════════════════════════════════
+        if (aiResult.intent === "order") {
+          if (aiResult.is_complete && aiResult.order) {
+            // ✅ 資訊完整，建立訂單
+            console.log("[LINE Webhook] 資訊完整，建立訂單...");
 
-          const order = aiResult.order;
+            const order = aiResult.order;
 
-          // 驗證必要欄位
-          if (!order.pickup_date || !order.pickup_time) {
-            console.log(
-              "[LINE Webhook] 缺少必要資訊（日期/時間），發送詢問訊息"
-            );
+            // 計算總金額（如果 AI 沒有提供）
+            let totalAmount = order.total_amount || 0;
 
-            await replyLineMessage(
-              event.replyToken,
-              [
+            try {
+              // 建立訂單
+              const { data: orderId, error: orderError } = await supabaseAdmin.rpc(
+                "create_order_from_ai",
                 {
-                  type: "text",
-                  text: "收到您的訂單！不過還需要確認以下資訊：\n\n" +
-                    (!order.pickup_date ? "• 取貨日期\n" : "") +
-                    (!order.pickup_time ? "• 取貨時間\n" : "") +
-                    "\n請補充這些資訊，謝謝！",
-                },
-              ],
-              team.line_channel_access_token
-            );
+                  p_team_id: team.id,
+                  p_customer_name: order.customer_name || "LINE 顧客",
+                  p_customer_phone: order.customer_phone || null,
+                  p_items: order.items,
+                  p_total_amount: totalAmount,
+                  p_pickup_date: order.pickup_date,
+                  p_pickup_time: order.pickup_time,
+                  p_line_message_id: savedMessage.id,
+                  p_original_message: messageText,
+                  p_customer_notes: order.items
+                    .map((item: any) => item.notes)
+                    .filter(Boolean)
+                    .join(", ") || null,
+                  p_conversation_id: conversation.id,
+                }
+              );
 
-            continue;
-          }
-
-          // 計算總金額（如果 AI 沒有提供）
-          let totalAmount = order.total_amount || 0;
-          if (!totalAmount) {
-            // 這裡可以根據商品名稱查詢價格表
-            // 目前暫時設為 0，需要商家確認
-            totalAmount = 0;
-          }
-
-          // 建立訂單
-          try {
-            const { data: orderId, error: orderError } = await supabaseAdmin.rpc(
-              "create_order_from_ai",
-              {
-                p_team_id: team.id,
-                p_customer_name: order.customer_name || "LINE 顧客",
-                p_customer_phone: order.customer_phone || null,
-                p_items: order.items,
-                p_total_amount: totalAmount,
-                p_pickup_date: order.pickup_date,
-                p_pickup_time: order.pickup_time,
-                p_line_message_id: savedMessage.id,
-                p_original_message: messageText,
-                p_customer_notes: order.items
-                  .map((item: any) => item.notes)
-                  .filter(Boolean)
-                  .join(", ") || null,
+              if (orderError) {
+                console.error("[LINE Webhook] 訂單建立失敗:", orderError);
+                throw orderError;
               }
-            );
 
-            if (orderError) {
-              console.error("[LINE Webhook] 訂單建立失敗:", orderError);
-              throw orderError;
+              console.log("[LINE Webhook] 訂單建立成功:", orderId);
+
+              // 標記對話完成
+              await supabaseAdmin.rpc("complete_conversation", {
+                p_conversation_id: conversation.id,
+                p_order_id: orderId,
+              });
+
+              // 查詢訂單詳情
+              const { data: orderDetail } = await supabaseAdmin
+                .from("orders")
+                .select("order_number")
+                .eq("id", orderId)
+                .single();
+
+              // 建立確認訊息
+              const itemsList = order.items
+                .map(
+                  (item: any) =>
+                    `• ${item.name} x${item.quantity}${item.notes ? ` (${item.notes})` : ""}`
+                )
+                .join("\n");
+
+              const confirmMessage =
+                `✅ 訂單已確認！\n\n` +
+                `訂單編號：${orderDetail?.order_number || "處理中"}\n\n` +
+                `商品：\n${itemsList}\n\n` +
+                `取貨時間：${order.pickup_date} ${order.pickup_time}\n` +
+                (totalAmount > 0 ? `金額：NT$ ${totalAmount}\n\n` : "\n") +
+                `感謝您的訂購！`;
+
+              // 儲存 AI 回覆
+              await supabaseAdmin
+                .from("line_messages")
+                .insert({
+                  team_id: team.id,
+                  line_user_id: lineUserId,
+                  message_type: "text",
+                  message_text: confirmMessage,
+                  role: "ai",
+                  conversation_id: conversation.id,
+                });
+
+              // 回覆確認訊息
+              await replyLineMessage(
+                event.replyToken,
+                [{ type: "text", text: confirmMessage }],
+                team.line_channel_access_token
+              );
+            } catch (createOrderError) {
+              console.error(
+                "[LINE Webhook] 訂單建立過程錯誤:",
+                createOrderError
+              );
+
+              const errorMessage = "抱歉，訂單處理時發生錯誤，請稍後再試或直接聯絡我們。";
+
+              // 儲存 AI 回覆
+              await supabaseAdmin
+                .from("line_messages")
+                .insert({
+                  team_id: team.id,
+                  line_user_id: lineUserId,
+                  message_type: "text",
+                  message_text: errorMessage,
+                  role: "ai",
+                  conversation_id: conversation.id,
+                });
+
+              // 回覆錯誤訊息
+              await replyLineMessage(
+                event.replyToken,
+                [{ type: "text", text: errorMessage }],
+                team.line_channel_access_token
+              );
             }
+          } else {
+            // ⏳ 資訊不完整，更新對話狀態並詢問
+            console.log("[LINE Webhook] 資訊不完整，請求補充");
 
-            console.log("[LINE Webhook] 訂單建立成功:", orderId);
+            // 更新對話中已收集的資訊
+            await supabaseAdmin.rpc("update_conversation_data", {
+              p_conversation_id: conversation.id,
+              p_collected_data: aiResult.order || {},
+              p_missing_fields: aiResult.missing_fields || [],
+            });
 
-            // 查詢剛建立的訂單詳情
-            const { data: orderDetail } = await supabaseAdmin
-              .from("orders")
-              .select("order_number")
-              .eq("id", orderId)
-              .single();
+            const replyMessage = aiResult.suggested_reply || "收到您的訊息！請補充訂單資訊。";
 
-            // 回覆確認訊息
-            const itemsList = order.items
-              .map(
-                (item: any) =>
-                  `• ${item.name} x${item.quantity}${item.notes ? ` (${item.notes})` : ""}`
-              )
-              .join("\n");
+            // 儲存 AI 回覆
+            await supabaseAdmin
+              .from("line_messages")
+              .insert({
+                team_id: team.id,
+                line_user_id: lineUserId,
+                message_type: "text",
+                message_text: replyMessage,
+                role: "ai",
+                conversation_id: conversation.id,
+              });
 
+            // 回覆詢問訊息
             await replyLineMessage(
               event.replyToken,
-              [
-                {
-                  type: "text",
-                  text:
-                    `✅ 訂單已確認！\n\n` +
-                    `訂單編號：${orderDetail?.order_number || "處理中"}\n\n` +
-                    `商品：\n${itemsList}\n\n` +
-                    `取貨時間：${order.pickup_date} ${order.pickup_time}\n` +
-                    (totalAmount > 0 ? `金額：NT$ ${totalAmount}\n\n` : "\n") +
-                    `感謝您的訂購！`,
-                },
-              ],
-              team.line_channel_access_token
-            );
-          } catch (createOrderError) {
-            console.error(
-              "[LINE Webhook] 訂單建立過程錯誤:",
-              createOrderError
-            );
-
-            // 回覆錯誤訊息
-            await replyLineMessage(
-              event.replyToken,
-              [
-                {
-                  type: "text",
-                  text: "抱歉，訂單處理時發生錯誤，請稍後再試或直接聯絡我們。",
-                },
-              ],
+              [{ type: "text", text: replyMessage }],
               team.line_channel_access_token
             );
           }
-        } else if (aiResult.intent === "order" && aiResult.confidence < 0.8) {
-          // 信心度不足，請求確認
-          console.log("[LINE Webhook] 信心度不足，請求人工確認");
-
-          await replyLineMessage(
-            event.replyToken,
-            [
-              {
-                type: "text",
-                text:
-                  "收到您的訊息！我們會盡快為您處理，如有任何問題會再與您聯繫。",
-              },
-            ],
-            team.line_channel_access_token
-          );
         } else if (aiResult.intent === "inquiry") {
           // 一般詢問
           console.log("[LINE Webhook] 一般詢問");
 
+          const replyMessage = aiResult.suggested_reply || "感謝您的詢問！我們會盡快回覆您。";
+
+          // 儲存 AI 回覆
+          await supabaseAdmin
+            .from("line_messages")
+            .insert({
+              team_id: team.id,
+              line_user_id: lineUserId,
+              message_type: "text",
+              message_text: replyMessage,
+              role: "ai",
+              conversation_id: conversation.id,
+            });
+
           await replyLineMessage(
             event.replyToken,
-            [
-              {
-                type: "text",
-                text: "感謝您的詢問！我們會盡快回覆您。",
-              },
-            ],
+            [{ type: "text", text: replyMessage }],
             team.line_channel_access_token
           );
         } else {
           // 其他類型訊息
           console.log("[LINE Webhook] 其他類型訊息");
 
+          const replyMessage = aiResult.suggested_reply || "收到您的訊息，謝謝！";
+
+          // 儲存 AI 回覆
+          await supabaseAdmin
+            .from("line_messages")
+            .insert({
+              team_id: team.id,
+              line_user_id: lineUserId,
+              message_type: "text",
+              message_text: replyMessage,
+              role: "ai",
+              conversation_id: conversation.id,
+            });
+
           await replyLineMessage(
             event.replyToken,
-            [
-              {
-                type: "text",
-                text: "收到您的訊息，謝謝！",
-              },
-            ],
+            [{ type: "text", text: replyMessage }],
             team.line_channel_access_token
           );
         }
@@ -496,4 +565,3 @@ serve(async (req) => {
     );
   }
 });
-

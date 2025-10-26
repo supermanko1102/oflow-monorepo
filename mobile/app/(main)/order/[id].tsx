@@ -221,20 +221,52 @@ export default function OrderDetailScreen() {
             <Text className="text-sm font-semibold text-gray-700 mb-3">
               LINE 對話記錄
             </Text>
-            {order.lineConversation.map((message, index) => (
-              <View 
-                key={index}
-                className={`p-3 rounded-lg mb-2 ${
-                  message.startsWith('AI:') || message.startsWith('商家:')
-                    ? 'bg-green-50/20'
-                    : 'bg-gray-100'
-                }`}
-              >
-                <Text className="text-sm text-gray-800">
-                  {message}
-                </Text>
-              </View>
-            ))}
+            <View className="space-y-2">
+              {order.lineConversation.map((message, index) => {
+                // 判斷是新格式（物件）還是舊格式（字串）
+                const isNewFormat = typeof message === 'object' && 'role' in message;
+                const isCustomer = isNewFormat 
+                  ? message.role === 'customer'
+                  : !message.startsWith('AI:') && !message.startsWith('商家:');
+                const messageText = isNewFormat ? message.message : message;
+                const timestamp = isNewFormat && message.timestamp 
+                  ? new Date(message.timestamp).toLocaleTimeString('zh-TW', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })
+                  : null;
+
+                return (
+                  <View 
+                    key={index}
+                    className={`flex ${isCustomer ? 'items-end' : 'items-start'} mb-2`}
+                  >
+                    <View className={`max-w-[80%] ${isCustomer ? 'ml-auto' : 'mr-auto'}`}>
+                      <View
+                        className={`p-3 rounded-2xl ${
+                          isCustomer
+                            ? 'bg-blue-500'
+                            : 'bg-gray-200'
+                        }`}
+                      >
+                        <Text className={`text-sm ${
+                          isCustomer ? 'text-white' : 'text-gray-800'
+                        }`}>
+                          {messageText}
+                        </Text>
+                      </View>
+                      {timestamp && (
+                        <Text className={`text-xs text-gray-400 mt-1 ${
+                          isCustomer ? 'text-right' : 'text-left'
+                        }`}>
+                          {timestamp}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </Card.Content>
         </Card>
       )}
