@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -86,9 +87,36 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      onRehydrateStorage: () => (state) => {
-        // 當從 AsyncStorage 讀取完成後，標記為已 hydrated
+      onRehydrateStorage: () => async (state) => {
+        console.log("[AuthStore] === Hydration 開始 ===");
+        console.log("[AuthStore] 恢復的狀態:", {
+          isLoggedIn: state?.isLoggedIn,
+          currentTeamId: state?.currentTeamId,
+          userName: state?.userName,
+        });
+
+        // 檢查 Supabase session 是否有效
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        console.log("[AuthStore] Supabase session:", session ? "有效" : "無效");
+        console.log("[AuthStore] Session 詳情:", {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          expiresAt: session?.expires_at,
+        });
+
+        if (state?.isLoggedIn && !session) {
+          // AuthStore 認為已登入，但 Supabase session 無效 → 清除登入狀態
+          console.log("[AuthStore] ❌ 不匹配：AuthStore 已登入但 session 無效");
+          state.logout();
+        } else if (session) {
+          console.log("[AuthStore] ✅ Session 有效，保持登入");
+        }
+
+        // 標記為已 hydrated
         state?.setHasHydrated(true);
+        console.log("[AuthStore] === Hydration 完成 ===");
       },
       // 只持久化必要的欄位，不持久化 _hasHydrated
       partialize: (state) => ({
@@ -104,3 +132,30 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// 監聽 Supabase auth 狀態變化，處理 session 過期
+let hasInitialized = false;
+
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log("[AuthStore] onAuthStateChange 觸發:", {
+    event,
+    hasSession: !!session,
+    hasInitialized,
+    storeIsLoggedIn: useAuthStore.getState().isLoggedIn,
+    storeHasHydrated: useAuthStore.getState()._hasHydrated,
+  });
+
+  // 初始化階段不處理（避免誤觸發）
+  if (!hasInitialized) {
+    console.log("[AuthStore] 初始化階段，跳過處理");
+    hasInitialized = true;
+    return;
+  }
+
+  // 只有在已經 hydrated 後才處理 session 過期
+  const state = useAuthStore.getState();
+  if (!session && state.isLoggedIn && state._hasHydrated) {
+    console.log("[AuthStore] ⚠️ Session 過期，自動登出");
+    useAuthStore.getState().logout();
+  }
+});

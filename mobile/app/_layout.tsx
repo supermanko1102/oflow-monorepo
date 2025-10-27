@@ -1,11 +1,13 @@
 import { QueryDevTools } from "@/components/QueryDevTools";
 import { ToastContainer } from "@/components/Toast";
 import { useTeams } from "@/hooks/queries/useTeams";
+import { useAuthRouter } from "@/hooks/useAuthRouter";
+import { useTeamSync } from "@/hooks/useTeamSync";
 import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -35,45 +37,30 @@ const paperLightTheme = {
 /**
  * 內部組件：處理團隊狀態同步和路由守衛
  * 必須在 QueryClientProvider 內部才能使用 React Query
+ *
+ * 架構重構：採用 Declarative Routing + Custom Hooks 模式
+ * - useTeamSync: 處理團隊狀態自動同步
+ * - useAuthRouter: 處理路由決策（狀態機模式）
+ * - 分離關注點，單一職責，易於測試
  */
 function RootNavigator() {
-  const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
-  const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   // 使用 React Query 取得團隊列表（只在已登入時才啟用）
   const { data: teams } = useTeams({ enabled: isLoggedIn });
 
-  // 團隊狀態同步邏輯
-  useEffect(() => {
-    if (!isLoggedIn || !teams) return;
+  // Hook 1: 自動同步團隊狀態（當本地無團隊時自動設定）
+  useTeamSync({ teams, isLoggedIn });
 
-    // 情境 1: 本地沒有但後端有單一團隊
-    if (!currentTeamId && teams.length === 1) {
-      const team = teams[0];
-      console.log("[Root] 自動設定團隊:", team.team_name);
-      setCurrentTeamId(team.team_id);
-
-      // 檢查是否需要完成 LINE 設定
-      if (!team.line_channel_id) {
-        console.log("[Root] 團隊未完成 LINE 設定，重導向");
-        router.replace("/(auth)/team-webhook");
-      }
-    }
-
-    // 情境 2: 本地有但後端沒有 → 清除無效的 teamId
-    if (currentTeamId && !teams.find((t) => t.team_id === currentTeamId)) {
-      console.log("[Root] 團隊無效，清除");
-      setCurrentTeamId(null);
-    }
-  }, [isLoggedIn, teams, currentTeamId, setCurrentTeamId, router]);
+  // Hook 2: 根據認證狀態自動導航
+  useAuthRouter({ isLoggedIn, currentTeamId, teams });
 
   // 檢查當前團隊是否已完成 LINE 設定
   const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
   const isLineConfigured = currentTeam?.line_channel_id ? true : false;
 
-  console.log("[Root] 路由狀態:", {
+  console.log("[Root] 路由守衛狀態:", {
     isLoggedIn,
     currentTeamId,
     isLineConfigured,
