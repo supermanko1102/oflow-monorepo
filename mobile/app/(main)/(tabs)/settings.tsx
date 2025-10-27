@@ -1,15 +1,18 @@
 import { InviteCodeDialog } from "@/components/team/InviteCodeDialog";
 import { MemberList } from "@/components/team/MemberList";
 import { TeamSelector } from "@/components/team/TeamSelector";
+import { queryKeys } from "@/hooks/queries/queryKeys";
 import {
+  useDeleteTeam,
   useInviteCode,
   useLeaveTeam,
   useTeamMembers,
   useTeams,
 } from "@/hooks/queries/useTeams";
-import { queryKeys } from "@/hooks/queries/queryKeys";
-import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/useToast";
+import { queryClient } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
+import { updateLineSettings } from "@/services/teamService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import * as NotificationService from "@/utils/notificationService";
@@ -25,10 +28,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Divider, List } from "react-native-paper";
+import { Button, Divider, List, Modal, Portal } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { updateLineSettings } from "@/services/teamService";
-import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -50,11 +51,14 @@ export default function SettingsScreen() {
     refetch: refetchMembers,
   } = useTeamMembers(currentTeamId || "", !!currentTeamId);
   const [showInviteCode, setShowInviteCode] = useState(false);
-  const {
-    data: inviteCodeData,
-    isLoading: inviteCodeLoading,
-  } = useInviteCode(currentTeamId || "", showInviteCode && !!currentTeamId);
+  const { data: inviteCodeData, isLoading: inviteCodeLoading } = useInviteCode(
+    currentTeamId || "",
+    showInviteCode && !!currentTeamId
+  );
   const leaveTeamMutation = useLeaveTeam();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const deleteTeamMutation = useDeleteTeam();
 
   // Settings store
   const notificationsEnabled = useSettingsStore(
@@ -88,7 +92,7 @@ export default function SettingsScreen() {
 
   // 從 teams 中找到當前團隊
   const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
-  
+
   // 取得當前用戶在團隊中的角色
   const myRole = currentTeam?.role || "member";
   const canManageTeam = myRole === "owner" || myRole === "admin";
@@ -132,8 +136,14 @@ export default function SettingsScreen() {
               // 等待 teams 重新載入後再導航
               setTimeout(() => {
                 // 從 queryClient 取得最新的 teams
-                const updatedTeams = queryClient.getQueryData(queryKeys.teams.list());
-                if (updatedTeams && Array.isArray(updatedTeams) && updatedTeams.length > 0) {
+                const updatedTeams = queryClient.getQueryData(
+                  queryKeys.teams.list()
+                );
+                if (
+                  updatedTeams &&
+                  Array.isArray(updatedTeams) &&
+                  updatedTeams.length > 0
+                ) {
                   handleSwitchTeam(updatedTeams[0].team_id);
                 } else {
                   setCurrentTeamId(null);
@@ -149,29 +159,49 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleDeleteTeam = () => {
-    if (!currentTeamId) return;
+  // 第一層：顯示警告對話框
+  const handleDeleteTeamPress = () => {
+    if (!currentTeamId || !currentTeam) return;
 
     Alert.alert(
-      "刪除團隊",
-      `確定要刪除「${currentTeam?.team_name}」嗎？\n\n⚠️ 此操作無法復原！\n所有訂單、顧客資料都將被永久刪除。`,
+      "⚠️ 刪除團隊",
+      "刪除後會發生什麼？\n\n• 所有訂單、客戶資料將永久刪除\n• 此操作無法復原\n• 團隊成員將失去存取權限\n\n確定要繼續嗎？",
       [
         { text: "取消", style: "cancel" },
         {
-          text: "刪除",
+          text: "繼續",
           style: "destructive",
-          onPress: () => {
-            // TODO: 實作 deleteTeam Edge Function endpoint
-            toast.error("刪除團隊功能尚未實作");
-            
-            // 未來實作：
-            // await deleteTeamMutation.mutateAsync(currentTeamId);
-            // toast.success("團隊已刪除");
-            // router.replace("/(auth)/team-setup");
-          },
+          onPress: () => setShowDeleteModal(true), // 第二層
         },
       ]
     );
+  };
+
+  // 第二層：輸入團隊名稱確認
+  const handleConfirmDelete = async () => {
+    if (!currentTeamId || !currentTeam) return;
+
+    // 檢查輸入的團隊名稱是否正確
+    if (deleteConfirmText !== currentTeam.team_name) {
+      toast.error("團隊名稱不正確");
+      return;
+    }
+
+    try {
+      await deleteTeamMutation.mutateAsync(currentTeamId);
+
+      setShowDeleteModal(false);
+      setDeleteConfirmText("");
+      toast.success("團隊已永久刪除");
+
+      // 清除當前團隊並導航
+      setTimeout(() => {
+        setCurrentTeamId(null);
+        router.replace("/(auth)/team-setup");
+      }, 500);
+    } catch (error: any) {
+      toast.error(error.message || "刪除失敗");
+    }
   };
 
   const handleRegenerateInviteCode = () => {
@@ -184,7 +214,7 @@ export default function SettingsScreen() {
         onPress: () => {
           // TODO: 實作 regenerateInviteCode Edge Function endpoint
           toast.error("重新生成邀請碼功能尚未實作");
-          
+
           // 未來實作：
           // await regenerateInviteCodeMutation.mutateAsync(currentTeamId);
           // toast.success("已重新生成邀請碼");
@@ -196,13 +226,13 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     // 1. 先呼叫 Zustand logout（會自動持久化）
     logout();
-    
+
     // 2. 清除 Supabase session
     await supabase.auth.signOut();
-    
+
     // 3. 清除 React Query cache
     queryClient.clear();
-    
+
     // 4. Root Layout 會自動偵測 isLoggedIn = false 並導向 login
     // 不需要手動 router.replace()
   };
@@ -330,13 +360,7 @@ export default function SettingsScreen() {
 
   const handleCopyWebhookUrl = () => {
     if (webhookUrl) {
-      Alert.alert(
-        "Webhook URL",
-        webhookUrl,
-        [
-          { text: "確定" }
-        ]
-      );
+      Alert.alert("Webhook URL", webhookUrl, [{ text: "確定" }]);
     }
   };
 
@@ -380,7 +404,9 @@ export default function SettingsScreen() {
                 <List.Icon {...props} icon="chevron-right" />
               ) : null
             }
-            onPress={() => teams && teams.length > 1 && setTeamSelectorVisible(true)}
+            onPress={() =>
+              teams && teams.length > 1 && setTeamSelectorVisible(true)
+            }
           />
           <Divider />
           <List.Item
@@ -507,8 +533,8 @@ export default function SettingsScreen() {
                       onPress={handleCopyWebhookUrl}
                       className="bg-white p-2 rounded border border-gray-300"
                     >
-                      <Text 
-                        className="text-gray-800 text-xs" 
+                      <Text
+                        className="text-gray-800 text-xs"
                         numberOfLines={3}
                         selectable={true}
                       >
@@ -676,17 +702,19 @@ export default function SettingsScreen() {
             )}
             {isOwner && (
               <>
+                <List.Subheader style={{ marginTop: 16 }}>
+                  危險操作
+                </List.Subheader>
                 <List.Item
                   title="刪除團隊"
-                  description="永久刪除團隊及所有資料"
+                  description="永久刪除此團隊和所有資料（無法復原）"
                   titleStyle={{ color: "#EF4444" }}
+                  descriptionStyle={{ color: "#F87171" }}
                   left={(props) => (
                     <List.Icon {...props} icon="delete" color="#EF4444" />
                   )}
-                  right={(props) => (
-                    <List.Icon {...props} icon="chevron-right" />
-                  )}
-                  onPress={handleDeleteTeam}
+                  onPress={handleDeleteTeamPress}
+                  disabled={deleteTeamMutation.isPending}
                 />
               </>
             )}
@@ -739,6 +767,68 @@ export default function SettingsScreen() {
           onRegenerate={isOwner ? handleRegenerateInviteCode : undefined}
         />
       )}
+
+      {/* 刪除確認 Modal */}
+      <Portal>
+        <Modal
+          visible={showDeleteModal}
+          onDismiss={() => {
+            setShowDeleteModal(false);
+            setDeleteConfirmText("");
+          }}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            padding: 20,
+            margin: 20,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
+            ⚠️ 確認刪除團隊
+          </Text>
+          <Text style={{ color: "#666", marginBottom: 20 }}>
+            此操作無法復原！請輸入團隊名稱「{currentTeam?.team_name}」以確認刪除
+          </Text>
+
+          <TextInput
+            value={deleteConfirmText}
+            onChangeText={setDeleteConfirmText}
+            placeholder="輸入團隊名稱"
+            autoFocus
+            style={{
+              borderWidth: 1,
+              borderColor: "#D1D5DB",
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 20,
+              fontSize: 16,
+            }}
+          />
+
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                setShowDeleteModal(false);
+                setDeleteConfirmText("");
+              }}
+              style={{ flex: 1 }}
+            >
+              取消
+            </Button>
+            <Button
+              mode="contained"
+              buttonColor="#EF4444"
+              onPress={handleConfirmDelete}
+              disabled={deleteConfirmText !== currentTeam?.team_name}
+              loading={deleteTeamMutation.isPending}
+              style={{ flex: 1 }}
+            >
+              確認刪除
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
     </ScrollView>
   );
 }

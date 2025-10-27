@@ -292,6 +292,40 @@ serve(async (req) => {
         );
       }
 
+      // 刪除團隊（硬刪除）
+      if (action === "delete") {
+        const { team_id } = body;
+
+        if (!team_id) {
+          throw new Error("Missing team_id");
+        }
+
+        console.log("[Team Operations] 刪除團隊 (硬刪除):", team_id);
+
+        // 呼叫 delete_team 函數
+        const { data, error } = await supabaseAdmin.rpc("delete_team", {
+          p_team_id: team_id,
+          p_user_id: user.id,
+        });
+
+        if (error) {
+          console.error("[Team Operations] 刪除失敗:", error);
+          throw error;
+        }
+
+        console.log("[Team Operations] 團隊已永久刪除");
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Team deleted permanently",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       // 更新團隊 LINE 官方帳號設定
       if (action === "update-line-settings") {
         const {
@@ -344,16 +378,22 @@ serve(async (req) => {
         let lineBotUserId: string | null = null;
 
         try {
-          const botInfoResponse = await fetch("https://api.line.me/v2/bot/info", {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${line_channel_access_token}`,
-            },
-          });
+          const botInfoResponse = await fetch(
+            "https://api.line.me/v2/bot/info",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${line_channel_access_token}`,
+              },
+            }
+          );
 
           if (!botInfoResponse.ok) {
             const errorText = await botInfoResponse.text();
-            console.error("[Team Operations] LINE Bot Info API 錯誤:", errorText);
+            console.error(
+              "[Team Operations] LINE Bot Info API 錯誤:",
+              errorText
+            );
             throw new Error(
               `無法驗證 LINE Channel Access Token: ${botInfoResponse.status} ${errorText}`
             );
@@ -369,7 +409,9 @@ serve(async (req) => {
         } catch (error) {
           console.error("[Team Operations] 取得 Bot User ID 失敗:", error);
           throw new Error(
-            `驗證 LINE 設定失敗: ${error instanceof Error ? error.message : String(error)}`
+            `驗證 LINE 設定失敗: ${
+              error instanceof Error ? error.message : String(error)
+            }`
           );
         }
 

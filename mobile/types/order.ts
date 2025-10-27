@@ -1,5 +1,12 @@
-export type OrderSource = 'auto' | 'semi-auto' | 'manual';
-export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type OrderSource = "auto" | "semi-auto" | "manual";
+export type OrderStatus = "pending" | "confirmed" | "completed" | "cancelled";
+
+// 配送/服務方式
+export type DeliveryMethod =
+  | "pickup" // 自取（商品型）
+  | "convenience_store" // 超商取貨（商品型）
+  | "black_cat" // 黑貓宅配（商品型）
+  | "onsite"; // 到店服務（服務型）
 
 export interface OrderItem {
   name: string;
@@ -10,7 +17,7 @@ export interface OrderItem {
 
 // LINE 對話訊息介面
 export interface LineMessage {
-  role: 'customer' | 'ai';
+  role: "customer" | "ai";
   message: string;
   timestamp: string;
 }
@@ -23,8 +30,21 @@ export interface Order {
   customerPhone?: string;
   items: OrderItem[];
   totalAmount: number;
-  pickupDate: string; // YYYY-MM-DD
-  pickupTime: string; // HH:MM:SS
+
+  // 通用時間欄位（語意：預約/交付）
+  appointmentDate: string; // 預約/交付日期 (YYYY-MM-DD)
+  appointmentTime: string; // 預約/交付時間 (HH:MM:SS)
+  deliveryMethod: DeliveryMethod; // 配送/服務方式
+
+  // 商品型專屬（選填）
+  requiresFrozen?: boolean; // 是否需要冷凍配送
+  storeInfo?: string; // 超商店號/店名
+  shippingAddress?: string; // 寄送地址
+
+  // 服務型專屬（選填）
+  serviceDuration?: number; // 服務時長（分鐘）
+  serviceNotes?: string; // 服務備註（如：頭髮長度、過敏）
+
   status: OrderStatus;
   source: OrderSource;
   notes?: string; // 商家內部備註
@@ -35,5 +55,26 @@ export interface Order {
   updatedAt?: string;
   confirmedAt?: string;
   completedAt?: string;
+
+  // 向後兼容（標記為棄用）
+  /** @deprecated 使用 appointmentDate */
+  pickupDate?: string;
+  /** @deprecated 使用 appointmentTime */
+  pickupTime?: string;
 }
 
+// 配送方式標籤對應
+export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
+  pickup: "自取",
+  convenience_store: "超商取貨",
+  black_cat: "黑貓宅配",
+  onsite: "到店服務",
+};
+
+// 配送方式 icon 對應
+export const DELIVERY_METHOD_ICONS: Record<DeliveryMethod, string> = {
+  pickup: "store",
+  convenience_store: "store",
+  black_cat: "truck",
+  onsite: "map-marker",
+};

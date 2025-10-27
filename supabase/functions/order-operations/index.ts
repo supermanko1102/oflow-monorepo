@@ -73,19 +73,37 @@ function transformOrderToClient(order: any, conversation?: any[]) {
     customerId: order.customer_id,
     items: order.items,
     totalAmount: parseFloat(order.total_amount),
-    pickupDate: order.pickup_date,
-    pickupTime: order.pickup_time,
+
+    // 新欄位（通用化）
+    appointmentDate: order.pickup_date,
+    appointmentTime: order.pickup_time,
+    deliveryMethod: order.delivery_method || "pickup",
+
+    // 商品型專屬
+    requiresFrozen: order.requires_frozen || false,
+    storeInfo: order.store_info,
+    shippingAddress: order.shipping_address,
+
+    // 服務型專屬
+    serviceDuration: order.service_duration,
+    serviceNotes: order.service_notes,
+
     status: order.status,
     source: order.source,
     notes: order.notes,
     customerNotes: order.customer_notes,
     conversationId: order.conversation_id,
     // 如果有對話記錄，使用新格式；否則回退到舊格式
-    lineConversation: conversation || (order.original_message ? [order.original_message] : []),
+    lineConversation:
+      conversation || (order.original_message ? [order.original_message] : []),
     createdAt: order.created_at,
     updatedAt: order.updated_at,
     confirmedAt: order.confirmed_at,
     completedAt: order.completed_at,
+
+    // 向後兼容（deprecated）
+    pickupDate: order.pickup_date,
+    pickupTime: order.pickup_time,
   };
 }
 
@@ -227,10 +245,13 @@ serve(async (req) => {
         // 取得對話記錄（如果有 conversation_id）
         let conversationMessages = null;
         if (order.conversation_id) {
-          console.log("[Order Operations] 查詢對話記錄:", order.conversation_id);
-          
-          const { data: conversation, error: convError } = await supabaseAdmin
-            .rpc("get_order_conversation", {
+          console.log(
+            "[Order Operations] 查詢對話記錄:",
+            order.conversation_id
+          );
+
+          const { data: conversation, error: convError } =
+            await supabaseAdmin.rpc("get_order_conversation", {
               p_order_id: orderId,
             });
 
@@ -243,12 +264,18 @@ serve(async (req) => {
               message: msg.message,
               timestamp: msg.message_timestamp,
             }));
-            console.log("[Order Operations] 對話記錄數量:", conversationMessages.length);
+            console.log(
+              "[Order Operations] 對話記錄數量:",
+              conversationMessages.length
+            );
           }
         }
 
         // 轉換為前端格式
-        const transformedOrder = transformOrderToClient(order, conversationMessages);
+        const transformedOrder = transformOrderToClient(
+          order,
+          conversationMessages
+        );
 
         return new Response(
           JSON.stringify({
@@ -298,7 +325,11 @@ serve(async (req) => {
           order.team_id
         );
 
-        if (!member.can_manage_orders && member.role !== "owner" && member.role !== "admin") {
+        if (
+          !member.can_manage_orders &&
+          member.role !== "owner" &&
+          member.role !== "admin"
+        ) {
           throw new Error("You don't have permission to manage orders");
         }
 
@@ -362,7 +393,11 @@ serve(async (req) => {
           order.team_id
         );
 
-        if (!member.can_manage_orders && member.role !== "owner" && member.role !== "admin") {
+        if (
+          !member.can_manage_orders &&
+          member.role !== "owner" &&
+          member.role !== "admin"
+        ) {
           throw new Error("You don't have permission to manage orders");
         }
 
@@ -374,7 +409,8 @@ serve(async (req) => {
 
         // 允許更新的欄位
         if (updates.notes !== undefined) updateData.notes = updates.notes;
-        if (updates.customer_notes !== undefined) updateData.customer_notes = updates.customer_notes;
+        if (updates.customer_notes !== undefined)
+          updateData.customer_notes = updates.customer_notes;
 
         const { error: updateError } = await supabaseAdmin
           .from("orders")
@@ -418,4 +454,3 @@ serve(async (req) => {
     );
   }
 });
-

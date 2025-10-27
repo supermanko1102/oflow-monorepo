@@ -83,7 +83,7 @@ async function callTeamAPI<T>(
 ): Promise<T> {
   try {
     const accessToken = await getAccessToken();
-    
+
     // 動態取得 Edge Function URL
     const baseUrl = getTeamOperationsUrl();
 
@@ -130,15 +130,16 @@ async function callTeamAPI<T>(
     return data;
   } catch (error) {
     // 加強錯誤訊息
-    if (error instanceof TypeError && error.message === "Network request failed") {
+    if (
+      error instanceof TypeError &&
+      error.message === "Network request failed"
+    ) {
       console.error("[Team Service] Network 錯誤 - 可能原因:");
       console.error("  1. Edge Function 尚未部署");
       console.error("  2. Supabase URL 設定錯誤");
       console.error("  3. 網路連線問題");
       console.error("  4. CORS 設定問題");
-      throw new Error(
-        "無法連線到伺服器，請檢查網路連線或聯絡管理員"
-      );
+      throw new Error("無法連線到伺服器，請檢查網路連線或聯絡管理員");
     }
     throw error;
   }
@@ -270,6 +271,20 @@ export async function updateLineSettings(
     return response;
   } catch (error) {
     console.error("[Team Service] 更新 LINE 設定失敗:", error);
+    throw error;
+  }
+}
+
+/**
+ * 刪除團隊（永久刪除）
+ */
+export async function deleteTeam(teamId: string): Promise<void> {
+  try {
+    await callTeamAPI<{ message: string }>("POST", "delete", undefined, {
+      team_id: teamId,
+    });
+  } catch (error) {
+    console.error("[Team Service] 刪除團隊失敗:", error);
     throw error;
   }
 }

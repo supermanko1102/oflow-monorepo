@@ -2,11 +2,14 @@ import { Button } from "@/components/native/Button";
 import { useCreateTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { BUSINESS_TYPE_OPTIONS, BusinessType } from "@/types/team";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -16,7 +19,7 @@ import {
 export default function TeamCreateScreen() {
   const router = useRouter();
   const toast = useToast();
-  
+
   // Auth Store (統一使用 AuthStore)
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
@@ -25,6 +28,8 @@ export default function TeamCreateScreen() {
 
   const [teamName, setTeamName] = useState("");
   const [lineAccountId, setLineAccountId] = useState("");
+  const [selectedBusinessType, setSelectedBusinessType] =
+    useState<BusinessType>("bakery");
 
   const handleCreate = async () => {
     if (!teamName.trim()) {
@@ -36,6 +41,7 @@ export default function TeamCreateScreen() {
       // 建立團隊（使用 React Query mutation）
       const newTeam = await createTeamMutation.mutateAsync({
         team_name: teamName.trim(),
+        business_type: selectedBusinessType,
         line_channel_id: lineAccountId.trim() || null,
       });
 
@@ -88,21 +94,50 @@ export default function TeamCreateScreen() {
               </Text>
             </View>
 
-            {/* LINE 官方帳號 ID */}
+            {/* 業務類別 */}
             <View>
-              <Text className="text-sm font-semibold text-gray-700 mb-2">
-                LINE 官方帳號 ID
+              <Text className="text-sm font-semibold text-gray-700 mb-3">
+                業務類別 <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
-                value={lineAccountId}
-                onChangeText={setLineAccountId}
-                placeholder="例如：@sweetshop"
-                className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-              />
-              <Text className="text-xs text-gray-500 mt-1">
-                綁定後 OFlow 將自動讀取該帳號的訊息（可選）
+              <View className="flex-row flex-wrap gap-3">
+                {BUSINESS_TYPE_OPTIONS.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setSelectedBusinessType(option.value)}
+                    className={`flex-1 min-w-[45%] px-4 py-4 rounded-xl border-2 ${
+                      selectedBusinessType === option.value
+                        ? "bg-blue-50 border-blue-500"
+                        : "bg-gray-50 border-gray-300"
+                    }`}
+                  >
+                    <View className="items-center">
+                      <MaterialCommunityIcons
+                        name={option.icon}
+                        size={32}
+                        color={
+                          selectedBusinessType === option.value
+                            ? "#3B82F6"
+                            : "#6B7280"
+                        }
+                      />
+                      <Text
+                        className={`text-sm font-semibold mt-2 ${
+                          selectedBusinessType === option.value
+                            ? "text-blue-600"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        {option.label}
+                      </Text>
+                      <Text className="text-xs text-gray-500 mt-1 text-center">
+                        {option.description}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+              <Text className="text-xs text-gray-500 mt-2">
+                系統會根據您的業務類別自動調整 AI 對話和訂單欄位
               </Text>
             </View>
 
