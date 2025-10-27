@@ -27,7 +27,6 @@ export default function TeamCreateScreen() {
   const createTeamMutation = useCreateTeam();
 
   const [teamName, setTeamName] = useState("");
-  const [lineAccountId, setLineAccountId] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] =
     useState<BusinessType>("bakery");
 
@@ -39,10 +38,11 @@ export default function TeamCreateScreen() {
 
     try {
       // 建立團隊（使用 React Query mutation）
+      // LINE 設定將在後續的專門頁面完成
       const newTeam = await createTeamMutation.mutateAsync({
         team_name: teamName.trim(),
         business_type: selectedBusinessType,
-        line_channel_id: lineAccountId.trim() || null,
+        line_channel_id: null,
       });
 
       // 設定為當前團隊
@@ -50,8 +50,8 @@ export default function TeamCreateScreen() {
 
       toast.success("團隊建立成功！");
 
-      // 導航到主頁
-      router.replace("/(main)/(tabs)");
+      // 導航到 LINE 設定頁面（強制設定）
+      router.replace("/(auth)/team-line-setup");
     } catch (error: any) {
       console.error("[Team Create] 建立失敗:", error);
       toast.error(error.message || "建立失敗，請稍後再試");

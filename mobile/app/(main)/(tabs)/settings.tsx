@@ -439,11 +439,11 @@ export default function SettingsScreen() {
           <List.Section>
             <List.Subheader>LINE 官方帳號設定</List.Subheader>
             <List.Item
-              title="設定 LINE 官方帳號"
+              title="更新 LINE 設定"
               description={
                 currentTeam?.line_channel_name
                   ? `已連接：${currentTeam.line_channel_name}`
-                  : "尚未設定"
+                  : "點擊以檢視設定"
               }
               left={(props) => <List.Icon {...props} icon="message-text" />}
               right={(props) => (
@@ -457,7 +457,7 @@ export default function SettingsScreen() {
             {lineSettingsExpanded && (
               <View className="px-4 pb-4">
                 <Text className="text-gray-600 text-sm mb-4">
-                  將 LINE 官方帳號與團隊連接，即可自動接收顧客訊息並生成訂單
+                  更新或修改 LINE 官方帳號設定，確保系統正常接收顧客訊息
                 </Text>
 
                 <Text className="text-gray-700 font-semibold mb-2">
@@ -518,7 +518,7 @@ export default function SettingsScreen() {
                   buttonColor="#00B900"
                   className="mb-2"
                 >
-                  儲存設定
+                  更新設定
                 </Button>
 
                 {webhookUrl && (
@@ -549,8 +549,8 @@ export default function SettingsScreen() {
 
                 <View className="mt-4 p-3 bg-blue-50 rounded">
                   <Text className="text-blue-800 text-xs">
-                    💡 提示：在 LINE Developers Console 中設定 Webhook URL 後，
-                    顧客傳送訊息給你的官方帳號時，系統會自動解析並建立訂單。
+                    💡 提示：如果更新了 Channel ID 或 Access Token，記得在 LINE
+                    Developers Console 中重新設定 Webhook URL。
                   </Text>
                 </View>
               </View>
