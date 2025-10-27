@@ -15,7 +15,7 @@ export default function AuthLayout() {
       <Stack.Screen name="team-select" />
       <Stack.Screen name="team-create" />
       <Stack.Screen name="team-join" />
-      <Stack.Screen name="team-line-setup" />
+      <Stack.Screen name="team-webhook" />
     </Stack>
   );
 }

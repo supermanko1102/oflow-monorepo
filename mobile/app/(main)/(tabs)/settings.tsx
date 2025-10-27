@@ -498,18 +498,6 @@ export default function SettingsScreen() {
                   className="border border-gray-300 rounded px-3 py-2 mb-3"
                 />
 
-                <Text className="text-gray-700 font-semibold mb-2">
-                  官方帳號名稱（選填）
-                </Text>
-                <TextInput
-                  value={lineSettings.channelName}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, channelName: text })
-                  }
-                  placeholder="例如：@ocake"
-                  className="border border-gray-300 rounded px-3 py-2 mb-4"
-                />
-
                 <Button
                   mode="contained"
                   onPress={handleUpdateLineSettings}
@@ -546,13 +534,6 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                 )}
-
-                <View className="mt-4 p-3 bg-blue-50 rounded">
-                  <Text className="text-blue-800 text-xs">
-                    💡 提示：如果更新了 Channel ID 或 Access Token，記得在 LINE
-                    Developers Console 中重新設定 Webhook URL。
-                  </Text>
-                </View>
               </View>
             )}
           </List.Section>

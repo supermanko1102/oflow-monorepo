@@ -51,7 +51,7 @@ export default function TeamCreateScreen() {
       toast.success("團隊建立成功！");
 
       // 導航到 LINE 設定頁面（強制設定）
-      router.replace("/(auth)/team-line-setup");
+      router.replace("/(auth)/team-webhook");
     } catch (error: any) {
       console.error("[Team Create] 建立失敗:", error);
       toast.error(error.message || "建立失敗，請稍後再試");

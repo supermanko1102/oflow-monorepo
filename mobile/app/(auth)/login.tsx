@@ -28,6 +28,7 @@ export default function LoginScreen() {
 
         // 1. 解析 session tokens
         const session = await lineLoginService.handleAuthCallback(url);
+        console.log("[Login] 收到 session:", session);
 
         // 2. 設定 Supabase session
         console.log("[Login] 設定 Supabase session...");
@@ -66,21 +67,36 @@ export default function LoginScreen() {
         // 6. 從登入回應取得團隊資訊
         const teams = session.teams || [];
 
-        // 7. 根據團隊數量決定導航
+        // 7. 根據團隊數量和 LINE 設定狀態決定導航
         if (teams.length === 0) {
           // 無團隊：前往團隊設置頁
           console.log("[Login] 無團隊，導向團隊設置頁");
           router.replace("/(auth)/team-setup");
-        } else if (teams.length === 1) {
-          // 單一團隊：直接進入
-          const team = teams[0];
-          console.log("[Login] 單一團隊，直接進入:", team.team_name);
-          setCurrentTeamId(team.team_id);
-          router.replace("/(main)/(tabs)");
         } else {
-          // 多個團隊：前往團隊選擇頁
-          console.log("[Login] 多個團隊，導向選擇頁");
-          router.replace("/(auth)/team-select");
+          // 優先檢查是否有未完成 LINE 設定的團隊
+          const incompleteTeam = teams.find((t) => !t.line_channel_id);
+
+          if (incompleteTeam) {
+            // 有未完成的團隊，強制完成設定
+            console.log(
+              "[Login] 發現未完成設定的團隊，強制完成:",
+              incompleteTeam.team_name
+            );
+            setCurrentTeamId(incompleteTeam.team_id);
+            router.replace("/(auth)/team-webhook");
+          } else if (teams.length === 1) {
+            // 只有一個團隊且已完成設定
+            console.log(
+              "[Login] 單一團隊且已設定，進入主頁:",
+              teams[0].team_name
+            );
+            setCurrentTeamId(teams[0].team_id);
+            router.replace("/(main)/(tabs)");
+          } else {
+            // 多個團隊且都已完成設定
+            console.log("[Login] 多個團隊（都已完成設定），導向選擇頁");
+            router.replace("/(auth)/team-select");
+          }
         }
       } catch (error: any) {
         console.error("[Login] Callback 處理失敗:", error);
@@ -166,17 +182,6 @@ export default function LoginScreen() {
         { text: "確定" },
       ]);
     }
-  };
-
-  /**
-   * Mock 登入（已停用 - 新架構需要真實 access token）
-   */
-  const handleMockLogin = async () => {
-    Alert.alert(
-      "Mock 登入已停用",
-      "新架構需要真實的 LINE 登入。請使用「使用 LINE 登入」按鈕。",
-      [{ text: "確定" }]
-    );
   };
 
   return (

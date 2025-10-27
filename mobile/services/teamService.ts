@@ -27,6 +27,7 @@ interface Team {
   order_count: number;
   subscription_status: string;
   line_channel_name: string | null;
+  line_channel_id: string | null; // 用於判斷是否已完成 LINE 設定
 }
 
 interface TeamMember {

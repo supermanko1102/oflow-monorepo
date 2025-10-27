@@ -71,10 +71,10 @@ export default function TeamLineSetupScreen() {
 
       const response = await updateLineSettings({
         team_id: currentTeamId,
-        channel_id: lineSettings.channelId.trim(),
-        channel_secret: lineSettings.channelSecret.trim(),
-        access_token: lineSettings.accessToken.trim(),
-        channel_name: lineSettings.channelName.trim() || null,
+        line_channel_id: lineSettings.channelId.trim(),
+        line_channel_secret: lineSettings.channelSecret.trim(),
+        line_channel_access_token: lineSettings.accessToken.trim(),
+        line_channel_name: lineSettings.channelName.trim() || undefined,
       });
 
       setWebhookUrl(response.webhook_url);
@@ -226,25 +226,6 @@ export default function TeamLineSetupScreen() {
                 </View>
                 <Text className="text-xs text-gray-500 mt-1">
                   在 LINE Developers Console 的 Messaging API 中取得
-                </Text>
-              </View>
-
-              {/* 官方帳號名稱（選填） */}
-              <View>
-                <Text className="text-sm font-semibold text-gray-700 mb-2">
-                  官方帳號名稱（選填）
-                </Text>
-                <TextInput
-                  value={lineSettings.channelName}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, channelName: text })
-                  }
-                  placeholder="例如：@ocake"
-                  className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                />
-                <Text className="text-xs text-gray-500 mt-1">
-                  方便辨識，可隨時修改
                 </Text>
               </View>
 

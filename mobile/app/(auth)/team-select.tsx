@@ -1,13 +1,18 @@
-import { LoadingState } from "@/components/LoadingState";
 import { useTeams } from "@/hooks/queries/useTeams";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "expo-router";
 import React from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function TeamSelectScreen() {
   const router = useRouter();
-  
+
   // Auth Store (統一使用 AuthStore)
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
@@ -15,9 +20,18 @@ export default function TeamSelectScreen() {
   const { data: teams, isLoading, error, refetch } = useTeams();
 
   const handleSelectTeam = (teamId: string) => {
+    const selectedTeam = teams?.find((t) => t.team_id === teamId);
+
     // 設定當前團隊
     setCurrentTeamId(teamId);
-    router.replace("/(main)/(tabs)");
+
+    // 檢查該團隊是否已完成 LINE 設定
+    if (!selectedTeam?.line_channel_id) {
+      console.log("[Team Select] 團隊未完成 LINE 設定，導向設定頁");
+      router.replace("/(auth)/team-webhook");
+    } else {
+      router.replace("/(main)/(tabs)");
+    }
   };
 
   // Loading state

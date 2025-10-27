@@ -3,9 +3,9 @@ import { ToastContainer } from "@/components/Toast";
 import { useTeams } from "@/hooks/queries/useTeams";
 import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack } from "expo-router";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -37,6 +37,7 @@ const paperLightTheme = {
  * 必須在 QueryClientProvider 內部才能使用 React Query
  */
 function RootNavigator() {
+  const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
@@ -47,32 +48,51 @@ function RootNavigator() {
   // 團隊狀態同步邏輯
   useEffect(() => {
     if (!isLoggedIn || !teams) return;
-    
-    // 情境 1: 本地沒有但後端有單一團隊 → 自動設定
+
+    // 情境 1: 本地沒有但後端有單一團隊
     if (!currentTeamId && teams.length === 1) {
-      console.log('[Root] 自動設定團隊:', teams[0].team_name);
-      setCurrentTeamId(teams[0].team_id);
+      const team = teams[0];
+      console.log("[Root] 自動設定團隊:", team.team_name);
+      setCurrentTeamId(team.team_id);
+
+      // 檢查是否需要完成 LINE 設定
+      if (!team.line_channel_id) {
+        console.log("[Root] 團隊未完成 LINE 設定，重導向");
+        router.replace("/(auth)/team-webhook");
+      }
     }
-    
+
     // 情境 2: 本地有但後端沒有 → 清除無效的 teamId
-    if (currentTeamId && !teams.find(t => t.team_id === currentTeamId)) {
-      console.log('[Root] 團隊無效，清除');
+    if (currentTeamId && !teams.find((t) => t.team_id === currentTeamId)) {
+      console.log("[Root] 團隊無效，清除");
       setCurrentTeamId(null);
     }
-  }, [isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
+  }, [isLoggedIn, teams, currentTeamId, setCurrentTeamId, router]);
 
-  console.log('[Root] 路由狀態:', { isLoggedIn, currentTeamId });
+  // 檢查當前團隊是否已完成 LINE 設定
+  const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
+  const isLineConfigured = currentTeam?.line_channel_id ? true : false;
+
+  console.log("[Root] 路由狀態:", {
+    isLoggedIn,
+    currentTeamId,
+    isLineConfigured,
+  });
 
   // 使用 Stack.Protected 進行路由保護
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Protected: 已登入且有團隊時才能訪問 */}
-      <Stack.Protected guard={isLoggedIn && !!currentTeamId}>
+      {/* Protected: 已登入且有團隊且已完成 LINE 設定時才能訪問 */}
+      <Stack.Protected
+        guard={isLoggedIn && !!currentTeamId && isLineConfigured}
+      >
         <Stack.Screen name="(main)" />
       </Stack.Protected>
 
-      {/* Protected: 未登入或無團隊時才能訪問 auth 相關頁面 */}
-      <Stack.Protected guard={!isLoggedIn || !currentTeamId}>
+      {/* Protected: 未登入或無團隊或未完成 LINE 設定時才能訪問 auth 相關頁面 */}
+      <Stack.Protected
+        guard={!isLoggedIn || !currentTeamId || !isLineConfigured}
+      >
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
