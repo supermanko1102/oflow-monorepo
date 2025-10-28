@@ -1,4 +1,3 @@
-import { QueryDevTools } from "@/components/QueryDevTools";
 import { ToastContainer } from "@/components/Toast";
 import { useTeams } from "@/hooks/queries/useTeams";
 import { useAuthRouter } from "@/hooks/useAuthRouter";
@@ -126,7 +125,6 @@ export default function RootLayout() {
           </ThemeProvider>
         </PaperProvider>
       </SafeAreaProvider>
-      <QueryDevTools />
     </QueryClientProvider>
   );
 }

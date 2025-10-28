@@ -38,10 +38,10 @@ module.exports = {
         {
           image: "./assets/images/splash-icon.png",
           imageWidth: 200,
-          resizeMode: "contain",
-          backgroundColor: "#ffffff",
+          resizeMode: "cover",
+          backgroundColor: "#00C300",
           dark: {
-            backgroundColor: "#000000",
+            backgroundColor: "#00A300",
           },
         },
       ],
