@@ -1,5 +1,7 @@
 import { Button } from "@/components/native/Button";
+import { queryKeys } from "@/hooks/queries/queryKeys";
 import { useToast } from "@/hooks/useToast";
+import { queryClient } from "@/lib/queryClient";
 import { updateLineSettings } from "@/services/teamService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -80,6 +82,9 @@ export default function TeamLineSetupScreen() {
       setWebhookUrl(response.webhook_url);
       setIsCompleted(true);
       toast.success("LINE 設定完成！");
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.list(),
+      });
     } catch (error: any) {
       console.error("[Team LINE Setup] 設定失敗:", error);
       toast.error(error.message || "設定失敗，請檢查資訊是否正確");
@@ -91,6 +96,7 @@ export default function TeamLineSetupScreen() {
   // 完成設定，進入主頁
   const handleComplete = () => {
     router.replace("/(main)/(tabs)");
+    console.log("handleComplete");
   };
 
   return (

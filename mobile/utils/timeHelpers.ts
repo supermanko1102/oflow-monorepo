@@ -3,7 +3,7 @@
  * 處理日期格式化、相對時間、緊急度計算等
  */
 
-export type UrgencyLevel = 'urgent' | 'soon' | 'normal';
+export type UrgencyLevel = "urgent" | "soon" | "normal";
 
 /**
  * 計算訂單的緊急程度
@@ -13,20 +13,20 @@ export type UrgencyLevel = 'urgent' | 'soon' | 'normal';
 export function getUrgencyLevel(pickupDate: string): UrgencyLevel {
   const now = new Date();
   const pickup = new Date(pickupDate);
-  
+
   // 設定為當天開始時間，忽略小時分鐘
   now.setHours(0, 0, 0, 0);
   pickup.setHours(0, 0, 0, 0);
-  
+
   const diffTime = pickup.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays <= 0) {
-    return 'urgent'; // 今天或已過期
+    return "urgent"; // 今天或已過期
   } else if (diffDays === 1) {
-    return 'soon'; // 明天
+    return "soon"; // 明天
   } else {
-    return 'normal'; // 2天後以上
+    return "normal"; // 2天後以上
   }
 }
 
@@ -36,29 +36,36 @@ export function getUrgencyLevel(pickupDate: string): UrgencyLevel {
  * @param pickupTime - 取貨時間字串 (HH:mm)
  * @returns 友善的相對時間文字
  */
-export function formatRelativeTime(pickupDate: string, pickupTime?: string): string {
+export function formatRelativeTime(
+  pickupDate: string,
+  pickupTime?: string
+): string {
   const now = new Date();
   const pickup = new Date(pickupDate);
-  
+
   now.setHours(0, 0, 0, 0);
   pickup.setHours(0, 0, 0, 0);
-  
+
   const diffTime = pickup.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  const timeStr = pickupTime ? ` ${pickupTime}` : '';
-  
+
+  const timeStr = pickupTime ? ` ${pickupTime}` : "";
+
   if (diffDays === 0) {
     // 今天 - 計算小時差
     if (pickupTime) {
-      const [hours, minutes] = pickupTime.split(':').map(Number);
+      const [hours, minutes] = pickupTime.split(":").map(Number);
       const pickupDateTime = new Date();
       pickupDateTime.setHours(hours, minutes, 0, 0);
-      
+
       const currentTime = new Date();
-      const hoursDiff = Math.floor((pickupDateTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60));
-      const minutesDiff = Math.floor((pickupDateTime.getTime() - currentTime.getTime()) / (1000 * 60));
-      
+      const hoursDiff = Math.floor(
+        (pickupDateTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60)
+      );
+      const minutesDiff = Math.floor(
+        (pickupDateTime.getTime() - currentTime.getTime()) / (1000 * 60)
+      );
+
       if (hoursDiff < 0) {
         return `今天${timeStr}`;
       } else if (hoursDiff === 0) {
@@ -69,7 +76,7 @@ export function formatRelativeTime(pickupDate: string, pickupTime?: string): str
         return `今天${timeStr}`;
       }
     }
-    return '今天';
+    return "今天";
   } else if (diffDays === 1) {
     return `明天${timeStr}`;
   } else if (diffDays === 2) {
@@ -91,9 +98,9 @@ export function formatRelativeTime(pickupDate: string, pickupTime?: string): str
  */
 export function getUrgencyColor(level: UrgencyLevel): string {
   const colors = {
-    urgent: '#EF4444', // 紅色
-    soon: '#F59E0B',   // 橘色
-    normal: '#10B981', // 綠色
+    urgent: "#EF4444", // 紅色
+    soon: "#F59E0B", // 橘色
+    normal: "#10B981", // 綠色
   };
   return colors[level];
 }
@@ -105,9 +112,9 @@ export function getUrgencyColor(level: UrgencyLevel): string {
  */
 export function getUrgencyEmoji(level: UrgencyLevel): string {
   const emojis = {
-    urgent: '🔴',
-    soon: '🟡',
-    normal: '🟢',
+    urgent: "🔴",
+    soon: "🟡",
+    normal: "🟢",
   };
   return emojis[level];
 }
@@ -119,9 +126,9 @@ export function getUrgencyEmoji(level: UrgencyLevel): string {
  */
 export function getUrgencyText(level: UrgencyLevel): string {
   const texts = {
-    urgent: '今天取貨',
-    soon: '明天取貨',
-    normal: '未來取貨',
+    urgent: "今天取貨",
+    soon: "明天取貨",
+    normal: "未來取貨",
   };
   return texts[level];
 }
@@ -135,9 +142,9 @@ export function formatDisplayDate(dateStr: string): string {
   const date = new Date(dateStr);
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
   const weekday = weekdays[date.getDay()];
-  
+
   return `${month}/${day} (${weekday})`;
 }
 
@@ -149,7 +156,7 @@ export function formatDisplayDate(dateStr: string): string {
 export function isToday(dateStr: string): boolean {
   const today = new Date();
   const date = new Date(dateStr);
-  
+
   return (
     date.getDate() === today.getDate() &&
     date.getMonth() === today.getMonth() &&
@@ -166,11 +173,10 @@ export function isTomorrow(dateStr: string): boolean {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const date = new Date(dateStr);
-  
+
   return (
     date.getDate() === tomorrow.getDate() &&
     date.getMonth() === tomorrow.getMonth() &&
     date.getFullYear() === tomorrow.getFullYear()
   );
 }
-
