@@ -60,12 +60,17 @@ export const queryKeys = {
       [...queryKeys.dashboard.all(), "summary", teamId] as const,
   },
 
-  // Schedule 相關 queries (預留，未來使用)
-  schedule: {
-    all: () => ["schedule"] as const,
-    weekly: (date: string) =>
-      [...queryKeys.schedule.all(), "weekly", date] as const,
-    monthly: (date: string) =>
-      [...queryKeys.schedule.all(), "monthly", date] as const,
+  // Products 相關 queries
+  products: {
+    // 所有 products 相關的 queries
+    all: () => ["products"] as const,
+
+    // 團隊商品列表
+    list: (teamId: string) =>
+      [...queryKeys.products.all(), "list", teamId] as const,
+
+    // 單一商品詳情
+    detail: (productId: string) =>
+      [...queryKeys.products.all(), "detail", productId] as const,
   },
 } as const;

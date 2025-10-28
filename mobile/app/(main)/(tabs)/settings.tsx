@@ -16,6 +16,7 @@ import { updateLineSettings } from "@/services/teamService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import * as NotificationService from "@/utils/notificationService";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -28,7 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Divider, List, Modal, Portal } from "react-native-paper";
+import { Button, Card, Divider, List, Modal, Portal } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
@@ -44,14 +45,13 @@ export default function SettingsScreen() {
   const logout = useAuthStore((state) => state.logout);
 
   // React Query (server state)
-  const { data: teams, isLoading: teamsLoading } = useTeams();
-  const {
-    data: teamMembers,
-    isLoading: membersLoading,
-    refetch: refetchMembers,
-  } = useTeamMembers(currentTeamId || "", !!currentTeamId);
+  const { data: teams } = useTeams();
+  const { data: teamMembers, isLoading: membersLoading } = useTeamMembers(
+    currentTeamId || "",
+    !!currentTeamId
+  );
   const [showInviteCode, setShowInviteCode] = useState(false);
-  const { data: inviteCodeData, isLoading: inviteCodeLoading } = useInviteCode(
+  const { data: inviteCodeData } = useInviteCode(
     currentTeamId || "",
     showInviteCode && !!currentTeamId
   );
@@ -67,6 +67,8 @@ export default function SettingsScreen() {
   const setNotificationsEnabled = useSettingsStore(
     (state) => state.setNotificationsEnabled
   );
+  const autoMode = useSettingsStore((state) => state.autoMode);
+  const setAutoMode = useSettingsStore((state) => state.setAutoMode);
 
   // UI state
   const [teamSelectorVisible, setTeamSelectorVisible] = useState(false);
@@ -430,6 +432,103 @@ export default function SettingsScreen() {
               />
             </>
           )}
+        </List.Section>
+      </View>
+
+      {/* Order Mode Section */}
+      <View className="bg-white mt-4">
+        <List.Section>
+          <List.Subheader>接單模式</List.Subheader>
+
+          {/* 全自動模式卡片 */}
+          <View className="px-4 pb-4">
+            <Card
+              className={`border-2 ${
+                autoMode
+                  ? "border-line-green bg-white"
+                  : "border-gray-200 bg-white"
+              }`}
+            >
+              <Card.Content className="p-4">
+                <View className="flex-row items-start justify-between mb-3">
+                  <View className="flex-1">
+                    <View className="flex-row items-center mb-2">
+                      <MaterialCommunityIcons
+                        name="robot"
+                        size={24}
+                        color={autoMode ? "#00B900" : "#6B7280"}
+                      />
+                      <Text
+                        className={`text-lg font-bold ml-2 ${
+                          autoMode ? "text-line-green" : "text-gray-900"
+                        }`}
+                      >
+                        全自動模式
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-gray-600 mb-2">
+                      AI 自動回覆顧客並建立訂單
+                    </Text>
+                  </View>
+                  <Switch
+                    value={autoMode}
+                    onValueChange={(value) => {
+                      setAutoMode(value);
+                      toast.success(
+                        value ? "已切換至全自動模式" : "已切換至半自動模式"
+                      );
+                    }}
+                    trackColor={{ true: "#00B900" }}
+                  />
+                </View>
+              </Card.Content>
+            </Card>
+          </View>
+
+          {/* 半自動模式卡片 */}
+          <View className="px-4 pb-4">
+            <Card
+              className={`border-2 ${
+                !autoMode
+                  ? "border-line-green bg-white"
+                  : "border-gray-200 bg-white"
+              }`}
+            >
+              <Card.Content className="p-4">
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1">
+                    <View className="flex-row items-center mb-2">
+                      <MaterialCommunityIcons
+                        name="account-check"
+                        size={24}
+                        color={!autoMode ? "#00B900" : "#6B7280"}
+                      />
+                      <Text
+                        className={`text-lg font-bold ml-2 ${
+                          !autoMode ? "text-line-green" : "text-gray-900"
+                        }`}
+                      >
+                        半自動模式
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-gray-600 mb-2">
+                      你手動確認後，AI 才會建立訂單
+                    </Text>
+                  </View>
+                  <Switch
+                    value={!autoMode}
+                    onValueChange={(value) => {
+                      setAutoMode(!value);
+                      toast.success(
+                        !value ? "已切換至全自動模式" : "已切換至半自動模式"
+                      );
+                    }}
+                    trackColor={{ true: "#00B900" }}
+                  />
+                </View>
+              </Card.Content>
+            </Card>
+          </View>
         </List.Section>
       </View>
 

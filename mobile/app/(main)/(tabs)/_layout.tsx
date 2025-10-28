@@ -1,12 +1,12 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
 
-import { HapticTab } from '@/components/haptic-tab';
+import { HapticTab } from "@/components/haptic-tab";
 
 export default function TabLayout() {
-  const activeTintColor = '#00B900';
-  const inactiveTintColor = '#6B7280';
+  const activeTintColor = "#00B900";
+  const inactiveTintColor = "#6B7280";
 
   return (
     <Tabs
@@ -16,41 +16,54 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E5E7EB',
+          backgroundColor: "#FFFFFF",
+          borderTopColor: "#E5E7EB",
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: '今日',
+          title: "今日",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-today" size={size} color={color} />
+            <MaterialCommunityIcons
+              name="calendar-today"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: '訂單',
+          title: "訂單",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="clipboard-text" size={size} color={color} />
+            <MaterialCommunityIcons
+              name="clipboard-text"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
-        name="schedule"
+        name="products"
         options={{
-          title: '排程',
+          title: "商品",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-clock" size={size} color={color} />
+            <MaterialCommunityIcons
+              name="package-variant"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: '設置',
+          title: "設置",
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="cog" size={size} color={color} />
           ),
@@ -59,4 +72,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
