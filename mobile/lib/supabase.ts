@@ -1,27 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
-import Constants from "expo-constants";
-
-// 從環境變數取得 Supabase 設定
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "請在 .env 檔案中設定 EXPO_PUBLIC_SUPABASE_URL 和 EXPO_PUBLIC_SUPABASE_ANON_KEY"
-  );
-}
+import { config } from "./config";
 
 // 建立 Supabase Client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    // 使用 AsyncStorage 儲存 session
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+export const supabase = createClient(
+  config.supabase.url,
+  config.supabase.anonKey,
+  {
+    auth: {
+      // 使用 AsyncStorage 儲存 session
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  }
+);
 
 // 型別定義
 export type Database = {

@@ -1,3 +1,5 @@
+// ==================== Order Types ====================
+
 export type OrderSource = "auto" | "semi-auto" | "manual";
 export type OrderStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
@@ -78,3 +80,32 @@ export const DELIVERY_METHOD_ICONS: Record<DeliveryMethod, string> = {
   black_cat: "truck",
   onsite: "map-marker",
 };
+
+// ==================== API Types ====================
+
+/**
+ * 訂單查詢篩選條件
+ */
+export interface OrderFilters {
+  status?: "all" | "pending" | "completed" | "cancelled";
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD
+  search?: string;
+}
+
+/**
+ * 訂單狀態更新參數
+ */
+export interface UpdateOrderStatusParams {
+  order_id: string;
+  status: "pending" | "completed" | "cancelled";
+}
+
+/**
+ * 訂單資料更新參數
+ */
+export interface UpdateOrderParams {
+  order_id: string;
+  notes?: string;
+  customer_notes?: string;
+}

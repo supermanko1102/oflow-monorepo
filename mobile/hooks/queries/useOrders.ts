@@ -1,6 +1,6 @@
 /**
  * Orders Query Hooks
- * 
+ *
  * 使用 React Query 管理所有訂單相關的 server state
  * 包含：
  * - useOrders: 查詢團隊的訂單列表
@@ -9,24 +9,24 @@
  * - useUpdateOrder: 更新訂單資料
  */
 
-import { queryKeys } from '@/hooks/queries/queryKeys';
-import * as orderService from '@/services/orderService';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { OrderFilters } from '@/services/orderService';
+import { queryKeys } from "@/hooks/queries/queryKeys";
+import * as orderService from "@/services/orderService";
+import type { OrderFilters } from "@/types/order";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ==================== Queries ====================
 
 /**
  * 查詢團隊的訂單列表
- * 
+ *
  * @param teamId - 團隊 ID
  * @param filters - 篩選條件（狀態、日期範圍、搜尋）
  * @param enabled - 是否啟用查詢（預設為 true）
- * 
+ *
  * 使用時機：
  * - 訂單列表頁
  * - 首頁訂單預覽
- * 
+ *
  * Cache 策略：
  * - staleTime: 1 分鐘（訂單可能頻繁變動）
  * - 支援下拉重新整理
@@ -37,10 +37,10 @@ export function useOrders(
   enabled: boolean = true
 ) {
   return useQuery({
-    queryKey: queryKeys.orders.list(teamId || '', filters),
+    queryKey: queryKeys.orders.list(teamId || "", filters),
     queryFn: () => {
       if (!teamId) {
-        throw new Error('Team ID is required');
+        throw new Error("Team ID is required");
       }
       return orderService.getOrders(teamId, filters);
     },
@@ -51,22 +51,25 @@ export function useOrders(
 
 /**
  * 查詢單一訂單詳情
- * 
+ *
  * @param orderId - 訂單 ID
  * @param enabled - 是否啟用查詢（預設為 true）
- * 
+ *
  * 使用時機：
  * - 訂單詳情頁
- * 
+ *
  * Cache 策略：
  * - staleTime: 2 分鐘（詳情頁較少變動）
  */
-export function useOrderDetail(orderId: string | null, enabled: boolean = true) {
+export function useOrderDetail(
+  orderId: string | null,
+  enabled: boolean = true
+) {
   return useQuery({
-    queryKey: queryKeys.orders.detail(orderId || ''),
+    queryKey: queryKeys.orders.detail(orderId || ""),
     queryFn: () => {
       if (!orderId) {
-        throw new Error('Order ID is required');
+        throw new Error("Order ID is required");
       }
       return orderService.getOrderById(orderId);
     },
@@ -79,15 +82,15 @@ export function useOrderDetail(orderId: string | null, enabled: boolean = true) 
 
 /**
  * 更新訂單狀態
- * 
+ *
  * 成功後：
  * - 自動 invalidate 該訂單的詳情
  * - 自動 invalidate 訂單列表
- * 
+ *
  * 使用範例：
  * ```tsx
  * const updateStatus = useUpdateOrderStatus();
- * 
+ *
  * const handleComplete = async (orderId: string) => {
  *   try {
  *     await updateStatus.mutateAsync({
@@ -122,15 +125,15 @@ export function useUpdateOrderStatus() {
 
 /**
  * 更新訂單資料
- * 
+ *
  * 成功後：
  * - 自動 invalidate 該訂單的詳情
  * - 自動 invalidate 訂單列表
- * 
+ *
  * 使用範例：
  * ```tsx
  * const updateOrder = useUpdateOrder();
- * 
+ *
  * const handleUpdateNotes = async (orderId: string, notes: string) => {
  *   try {
  *     await updateOrder.mutateAsync({
@@ -167,15 +170,15 @@ export function useUpdateOrder() {
 
 /**
  * Prefetch orders list
- * 
+ *
  * 使用時機：
  * - 選擇團隊後
  * - 預期使用者即將查看訂單列表時
- * 
+ *
  * 範例：
  * ```tsx
  * import { prefetchOrders } from '@/hooks/queries/useOrders';
- * 
+ *
  * // 在選擇團隊後
  * await prefetchOrders(queryClient, teamId);
  * ```
@@ -191,4 +194,3 @@ export async function prefetchOrders(
     staleTime: 1 * 60 * 1000,
   });
 }
-

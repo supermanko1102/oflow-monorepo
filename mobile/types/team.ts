@@ -1,10 +1,95 @@
 /**
  * Team 相關型別定義
- * 包含業務類別、團隊資訊等
+ * 包含業務類別、團隊資訊、團隊成員等
  */
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ComponentProps } from "react";
+
+// ==================== API Types ====================
+
+/**
+ * 團隊資訊（從 API 返回）
+ */
+export interface Team {
+  team_id: string;
+  team_name: string;
+  team_slug: string;
+  role: string;
+  member_count: number;
+  order_count: number;
+  subscription_status: string;
+  line_channel_name: string | null;
+  line_channel_id: string | null; // 用於判斷是否已完成 LINE 設定
+}
+
+/**
+ * 團隊角色
+ */
+export type TeamRole = "owner" | "admin" | "member";
+
+/**
+ * 團隊成員資訊
+ */
+export interface TeamMember {
+  member_id: string;
+  user_id: string;
+  user_name: string;
+  user_picture_url: string | null;
+  role: string;
+  joined_at: string;
+  can_manage_orders: boolean;
+  can_manage_customers: boolean;
+  can_manage_settings: boolean;
+  can_view_analytics: boolean;
+  can_invite_members: boolean;
+}
+
+/**
+ * 使用者的團隊（簡化版，用於列表顯示）
+ * Alias for Team interface for backward compatibility
+ */
+export type UserTeam = Team;
+
+/**
+ * 建立團隊參數
+ */
+export interface CreateTeamParams {
+  team_name: string;
+  line_channel_id?: string | null;
+  business_type?: string;
+}
+
+/**
+ * 建立團隊回應
+ */
+export interface CreateTeamResponse {
+  id: string;
+  name: string;
+  slug: string;
+  invite_code: string;
+}
+
+/**
+ * 更新 LINE 設定參數
+ */
+export interface UpdateLineSettingsParams {
+  team_id: string;
+  line_channel_id: string;
+  line_channel_secret: string;
+  line_channel_access_token: string;
+  line_channel_name?: string;
+}
+
+/**
+ * 更新 LINE 設定回應
+ */
+export interface UpdateLineSettingsResponse {
+  webhook_url: string;
+  message: string;
+}
+
+// ==================== Business Type ====================
 
 // 業務類別
 export type BusinessType =

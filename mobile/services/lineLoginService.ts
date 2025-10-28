@@ -1,5 +1,5 @@
+import { config } from "@/lib/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 
@@ -8,7 +8,7 @@ const LINE_AUTHORIZE_ENDPOINT = "https://access.line.me/oauth2/v2.1/authorize";
 
 // 取得 LINE Channel ID
 const getLineChannelId = (): string => {
-  const channelId = Constants.expoConfig?.extra?.lineChannelId;
+  const channelId = config.line.channelId;
   if (!channelId) {
     throw new Error("請在 .env 檔案中設定 EXPO_PUBLIC_LINE_CHANNEL_ID");
   }
@@ -64,7 +64,7 @@ export interface SupabaseSession {
 /**
  * 啟動 LINE Login OAuth 流程
  * 使用 Authorization Code Flow with PKCE
- * 
+ *
  * 使用 openAuthSessionAsync 會自動攔截 redirect URL 並返回
  * 返回的 URL 需要由調用方處理（不會觸發 deep link listener）
  */
