@@ -1,16 +1,16 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { useOrders, useUpdateOrderStatus } from '@/hooks/queries/useOrders';
-import { TodaySummaryCard } from '@/components/TodaySummaryCard';
-import { TodayTodoList } from '@/components/TodayTodoList';
-import { FutureOrdersSection } from '@/components/FutureOrdersSection';
-import { LoadingState } from '@/components/LoadingState';
-import { EmptyState } from '@/components/EmptyState';
-import { useToast } from '@/hooks/useToast';
-import { useHaptics } from '@/hooks/useHaptics';
-import { SHADOWS } from '@/constants/design';
+import { EmptyState } from "@/components/EmptyState";
+import { FutureOrdersSection } from "@/components/FutureOrdersSection";
+import { LoadingState } from "@/components/LoadingState";
+import { TodaySummaryCard } from "@/components/TodaySummaryCard";
+import { TodayTodoList } from "@/components/TodayTodoList";
+import { SHADOWS } from "@/constants/design";
+import { useOrders, useUpdateOrderStatus } from "@/hooks/queries/useOrders";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useToast } from "@/hooks/useToast";
+import { useAuthStore } from "@/stores/useAuthStore";
+import React, { useCallback } from "react";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
@@ -20,11 +20,12 @@ export default function TodayScreen() {
   const haptics = useHaptics();
 
   // 使用 React Query 查詢訂單
-  const { data: orders = [], isLoading, refetch, isFetching } = useOrders(
-    currentTeamId,
-    undefined,
-    !!currentTeamId
-  );
+  const {
+    data: orders = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useOrders(currentTeamId, undefined, !!currentTeamId);
 
   // 更新訂單狀態的 mutation
   const updateOrderStatus = useUpdateOrderStatus();
@@ -33,12 +34,14 @@ export default function TodayScreen() {
   const todayPendingOrders = React.useMemo(() => {
     const today = new Date();
     return orders
-      .filter(order => {
+      .filter((order) => {
         const orderDate = new Date(order.pickupDate);
-        return order.status === 'pending' &&
+        return (
+          order.status === "pending" &&
           orderDate.getFullYear() === today.getFullYear() &&
           orderDate.getMonth() === today.getMonth() &&
-          orderDate.getDate() === today.getDate();
+          orderDate.getDate() === today.getDate()
+        );
       })
       .sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
   }, [orders]);
@@ -46,12 +49,14 @@ export default function TodayScreen() {
   const todayCompletedOrders = React.useMemo(() => {
     const today = new Date();
     return orders
-      .filter(order => {
+      .filter((order) => {
         const orderDate = new Date(order.pickupDate);
-        return order.status === 'completed' &&
+        return (
+          order.status === "completed" &&
           orderDate.getFullYear() === today.getFullYear() &&
           orderDate.getMonth() === today.getMonth() &&
-          orderDate.getDate() === today.getDate();
+          orderDate.getDate() === today.getDate()
+        );
       })
       .sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
   }, [orders]);
@@ -60,54 +65,69 @@ export default function TodayScreen() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return orders
-      .filter(order => {
+      .filter((order) => {
         const orderDate = new Date(order.pickupDate);
         orderDate.setHours(0, 0, 0, 0);
-        return order.status === 'pending' && orderDate > today;
+        return order.status === "pending" && orderDate > today;
       })
-      .sort((a, b) => new Date(a.pickupDate).getTime() - new Date(b.pickupDate).getTime());
+      .sort(
+        (a, b) =>
+          new Date(a.pickupDate).getTime() - new Date(b.pickupDate).getTime()
+      );
   }, [orders]);
 
   const onRefresh = useCallback(async () => {
     haptics.light();
     await refetch();
-    toast.success('資料已更新');
+    toast.success("資料已更新");
   }, [haptics, toast, refetch]);
 
   // 處理訂單完成切換
-  const handleToggleComplete = useCallback(async (orderId: string) => {
-    const order = [...todayPendingOrders, ...todayCompletedOrders].find(o => o.id === orderId);
-    if (!order) return;
+  const handleToggleComplete = useCallback(
+    async (orderId: string) => {
+      const order = [...todayPendingOrders, ...todayCompletedOrders].find(
+        (o) => o.id === orderId
+      );
+      if (!order) return;
 
-    try {
-      const newStatus = order.status === 'completed' ? 'pending' : 'completed';
-      await updateOrderStatus.mutateAsync({
-        order_id: orderId,
-        status: newStatus,
-      });
-      
-      haptics.success();
-      if (newStatus === 'completed') {
-        toast.success('已標記為完成');
-      } else {
-        toast.success('已標記為待處理');
+      try {
+        const newStatus =
+          order.status === "completed" ? "pending" : "completed";
+        await updateOrderStatus.mutateAsync({
+          order_id: orderId,
+          status: newStatus,
+        });
+
+        haptics.success();
+        if (newStatus === "completed") {
+          toast.success("已標記為完成");
+        } else {
+          toast.success("已標記為待處理");
+        }
+      } catch (error) {
+        toast.error("更新失敗，請稍後再試");
       }
-    } catch (error) {
-      toast.error('更新失敗，請稍後再試');
-    }
-  }, [todayPendingOrders, todayCompletedOrders, updateOrderStatus, haptics, toast]);
+    },
+    [
+      todayPendingOrders,
+      todayCompletedOrders,
+      updateOrderStatus,
+      haptics,
+      toast,
+    ]
+  );
 
   const today = new Date();
 
   const getCurrentGreeting = () => {
     const hour = today.getHours();
-    if (hour < 12) return '早安';
-    if (hour < 18) return '午安';
-    return '晚安';
+    if (hour < 12) return "早安";
+    if (hour < 18) return "午安";
+    return "晚安";
   };
 
   const formatDate = () => {
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
     const month = today.getMonth() + 1;
     const date = today.getDate();
     const weekday = weekdays[today.getDay()];
@@ -121,9 +141,10 @@ export default function TodayScreen() {
   );
 
   // 取得首筆取貨時間
-  const firstPickupTime = todayPendingOrders.length > 0 
-    ? todayPendingOrders[0].pickupTime 
-    : undefined;
+  const firstPickupTime =
+    todayPendingOrders.length > 0
+      ? todayPendingOrders[0].pickupTime
+      : undefined;
 
   // Loading state
   if (isLoading && !orders.length) {
@@ -134,10 +155,7 @@ export default function TodayScreen() {
   if (!currentTeamId) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
-        <EmptyState
-          title="請先選擇團隊"
-          description="前往設定選擇或建立團隊"
-        />
+        <EmptyState title="請先選擇團隊" description="前往設定選擇或建立團隊" />
       </View>
     );
   }
@@ -145,7 +163,7 @@ export default function TodayScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Sticky Header */}
-      <View 
+      <View
         className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
@@ -165,7 +183,7 @@ export default function TodayScreen() {
             refreshing={isFetching}
             onRefresh={onRefresh}
             tintColor="#00B900"
-            colors={['#00B900']}
+            colors={["#00B900"]}
           />
         }
       >
