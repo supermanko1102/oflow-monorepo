@@ -4,11 +4,12 @@ import { LoadingState } from "@/components/LoadingState";
 import { TodaySummaryCard } from "@/components/TodaySummaryCard";
 import { TodayTodoList } from "@/components/TodayTodoList";
 import { SHADOWS } from "@/constants/design";
-import { useOrders, useUpdateOrderStatus } from "@/hooks/queries/useOrders";
+import { useDashboardSummary } from "@/hooks/queries/useDashboard";
+import { useUpdateOrderStatus } from "@/hooks/queries/useOrders";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,62 +20,21 @@ export default function TodayScreen() {
   const toast = useToast();
   const haptics = useHaptics();
 
-  // 使用 React Query 查詢訂單
+  // 使用 Dashboard Summary API（後端已完成分類和排序）
   const {
-    data: orders = [],
+    data: dashboardData,
     isLoading,
     refetch,
     isFetching,
-  } = useOrders(currentTeamId, undefined, !!currentTeamId);
+  } = useDashboardSummary(currentTeamId, !!currentTeamId);
 
   // 更新訂單狀態的 mutation
   const updateOrderStatus = useUpdateOrderStatus();
 
-  // 在組件中計算訂單
-  const todayPendingOrders = React.useMemo(() => {
-    const today = new Date();
-    return orders
-      .filter((order) => {
-        const orderDate = new Date(order.pickupDate);
-        return (
-          order.status === "pending" &&
-          orderDate.getFullYear() === today.getFullYear() &&
-          orderDate.getMonth() === today.getMonth() &&
-          orderDate.getDate() === today.getDate()
-        );
-      })
-      .sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
-  }, [orders]);
-
-  const todayCompletedOrders = React.useMemo(() => {
-    const today = new Date();
-    return orders
-      .filter((order) => {
-        const orderDate = new Date(order.pickupDate);
-        return (
-          order.status === "completed" &&
-          orderDate.getFullYear() === today.getFullYear() &&
-          orderDate.getMonth() === today.getMonth() &&
-          orderDate.getDate() === today.getDate()
-        );
-      })
-      .sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
-  }, [orders]);
-
-  const futureOrders = React.useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return orders
-      .filter((order) => {
-        const orderDate = new Date(order.pickupDate);
-        orderDate.setHours(0, 0, 0, 0);
-        return order.status === "pending" && orderDate > today;
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.pickupDate).getTime() - new Date(b.pickupDate).getTime()
-      );
-  }, [orders]);
+  // 直接使用後端回傳的分類資料
+  const todayPendingOrders = dashboardData?.todayPending || [];
+  const todayCompletedOrders = dashboardData?.todayCompleted || [];
+  const futureOrders = dashboardData?.future || [];
 
   const onRefresh = useCallback(async () => {
     haptics.light();
@@ -105,7 +65,7 @@ export default function TodayScreen() {
           toast.success("已標記為待處理");
         }
       } catch (error) {
-        toast.error("更新失敗，請稍後再試");
+        toast.error("更新失敗，請稍後再試," + error);
       }
     },
     [
@@ -147,7 +107,7 @@ export default function TodayScreen() {
       : undefined;
 
   // Loading state
-  if (isLoading && !orders.length) {
+  if (isLoading && !dashboardData) {
     return <LoadingState message="載入中..." />;
   }
 

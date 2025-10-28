@@ -119,6 +119,11 @@ export function useUpdateOrderStatus() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.orders.all(),
       });
+
+      // 重新載入 Dashboard（因為訂單狀態變更會影響 Dashboard 顯示）
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboard.all(),
+      });
     },
   });
 }

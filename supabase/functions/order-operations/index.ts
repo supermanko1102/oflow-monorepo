@@ -215,6 +215,83 @@ serve(async (req) => {
         );
       }
 
+      // 查詢 Dashboard 摘要（今日 + 未來訂單）
+      if (action === "dashboard-summary") {
+        const teamId = url.searchParams.get("team_id");
+
+        if (!teamId) {
+          throw new Error("Missing team_id parameter");
+        }
+
+        // 驗證團隊成員身份
+        await verifyTeamMembership(supabaseAdmin, user.id, teamId);
+
+        console.log("[Order Operations] 查詢 Dashboard 摘要:", teamId);
+
+        // 取得今天的日期（格式：YYYY-MM-DD）
+        const today = new Date().toISOString().split("T")[0];
+
+        // 查詢今日待處理訂單
+        const { data: todayPending, error: error1 } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("team_id", teamId)
+          .eq("status", "pending")
+          .eq("pickup_date", today)
+          .order("pickup_time", { ascending: true });
+
+        if (error1) {
+          throw error1;
+        }
+
+        // 查詢今日已完成訂單
+        const { data: todayCompleted, error: error2 } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("team_id", teamId)
+          .eq("status", "completed")
+          .eq("pickup_date", today)
+          .order("pickup_time", { ascending: true });
+
+        if (error2) {
+          throw error2;
+        }
+
+        // 查詢未來訂單（限制 50 筆）
+        const { data: future, error: error3 } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("team_id", teamId)
+          .eq("status", "pending")
+          .gt("pickup_date", today)
+          .order("pickup_date", { ascending: true })
+          .order("pickup_time", { ascending: true })
+          .limit(50);
+
+        if (error3) {
+          throw error3;
+        }
+
+        console.log("[Order Operations] Dashboard 摘要查詢完成:", {
+          todayPending: todayPending?.length || 0,
+          todayCompleted: todayCompleted?.length || 0,
+          future: future?.length || 0,
+        });
+
+        // 轉換為前端格式
+        return new Response(
+          JSON.stringify({
+            success: true,
+            todayPending: (todayPending || []).map(transformOrderToClient),
+            todayCompleted: (todayCompleted || []).map(transformOrderToClient),
+            future: (future || []).map(transformOrderToClient),
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       // 查詢單一訂單詳情
       if (action === "detail") {
         const orderId = url.searchParams.get("order_id");
@@ -266,7 +343,7 @@ serve(async (req) => {
             }));
             console.log(
               "[Order Operations] 對話記錄數量:",
-              conversationMessages.length
+              conversationMessages
             );
           }
         }
@@ -274,7 +351,7 @@ serve(async (req) => {
         // 轉換為前端格式
         const transformedOrder = transformOrderToClient(
           order,
-          conversationMessages
+          conversationMessages || []
         );
 
         return new Response(

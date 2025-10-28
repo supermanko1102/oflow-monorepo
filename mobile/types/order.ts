@@ -109,3 +109,12 @@ export interface UpdateOrderParams {
   notes?: string;
   customer_notes?: string;
 }
+
+/**
+ * Dashboard 摘要回應
+ */
+export interface DashboardSummary {
+  todayPending: Order[];
+  todayCompleted: Order[];
+  future: Order[];
+}
