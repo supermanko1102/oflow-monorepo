@@ -2,8 +2,10 @@ import { Button } from "@/components/native/Button";
 import { useJoinTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { type TeamJoinFormData } from "@/types/team";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,24 +18,28 @@ import {
 export default function TeamJoinScreen() {
   const router = useRouter();
   const toast = useToast();
-  
+
   // Auth Store (統一使用 AuthStore)
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   // React Query mutation
   const joinTeamMutation = useJoinTeam();
 
-  const [inviteCode, setInviteCode] = useState("");
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<TeamJoinFormData>({
+    defaultValues: {
+      inviteCode: "",
+    },
+  });
 
-  const handleJoin = async () => {
-    if (!inviteCode.trim()) {
-      toast.error("請輸入邀請碼");
-      return;
-    }
-
+  const onSubmit = async (data: TeamJoinFormData) => {
     try {
       // 加入團隊（使用 React Query mutation）
-      const team = await joinTeamMutation.mutateAsync(inviteCode.trim());
+      const team = await joinTeamMutation.mutateAsync(data.inviteCode.trim());
 
       // 設定為當前團隊
       setCurrentTeamId(team.team_id);
@@ -75,14 +81,29 @@ export default function TeamJoinScreen() {
               <Text className="text-sm font-semibold text-gray-700 mb-2">
                 邀請碼 <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
-                value={inviteCode}
-                onChangeText={setInviteCode}
-                placeholder="輸入邀請碼"
-                autoCapitalize="characters"
-                className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-4 text-2xl text-center text-gray-900 tracking-widest font-bold"
-                placeholderTextColor="#9CA3AF"
+              <Controller
+                control={control}
+                name="inviteCode"
+                rules={{
+                  required: "請輸入邀請碼",
+                  validate: (value) => value.trim() !== "" || "請輸入邀請碼",
+                }}
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="輸入邀請碼"
+                    autoCapitalize="characters"
+                    className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-4 text-2xl text-center text-gray-900 tracking-widest font-bold"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                )}
               />
+              {errors.inviteCode && (
+                <Text className="text-red-500 text-xs mt-1 text-center">
+                  {errors.inviteCode.message}
+                </Text>
+              )}
               <Text className="text-xs text-gray-500 mt-1 text-center">
                 邀請碼由團隊管理員提供
               </Text>
@@ -115,10 +136,10 @@ export default function TeamJoinScreen() {
           {/* Actions */}
           <View className="mt-8 space-y-3">
             <Button
-              onPress={handleJoin}
+              onPress={handleSubmit(onSubmit)}
               variant="primary"
               fullWidth
-              disabled={joinTeamMutation.isPending || !inviteCode.trim()}
+              disabled={joinTeamMutation.isPending}
             >
               {joinTeamMutation.isPending ? "加入中..." : "加入團隊"}
             </Button>

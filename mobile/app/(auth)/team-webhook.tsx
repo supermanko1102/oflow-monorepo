@@ -4,9 +4,11 @@ import { useToast } from "@/hooks/useToast";
 import { queryClient } from "@/lib/queryClient";
 import { updateLineSettings } from "@/services/teamService";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { type LineSettingsFormData } from "@/types/team";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Linking,
@@ -25,12 +27,18 @@ export default function TeamLineSetupScreen() {
   // Auth Store
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
 
-  // LINE 設定狀態
-  const [lineSettings, setLineSettings] = useState({
-    channelId: "",
-    channelSecret: "",
-    accessToken: "",
-    channelName: "",
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LineSettingsFormData>({
+    defaultValues: {
+      channelId: "",
+      channelSecret: "",
+      accessToken: "",
+      channelName: "",
+    },
   });
 
   // UI 狀態
@@ -46,23 +54,7 @@ export default function TeamLineSetupScreen() {
   };
 
   // 儲存 LINE 設定
-  const handleSaveSettings = async () => {
-    // 驗證必填欄位
-    if (!lineSettings.channelId.trim()) {
-      toast.error("請輸入 Channel ID");
-      return;
-    }
-
-    if (!lineSettings.channelSecret.trim()) {
-      toast.error("請輸入 Channel Secret");
-      return;
-    }
-
-    if (!lineSettings.accessToken.trim()) {
-      toast.error("請輸入 Access Token");
-      return;
-    }
-
+  const onSubmit = async (data: LineSettingsFormData) => {
     if (!currentTeamId) {
       toast.error("找不到團隊資訊，請重新登入");
       return;
@@ -73,10 +65,10 @@ export default function TeamLineSetupScreen() {
 
       const response = await updateLineSettings({
         team_id: currentTeamId,
-        line_channel_id: lineSettings.channelId.trim(),
-        line_channel_secret: lineSettings.channelSecret.trim(),
-        line_channel_access_token: lineSettings.accessToken.trim(),
-        line_channel_name: lineSettings.channelName.trim() || undefined,
+        line_channel_id: data.channelId.trim(),
+        line_channel_secret: data.channelSecret.trim(),
+        line_channel_access_token: data.accessToken.trim(),
+        line_channel_name: data.channelName?.trim() || undefined,
       });
 
       setWebhookUrl(response.webhook_url);
@@ -155,16 +147,30 @@ export default function TeamLineSetupScreen() {
                 <Text className="text-sm font-semibold text-gray-700 mb-2">
                   Channel ID <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
-                  value={lineSettings.channelId}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, channelId: text })
-                  }
-                  placeholder="例如：2008352338"
-                  keyboardType="numeric"
-                  className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
-                  placeholderTextColor="#9CA3AF"
+                <Controller
+                  control={control}
+                  name="channelId"
+                  rules={{
+                    required: "請輸入 Channel ID",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Channel ID",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="例如：2008352338"
+                      keyboardType="numeric"
+                      className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  )}
                 />
+                {errors.channelId && (
+                  <Text className="text-red-500 text-xs mt-1">
+                    {errors.channelId.message}
+                  </Text>
+                )}
                 <Text className="text-xs text-gray-500 mt-1">
                   在 LINE Developers Console 的 Basic settings 中取得
                 </Text>
@@ -175,28 +181,42 @@ export default function TeamLineSetupScreen() {
                 <Text className="text-sm font-semibold text-gray-700 mb-2">
                   Channel Secret <Text className="text-red-500">*</Text>
                 </Text>
-                <View className="relative">
-                  <TextInput
-                    value={lineSettings.channelSecret}
-                    onChangeText={(text) =>
-                      setLineSettings({ ...lineSettings, channelSecret: text })
-                    }
-                    placeholder="例如：abcdef1234567890..."
-                    secureTextEntry={!showSecret}
-                    className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 pr-12 text-base text-gray-900"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  <Pressable
-                    onPress={() => setShowSecret(!showSecret)}
-                    className="absolute right-3 top-3"
-                  >
-                    <MaterialCommunityIcons
-                      name={showSecret ? "eye-off" : "eye"}
-                      size={24}
-                      color="#6B7280"
-                    />
-                  </Pressable>
-                </View>
+                <Controller
+                  control={control}
+                  name="channelSecret"
+                  rules={{
+                    required: "請輸入 Channel Secret",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Channel Secret",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <View className="relative">
+                      <TextInput
+                        value={value}
+                        onChangeText={onChange}
+                        placeholder="例如：abcdef1234567890..."
+                        secureTextEntry={!showSecret}
+                        className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 pr-12 text-base text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                      <Pressable
+                        onPress={() => setShowSecret(!showSecret)}
+                        className="absolute right-3 top-3"
+                      >
+                        <MaterialCommunityIcons
+                          name={showSecret ? "eye-off" : "eye"}
+                          size={24}
+                          color="#6B7280"
+                        />
+                      </Pressable>
+                    </View>
+                  )}
+                />
+                {errors.channelSecret && (
+                  <Text className="text-red-500 text-xs mt-1">
+                    {errors.channelSecret.message}
+                  </Text>
+                )}
                 <Text className="text-xs text-gray-500 mt-1">
                   在 LINE Developers Console 的 Basic settings 中取得
                 </Text>
@@ -207,29 +227,43 @@ export default function TeamLineSetupScreen() {
                 <Text className="text-sm font-semibold text-gray-700 mb-2">
                   Channel Access Token <Text className="text-red-500">*</Text>
                 </Text>
-                <View className="relative">
-                  <TextInput
-                    value={lineSettings.accessToken}
-                    onChangeText={(text) =>
-                      setLineSettings({ ...lineSettings, accessToken: text })
-                    }
-                    placeholder="例如：ABC123..."
-                    secureTextEntry={!showToken}
-                    className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 pr-12 text-base text-gray-900"
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                  />
-                  <Pressable
-                    onPress={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-3"
-                  >
-                    <MaterialCommunityIcons
-                      name={showToken ? "eye-off" : "eye"}
-                      size={24}
-                      color="#6B7280"
-                    />
-                  </Pressable>
-                </View>
+                <Controller
+                  control={control}
+                  name="accessToken"
+                  rules={{
+                    required: "請輸入 Access Token",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Access Token",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <View className="relative">
+                      <TextInput
+                        value={value}
+                        onChangeText={onChange}
+                        placeholder="例如：ABC123..."
+                        secureTextEntry={!showToken}
+                        className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 pr-12 text-base text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                      />
+                      <Pressable
+                        onPress={() => setShowToken(!showToken)}
+                        className="absolute right-3 top-3"
+                      >
+                        <MaterialCommunityIcons
+                          name={showToken ? "eye-off" : "eye"}
+                          size={24}
+                          color="#6B7280"
+                        />
+                      </Pressable>
+                    </View>
+                  )}
+                />
+                {errors.accessToken && (
+                  <Text className="text-red-500 text-xs mt-1">
+                    {errors.accessToken.message}
+                  </Text>
+                )}
                 <Text className="text-xs text-gray-500 mt-1">
                   在 LINE Developers Console 的 Messaging API 中取得
                 </Text>
@@ -262,7 +296,7 @@ export default function TeamLineSetupScreen() {
               {/* 儲存按鈕 */}
               <View className="mt-6">
                 <Button
-                  onPress={handleSaveSettings}
+                  onPress={handleSubmit(onSubmit)}
                   variant="primary"
                   fullWidth
                   disabled={isUpdating}

@@ -313,6 +313,7 @@ serve(async (req) => {
         const aiResult = await parseMessageWithAI(
           messageText,
           {
+            team_id: team.id,
             name: team.name,
             business_type: team.business_type,
           },

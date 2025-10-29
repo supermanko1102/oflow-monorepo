@@ -195,3 +195,37 @@ export function isProductBased(type: BusinessType): boolean {
 export function isServiceBased(type: BusinessType): boolean {
   return getBusinessCategory(type) === "service";
 }
+
+// ==================== Form Data Types ====================
+
+/**
+ * 團隊建立表單資料
+ */
+export interface TeamCreateFormData {
+  teamName: string;
+  businessType: BusinessType;
+}
+
+/**
+ * 加入團隊表單資料
+ */
+export interface TeamJoinFormData {
+  inviteCode: string;
+}
+
+/**
+ * LINE 設定表單資料
+ */
+export interface LineSettingsFormData {
+  channelId: string;
+  channelSecret: string;
+  accessToken: string;
+  channelName?: string;
+}
+
+/**
+ * 刪除團隊確認表單資料
+ */
+export interface DeleteTeamConfirmFormData {
+  teamName: string;
+}

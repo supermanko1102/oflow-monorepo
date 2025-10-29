@@ -15,10 +15,15 @@ import { supabase } from "@/lib/supabase";
 import { updateLineSettings } from "@/services/teamService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  type DeleteTeamConfirmFormData,
+  type LineSettingsFormData,
+} from "@/types/team";
 import * as NotificationService from "@/utils/notificationService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
@@ -57,7 +62,6 @@ export default function SettingsScreen() {
   );
   const leaveTeamMutation = useLeaveTeam();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const deleteTeamMutation = useDeleteTeam();
 
   // Settings store
@@ -82,15 +86,32 @@ export default function SettingsScreen() {
       minute: 0,
     });
 
-  // LINE 官方帳號設定狀態
-  const [lineSettings, setLineSettings] = useState({
-    channelId: "",
-    channelSecret: "",
-    accessToken: "",
-    channelName: "",
+  // LINE 官方帳號設定 - React Hook Form
+  const {
+    control: lineControl,
+    handleSubmit: handleLineSubmit,
+    formState: { errors: lineErrors },
+  } = useForm<LineSettingsFormData>({
+    defaultValues: {
+      channelId: "",
+      channelSecret: "",
+      accessToken: "",
+    },
   });
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isUpdatingLine, setIsUpdatingLine] = useState(false);
+
+  // 刪除確認 - React Hook Form
+  const {
+    control: deleteControl,
+    handleSubmit: handleDeleteSubmit,
+    reset: resetDeleteForm,
+    formState: { errors: deleteErrors },
+  } = useForm<DeleteTeamConfirmFormData>({
+    defaultValues: {
+      teamName: "",
+    },
+  });
 
   // 從 teams 中找到當前團隊
   const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
@@ -180,11 +201,11 @@ export default function SettingsScreen() {
   };
 
   // 第二層：輸入團隊名稱確認
-  const handleConfirmDelete = async () => {
+  const onDeleteSubmit = async (data: DeleteTeamConfirmFormData) => {
     if (!currentTeamId || !currentTeam) return;
 
     // 檢查輸入的團隊名稱是否正確
-    if (deleteConfirmText !== currentTeam.team_name) {
+    if (data.teamName !== currentTeam.team_name) {
       toast.error("團隊名稱不正確");
       return;
     }
@@ -193,7 +214,7 @@ export default function SettingsScreen() {
       await deleteTeamMutation.mutateAsync(currentTeamId);
 
       setShowDeleteModal(false);
-      setDeleteConfirmText("");
+      resetDeleteForm();
       toast.success("團隊已永久刪除");
 
       // 清除當前團隊並導航
@@ -204,6 +225,12 @@ export default function SettingsScreen() {
     } catch (error: any) {
       toast.error(error.message || "刪除失敗");
     }
+  };
+
+  // 關閉刪除 modal 時重置表單
+  const handleDismissDeleteModal = () => {
+    setShowDeleteModal(false);
+    resetDeleteForm();
   };
 
   const handleRegenerateInviteCode = () => {
@@ -319,26 +346,17 @@ export default function SettingsScreen() {
   };
 
   // 處理 LINE 官方帳號設定
-  const handleUpdateLineSettings = async () => {
+  const onLineSubmit = async (data: LineSettingsFormData) => {
     if (!currentTeamId) return;
-
-    if (
-      !lineSettings.channelId ||
-      !lineSettings.channelSecret ||
-      !lineSettings.accessToken
-    ) {
-      toast.error("請填寫所有必要欄位");
-      return;
-    }
 
     try {
       setIsUpdatingLine(true);
       const response = await updateLineSettings({
         team_id: currentTeamId,
-        line_channel_id: lineSettings.channelId,
-        line_channel_secret: lineSettings.channelSecret,
-        line_channel_access_token: lineSettings.accessToken,
-        line_channel_name: lineSettings.channelName || undefined,
+        line_channel_id: data.channelId,
+        line_channel_secret: data.channelSecret,
+        line_channel_access_token: data.accessToken,
+        line_channel_name: undefined,
       });
 
       setWebhookUrl(response.webhook_url);
@@ -562,48 +580,90 @@ export default function SettingsScreen() {
                 <Text className="text-gray-700 font-semibold mb-2">
                   Channel ID
                 </Text>
-                <TextInput
-                  value={lineSettings.channelId}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, channelId: text })
-                  }
-                  placeholder="輸入 LINE Channel ID"
-                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                <Controller
+                  control={lineControl}
+                  name="channelId"
+                  rules={{
+                    required: "請輸入 Channel ID",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Channel ID",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="輸入 LINE Channel ID"
+                      className="border border-gray-300 rounded px-3 py-2 mb-1"
+                    />
+                  )}
                 />
+                {lineErrors.channelId && (
+                  <Text className="text-red-500 text-xs mb-2">
+                    {lineErrors.channelId.message}
+                  </Text>
+                )}
 
-                <Text className="text-gray-700 font-semibold mb-2">
+                <Text className="text-gray-700 font-semibold mb-2 mt-1">
                   Channel Secret
                 </Text>
-                <TextInput
-                  value={lineSettings.channelSecret}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, channelSecret: text })
-                  }
-                  placeholder="輸入 LINE Channel Secret"
-                  secureTextEntry
-                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                <Controller
+                  control={lineControl}
+                  name="channelSecret"
+                  rules={{
+                    required: "請輸入 Channel Secret",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Channel Secret",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="輸入 LINE Channel Secret"
+                      secureTextEntry
+                      className="border border-gray-300 rounded px-3 py-2 mb-1"
+                    />
+                  )}
                 />
+                {lineErrors.channelSecret && (
+                  <Text className="text-red-500 text-xs mb-2">
+                    {lineErrors.channelSecret.message}
+                  </Text>
+                )}
 
-                <Text className="text-gray-700 font-semibold mb-2">
+                <Text className="text-gray-700 font-semibold mb-2 mt-1">
                   Channel Access Token
                 </Text>
-                <TextInput
-                  value={lineSettings.accessToken}
-                  onChangeText={(text) =>
-                    setLineSettings({ ...lineSettings, accessToken: text })
-                  }
-                  placeholder="輸入 LINE Channel Access Token"
-                  secureTextEntry
-                  className="border border-gray-300 rounded px-3 py-2 mb-3"
+                <Controller
+                  control={lineControl}
+                  name="accessToken"
+                  rules={{
+                    required: "請輸入 Access Token",
+                    validate: (value) =>
+                      value.trim() !== "" || "請輸入 Access Token",
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="輸入 LINE Channel Access Token"
+                      secureTextEntry
+                      className="border border-gray-300 rounded px-3 py-2 mb-1"
+                    />
+                  )}
                 />
+                {lineErrors.accessToken && (
+                  <Text className="text-red-500 text-xs mb-2">
+                    {lineErrors.accessToken.message}
+                  </Text>
+                )}
 
                 <Button
                   mode="contained"
-                  onPress={handleUpdateLineSettings}
+                  onPress={handleLineSubmit(onLineSubmit)}
                   loading={isUpdatingLine}
                   disabled={isUpdatingLine}
                   buttonColor="#00B900"
-                  className="mb-2"
+                  className="mb-2 mt-2"
                 >
                   更新設定
                 </Button>
@@ -744,19 +804,6 @@ export default function SettingsScreen() {
             left={(props) => <List.Icon {...props} icon="information" />}
           />
           <Divider />
-          <List.Item
-            title="使用說明"
-            left={(props) => <List.Icon {...props} icon="help-circle" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="隱私政策"
-            left={(props) => <List.Icon {...props} icon="shield-check" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
         </List.Section>
       </View>
 
@@ -852,10 +899,7 @@ export default function SettingsScreen() {
       <Portal>
         <Modal
           visible={showDeleteModal}
-          onDismiss={() => {
-            setShowDeleteModal(false);
-            setDeleteConfirmText("");
-          }}
+          onDismiss={handleDismissDeleteModal}
           contentContainerStyle={{
             backgroundColor: "white",
             padding: 20,
@@ -870,28 +914,40 @@ export default function SettingsScreen() {
             此操作無法復原！請輸入團隊名稱「{currentTeam?.team_name}」以確認刪除
           </Text>
 
-          <TextInput
-            value={deleteConfirmText}
-            onChangeText={setDeleteConfirmText}
-            placeholder="輸入團隊名稱"
-            autoFocus
-            style={{
-              borderWidth: 1,
-              borderColor: "#D1D5DB",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 20,
-              fontSize: 16,
+          <Controller
+            control={deleteControl}
+            name="teamName"
+            rules={{
+              validate: (value) =>
+                value === currentTeam?.team_name || "團隊名稱不正確",
             }}
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                placeholder="輸入團隊名稱"
+                autoFocus
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#D1D5DB",
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 8,
+                  fontSize: 16,
+                }}
+              />
+            )}
           />
+          {deleteErrors.teamName && (
+            <Text style={{ color: "#EF4444", fontSize: 12, marginBottom: 12 }}>
+              {deleteErrors.teamName.message}
+            </Text>
+          )}
 
-          <View style={{ flexDirection: "row", gap: 10 }}>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
             <Button
               mode="outlined"
-              onPress={() => {
-                setShowDeleteModal(false);
-                setDeleteConfirmText("");
-              }}
+              onPress={handleDismissDeleteModal}
               style={{ flex: 1 }}
             >
               取消
@@ -899,8 +955,7 @@ export default function SettingsScreen() {
             <Button
               mode="contained"
               buttonColor="#EF4444"
-              onPress={handleConfirmDelete}
-              disabled={deleteConfirmText !== currentTeam?.team_name}
+              onPress={handleDeleteSubmit(onDeleteSubmit)}
               loading={deleteTeamMutation.isPending}
               style={{ flex: 1 }}
             >

@@ -2,10 +2,14 @@ import { Button } from "@/components/native/Button";
 import { useCreateTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { BUSINESS_TYPE_OPTIONS, BusinessType } from "@/types/team";
+import {
+  BUSINESS_TYPE_OPTIONS,
+  type TeamCreateFormData,
+} from "@/types/team";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,22 +30,25 @@ export default function TeamCreateScreen() {
   // React Query mutation
   const createTeamMutation = useCreateTeam();
 
-  const [teamName, setTeamName] = useState("");
-  const [selectedBusinessType, setSelectedBusinessType] =
-    useState<BusinessType>("bakery");
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<TeamCreateFormData>({
+    defaultValues: {
+      teamName: "",
+      businessType: "bakery",
+    },
+  });
 
-  const handleCreate = async () => {
-    if (!teamName.trim()) {
-      toast.error("請輸入團隊名稱");
-      return;
-    }
-
+  const onSubmit = async (data: TeamCreateFormData) => {
     try {
       // 建立團隊（使用 React Query mutation）
       // LINE 設定將在後續的專門頁面完成
       const newTeam = await createTeamMutation.mutateAsync({
-        team_name: teamName.trim(),
-        business_type: selectedBusinessType,
+        team_name: data.teamName.trim(),
+        business_type: data.businessType,
         line_channel_id: null,
       });
 
@@ -82,13 +89,28 @@ export default function TeamCreateScreen() {
               <Text className="text-sm font-semibold text-gray-700 mb-2">
                 團隊名稱 <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
-                value={teamName}
-                onChangeText={setTeamName}
-                placeholder="例如：甜點小舖"
-                className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
+              <Controller
+                control={control}
+                name="teamName"
+                rules={{
+                  required: "請輸入團隊名稱",
+                  validate: (value) => value.trim() !== "" || "請輸入團隊名稱",
+                }}
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="例如：甜點小舖"
+                    className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                )}
               />
+              {errors.teamName && (
+                <Text className="text-red-500 text-xs mt-1">
+                  {errors.teamName.message}
+                </Text>
+              )}
               <Text className="text-xs text-gray-500 mt-1">
                 這將顯示在應用程式中，可隨時修改
               </Text>
@@ -99,43 +121,47 @@ export default function TeamCreateScreen() {
               <Text className="text-sm font-semibold text-gray-700 mb-3">
                 業務類別 <Text className="text-red-500">*</Text>
               </Text>
-              <View className="flex-row flex-wrap gap-3">
-                {BUSINESS_TYPE_OPTIONS.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setSelectedBusinessType(option.value)}
-                    className={`flex-1 min-w-[45%] px-4 py-4 rounded-xl border-2 ${
-                      selectedBusinessType === option.value
-                        ? "bg-blue-50 border-blue-500"
-                        : "bg-gray-50 border-gray-300"
-                    }`}
-                  >
-                    <View className="items-center">
-                      <MaterialCommunityIcons
-                        name={option.icon}
-                        size={32}
-                        color={
-                          selectedBusinessType === option.value
-                            ? "#3B82F6"
-                            : "#6B7280"
-                        }
-                      />
-                      <Text
-                        className={`text-sm font-semibold mt-2 ${
-                          selectedBusinessType === option.value
-                            ? "text-blue-600"
-                            : "text-gray-700"
+              <Controller
+                control={control}
+                name="businessType"
+                render={({ field: { onChange, value } }) => (
+                  <View className="flex-row flex-wrap gap-3">
+                    {BUSINESS_TYPE_OPTIONS.map((option) => (
+                      <Pressable
+                        key={option.value}
+                        onPress={() => onChange(option.value)}
+                        className={`flex-1 min-w-[45%] px-4 py-4 rounded-xl border-2 ${
+                          value === option.value
+                            ? "bg-blue-50 border-blue-500"
+                            : "bg-gray-50 border-gray-300"
                         }`}
                       >
-                        {option.label}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mt-1 text-center">
-                        {option.description}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
+                        <View className="items-center">
+                          <MaterialCommunityIcons
+                            name={option.icon}
+                            size={32}
+                            color={
+                              value === option.value ? "#3B82F6" : "#6B7280"
+                            }
+                          />
+                          <Text
+                            className={`text-sm font-semibold mt-2 ${
+                              value === option.value
+                                ? "text-blue-600"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {option.label}
+                          </Text>
+                          <Text className="text-xs text-gray-500 mt-1 text-center">
+                            {option.description}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              />
               <Text className="text-xs text-gray-500 mt-2">
                 系統會根據您的業務類別自動調整 AI 對話和訂單欄位
               </Text>
@@ -156,7 +182,7 @@ export default function TeamCreateScreen() {
           {/* Actions */}
           <View className="mt-8 space-y-3">
             <Button
-              onPress={handleCreate}
+              onPress={handleSubmit(onSubmit)}
               variant="primary"
               fullWidth
               disabled={createTeamMutation.isPending}
