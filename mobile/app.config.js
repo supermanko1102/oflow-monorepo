@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "mobile",
+    name: "OFlow",
     slug: "mobile",
     version: "1.0.0",
     orientation: "portrait",
