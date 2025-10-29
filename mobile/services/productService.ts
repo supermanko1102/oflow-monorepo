@@ -1,10 +1,10 @@
 /**
  * Product Service
  * 封裝所有商品相關的 API 呼叫
- *
- * 注意：此服務需要後端實作以下 Edge Function endpoints
  */
 
+import { ApiClient } from "@/lib/apiClient";
+import { config } from "@/lib/config";
 import type {
   CreateProductRequest,
   Product,
@@ -12,40 +12,61 @@ import type {
 } from "@/types/product";
 
 // 建立 Product API Client 實例
-// TODO: 需要在 config.ts 中添加 productOperations endpoint
-// const productApi = new ApiClient(config.api.productOperations);
+const productApi = new ApiClient(config.api.productOperations);
 
 // ==================== Product Queries ====================
 
 /**
  * 查詢團隊的商品列表
  *
- * Backend: GET /products?team_id={team_id}
+ * Backend: GET /product-operations?action=list&team_id={team_id}
  */
-export async function getProducts(teamId: string): Promise<Product[]> {
-  // TODO: 實作後端 API
-  // const { products } = await productApi.call<{ products: Product[] }>(
-  //   "GET",
-  //   "list",
-  //   { team_id: teamId }
-  // );
-  // return products;
+export async function getProducts(
+  teamId: string,
+  options?: {
+    category?: string;
+    search?: string;
+    availableOnly?: boolean;
+  }
+): Promise<Product[]> {
+  const params: Record<string, string> = {
+    team_id: teamId,
+  };
 
-  // 暫時返回空陣列（開發階段）
-  console.warn("⚠️ getProducts: 需要實作後端 API");
-  return [];
+  if (options?.category) {
+    params.category = options.category;
+  }
+
+  if (options?.search) {
+    params.search = options.search;
+  }
+
+  if (options?.availableOnly) {
+    params.available_only = "true";
+  }
+
+  const { products } = await productApi.call<{ products: Product[] }>(
+    "GET",
+    "list",
+    params
+  );
+
+  return products;
 }
 
 /**
  * 查詢單一商品詳情
  *
- * Backend: GET /products/{id}
+ * Backend: GET /product-operations?action=detail&product_id={product_id}
  */
 export async function getProduct(productId: string): Promise<Product> {
-  // TODO: 實作後端 API
-  // return await productApi.call<Product>("GET", productId);
+  const { product } = await productApi.call<{ product: Product }>(
+    "GET",
+    "detail",
+    { product_id: productId }
+  );
 
-  throw new Error("getProduct: 需要實作後端 API");
+  return product;
 }
 
 // ==================== Product Mutations ====================
@@ -53,57 +74,92 @@ export async function getProduct(productId: string): Promise<Product> {
 /**
  * 創建新商品
  *
- * Backend: POST /products
+ * Backend: POST /product-operations?action=create
  */
 export async function createProduct(
   data: CreateProductRequest
 ): Promise<Product> {
-  // TODO: 實作後端 API
-  // return await productApi.call<Product>("POST", "", undefined, data);
+  const { product } = await productApi.call<{ product: Product }>(
+    "POST",
+    "create",
+    undefined,
+    data
+  );
 
-  throw new Error("createProduct: 需要實作後端 API");
+  return product;
 }
 
 /**
  * 更新商品資訊
  *
- * Backend: PATCH /products/{id}
+ * Backend: PUT /product-operations?action=update
  */
 export async function updateProduct(
   productId: string,
   data: UpdateProductRequest
 ): Promise<Product> {
-  // TODO: 實作後端 API
-  // return await productApi.call<Product>("PATCH", productId, undefined, data);
+  const { product } = await productApi.call<{ product: Product }>(
+    "PUT",
+    "update",
+    undefined,
+    {
+      product_id: productId,
+      ...data,
+    }
+  );
 
-  throw new Error("updateProduct: 需要實作後端 API");
+  return product;
 }
 
 /**
  * 刪除商品
  *
- * Backend: DELETE /products/{id}
+ * Backend: DELETE /product-operations?action=delete&product_id={product_id}
  */
 export async function deleteProduct(productId: string): Promise<void> {
-  // TODO: 實作後端 API
-  // await productApi.call<void>("DELETE", productId);
-
-  throw new Error("deleteProduct: 需要實作後端 API");
+  await productApi.call<{ success: true; message: string }>("DELETE", "", {
+    product_id: productId,
+  });
 }
 
 /**
  * 切換商品可用狀態
  *
- * Backend: PATCH /products/{id}
+ * Backend: PUT /product-operations?action=toggle-availability
  */
 export async function toggleProductAvailability(
   productId: string,
   isAvailable: boolean
 ): Promise<Product> {
-  // TODO: 實作後端 API
-  // return await productApi.call<Product>("PATCH", productId, undefined, {
-  //   is_available: isAvailable,
-  // });
+  const { product } = await productApi.call<{ product: Product }>(
+    "PUT",
+    "toggle-availability",
+    undefined,
+    {
+      product_id: productId,
+      is_available: isAvailable,
+    }
+  );
 
-  throw new Error("toggleProductAvailability: 需要實作後端 API");
+  return product;
+}
+
+// ==================== Helper Functions ====================
+
+/**
+ * 從商品列表中提取常用分類
+ *
+ * @param teamId - 團隊 ID
+ * @returns 去重後的分類列表
+ */
+export async function getProductCategories(teamId: string): Promise<string[]> {
+  const products = await getProducts(teamId);
+
+  // 提取所有分類並去重
+  const categories = products
+    .map((p) => p.category)
+    .filter((c): c is string => !!c && c !== "未分類") // 過濾空值和預設值
+    .filter((c, index, self) => self.indexOf(c) === index); // 去重
+
+  return categories;
 }

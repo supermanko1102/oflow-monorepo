@@ -1,9 +1,11 @@
 // OFlow AI Message Parser
 // 使用 OpenAI GPT-4 解析 LINE 訊息，提取訂單資訊
+// 整合商品資料，提供智能推薦
 
 /// <reference types="https://deno.land/x/edge_runtime@v1.35.0/types/index.d.ts" />
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +31,7 @@ interface AIParseResult {
     items: Array<{
       name: string;
       quantity: number;
+      price?: number; // 商品價格（從商品資料庫自動填入）⭐
       notes?: string;
     }>;
     delivery_date?: string; // YYYY-MM-DD (通用：交付/預約日期)
@@ -55,35 +58,49 @@ interface AIParseResult {
   raw_response?: string;
 }
 
+// 商品介面
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  unit: string;
+  description?: string;
+}
+
 // 生成商品型業務的 System Prompt（烘焙、花店等）
 function generateProductBasedPrompt(
   dateContext: string,
   teamContext: any,
   businessLabel: string,
   conversationContext: string,
-  collectedDataContext: string
+  collectedDataContext: string,
+  productCatalog: string
 ): string {
   return `你是專業的訂單解析助手，專門處理 ${
     teamContext?.name || "商家"
   }（${businessLabel}）的訂單。
 
 當前日期：${dateContext}
+${productCatalog}
 ${conversationContext}${collectedDataContext}
 
 你的任務：
 1. 判斷訊息的意圖（order/inquiry/other）
-2. 判斷是否為延續之前的對話（is_continuation）
-3. 如果有對話歷史或已收集資訊，將新訊息與之前的資訊合併
-4. 提取完整的訂單資訊：
+2. **智能商品推薦**：當客人詢問「有什麼商品」「有哪些蛋糕」時，從上方商品目錄中推薦，並在 suggested_reply 中列出商品名稱和價格
+3. **商品匹配與價格填入**：當客人提到商品名稱時，從商品目錄中找到匹配的商品，並自動填入 price 欄位
+4. 判斷是否為延續之前的對話（is_continuation）
+5. 如果有對話歷史或已收集資訊，將新訊息與之前的資訊合併
+6. 提取完整的訂單資訊：
    - 顧客姓名（如果有提到「我是XXX」或稱呼）
    - 聯絡電話（如果有提到）
-   - 商品列表（名稱、數量、備註）
+   - 商品列表（名稱、數量、價格、備註）
    - 交付日期（YYYY-MM-DD 格式，若只說「明天」請計算實際日期）
    - 交付時間（HH:MM 格式，24小時制）
    - 配送方式（自取/超商/黑貓）
    - 是否需要冷凍配送（針對需冷藏商品）
-   - 總金額（如果有提到）
-5. 循序漸進引導：商品 → 時間 → 配送方式 → 細節
+   - 總金額（根據商品價格自動計算）
+7. 循序漸進引導：商品 → 時間 → 配送方式 → 細節
 
 配送方式自然語言對應：
 - "自己來拿"/"到店取"/"門市取貨" → pickup
@@ -97,6 +114,10 @@ ${conversationContext}${collectedDataContext}
 - 如果商品需冷藏，需詢問：requires_frozen（是否冷凍配送）
 
 注意事項：
+- **商品匹配**：客人提到的商品名稱要與商品目錄比對（支援模糊匹配，如「巴斯克」匹配「巴斯克蛋糕」）
+- **價格自動填入**：找到匹配商品後，自動填入 price 欄位（數字）
+- **商品詢問**：當客人問「有什麼」「菜單」「價目表」時，在 suggested_reply 中列出 2-5 個熱門商品
+- **金額計算**：total_amount = sum(items.price * items.quantity)
 - 日期解析：「明天」= 今天+1天，「下週一」= 計算下週一的日期
 - 時間格式：「下午2點」= 14:00，「早上10點」= 10:00
 - 數量：如果沒說，預設為 1
@@ -113,29 +134,33 @@ function generateServiceBasedPrompt(
   teamContext: any,
   businessLabel: string,
   conversationContext: string,
-  collectedDataContext: string
+  collectedDataContext: string,
+  productCatalog: string
 ): string {
   return `你是專業的預約助手，專門處理 ${
     teamContext?.name || "商家"
   }（${businessLabel}）的預約。
 
 當前日期：${dateContext}
+${productCatalog}
 ${conversationContext}${collectedDataContext}
 
 你的任務：
 1. 判斷訊息的意圖（order/inquiry/other）
-2. 判斷是否為延續之前的對話（is_continuation）
-3. 如果有對話歷史或已收集資訊，將新訊息與之前的資訊合併
-4. 提取完整的預約資訊：
+2. **智能服務推薦**：當客人詢問「有什麼服務」「價目表」時，從上方服務項目目錄中推薦，並在 suggested_reply 中列出服務名稱和價格
+3. **服務匹配與價格填入**：當客人提到服務項目時，從服務目錄中找到匹配的項目，並自動填入 price 欄位
+4. 判斷是否為延續之前的對話（is_continuation）
+5. 如果有對話歷史或已收集資訊，將新訊息與之前的資訊合併
+6. 提取完整的預約資訊：
    - 顧客姓名（如果有提到「我是XXX」或稱呼）
    - 聯絡電話（如果有提到）
-   - 服務項目列表（名稱、數量、備註）
+   - 服務項目列表（名稱、數量、價格、備註）
    - 預約日期（YYYY-MM-DD 格式，若只說「明天」請計算實際日期）
    - 預約時間（HH:MM 格式，24小時制）
    - 服務時長（如果客人提到，單位：分鐘）
    - 特殊需求（過敏、頭髮狀況、身體狀況等）
-   - 總金額（如果有提到）
-5. 循序漸進引導：服務項目 → 預約時間 → 特殊需求
+   - 總金額（根據服務價格自動計算）
+7. 循序漸進引導：服務項目 → 預約時間 → 特殊需求
 
 完整度判斷（is_complete）：
 - 必填：items（服務項目）, delivery_date（預約日期）, delivery_time（預約時間）
@@ -143,6 +168,10 @@ ${conversationContext}${collectedDataContext}
 - 不需要詢問配送方式
 
 注意事項：
+- **服務匹配**：客人提到的服務名稱要與服務目錄比對（支援模糊匹配，如「剪髮」匹配「女生剪髮」）
+- **價格自動填入**：找到匹配服務後，自動填入 price 欄位（數字）
+- **服務詢問**：當客人問「有什麼服務」「價目表」時，在 suggested_reply 中列出 2-5 個服務項目
+- **金額計算**：total_amount = sum(items.price * items.quantity)
 - 日期解析：「明天」= 今天+1天，「下週一」= 計算下週一的日期
 - 時間格式：「下午2點」= 14:00，「早上10點」= 10:00
 - 數量：如果沒說，預設為 1
@@ -154,7 +183,77 @@ ${conversationContext}${collectedDataContext}
 回傳格式：嚴格遵守 JSON 格式，不要有其他文字。`;
 }
 
-// OpenAI API 請求（支援對話歷史和上下文）
+// 查詢團隊的上架商品
+async function fetchTeamProducts(teamId: string): Promise<Product[]> {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn(
+      "[AI Parse] Supabase credentials not configured, skipping product fetch"
+    );
+    return [];
+  }
+
+  try {
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: products, error } = await supabaseAdmin
+      .from("products")
+      .select("id, name, price, category, unit, description")
+      .eq("team_id", teamId)
+      .eq("is_available", true) // 只查詢上架商品
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[AI Parse] 查詢商品失敗:", error);
+      return [];
+    }
+
+    return products || [];
+  } catch (error) {
+    console.error("[AI Parse] 查詢商品異常:", error);
+    return [];
+  }
+}
+
+// 生成商品目錄字串（供 AI 參考）
+function generateProductCatalog(products: Product[]): string {
+  if (!products || products.length === 0) {
+    return "\n**商品目錄：** 目前尚未建立商品資料，請依據客人描述判斷。\n";
+  }
+
+  let catalog = "\n**商品/服務目錄（僅上架項目）：**\n";
+
+  // 按分類分組
+  const categorizedProducts = products.reduce((acc, product) => {
+    if (!acc[product.category]) {
+      acc[product.category] = [];
+    }
+    acc[product.category].push(product);
+    return acc;
+  }, {} as Record<string, Product[]>);
+
+  // 生成目錄
+  Object.entries(categorizedProducts).forEach(([category, items]) => {
+    catalog += `\n【${category}】\n`;
+    items.forEach((product) => {
+      catalog += `  - ${product.name} $${product.price}/${product.unit}`;
+      if (product.description) {
+        catalog += ` (${product.description})`;
+      }
+      catalog += `\n`;
+    });
+  });
+
+  catalog +=
+    "\n**重要**：當客人提到商品名稱時，請從上方目錄找到匹配的商品，並自動填入 price 欄位。\n";
+
+  return catalog;
+}
+
+// OpenAI API 請求（支援對話歷史、上下文、商品目錄）
 async function callOpenAI(
   message: string,
   teamContext?: any,
@@ -164,6 +263,14 @@ async function callOpenAI(
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY not configured");
+  }
+
+  // 查詢商品目錄 ⭐
+  let products: Product[] = [];
+  if (teamContext?.team_id) {
+    console.log("[AI Parse] 查詢團隊商品:", teamContext.team_id);
+    products = await fetchTeamProducts(teamContext.team_id);
+    console.log("[AI Parse] 找到商品數量:", products.length);
   }
 
   // 取得當前日期時間作為上下文
@@ -216,21 +323,26 @@ async function callOpenAI(
   };
   const businessLabel = businessTypeLabels[businessType] || "一般商家";
 
-  // 根據業務類型生成不同的系統提示詞
+  // 生成商品目錄字串 ⭐
+  const productCatalog = generateProductCatalog(products);
+
+  // 根據業務類型生成不同的系統提示詞（含商品目錄）
   const systemPrompt = isProductBased
     ? generateProductBasedPrompt(
         dateContext,
         teamContext,
         businessLabel,
         conversationContext,
-        collectedDataContext
+        collectedDataContext,
+        productCatalog
       )
     : generateServiceBasedPrompt(
         dateContext,
         teamContext,
         businessLabel,
         conversationContext,
-        collectedDataContext
+        collectedDataContext,
+        productCatalog
       );
 
   // 根據業務類型生成不同的 user prompt
@@ -252,6 +364,7 @@ async function callOpenAI(
       {
         "name": "商品名稱",
         "quantity": 數量,
+        "price": 價格（從商品目錄自動填入，數字）,
         "notes": "備註（如果有）"
       }
     ],
@@ -288,6 +401,7 @@ async function callOpenAI(
       {
         "name": "服務項目名稱",
         "quantity": 數量,
+        "price": 價格（從服務目錄自動填入，數字）,
         "notes": "備註（如果有）"
       }
     ],

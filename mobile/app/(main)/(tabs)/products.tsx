@@ -131,8 +131,7 @@ export default function ProductsScreen() {
             name: formData.name,
             price: Number(formData.price),
             description: formData.description || undefined,
-            category: formData.category,
-            unit: formData.unit,
+            category: formData.category || undefined,
             stock: formData.stock ? Number(formData.stock) : undefined,
           },
         });
@@ -145,8 +144,7 @@ export default function ProductsScreen() {
           name: formData.name,
           price: Number(formData.price),
           description: formData.description || undefined,
-          category: formData.category,
-          unit: formData.unit,
+          category: formData.category || undefined,
           stock: formData.stock ? Number(formData.stock) : undefined,
           is_available: true,
         });
@@ -330,6 +328,7 @@ export default function ProductsScreen() {
         }}
         onSubmit={handleSubmitForm}
         product={editingProduct}
+        teamId={currentTeamId || ""}
         isLoading={
           createProductMutation.isPending || updateProductMutation.isPending
         }

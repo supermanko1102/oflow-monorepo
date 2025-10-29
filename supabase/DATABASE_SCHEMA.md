@@ -1,11 +1,11 @@
 # OFlow 資料庫架構文件
 
-> **版本**: v1.0  
+> **版本**: v1.1  
 > **最後更新**: 2025-10-29  
 > **架構設計**: Team-Centric  
-> **資料表數量**: 10  
+> **資料表數量**: 11 （新增：products）  
 > **Database Functions**: 15+  
-> **Triggers**: 7  
+> **Triggers**: 8  
 > **RLS 政策**: 全表啟用
 
 ---
@@ -53,6 +53,7 @@ User (用戶 = 登入身份)
 
 teams (團隊核心)
   ├─ 1:N → orders (訂單)
+  ├─ 1:N → products (商品/服務) ⭐ NEW
   ├─ 1:N → customers (顧客)
   ├─ 1:N → line_messages (LINE 對話)
   ├─ 1:N → conversations (對話追蹤)
@@ -636,6 +637,132 @@ CREATE INDEX idx_subscription_transactions_purchased_at ON subscription_transact
 
 ---
 
+### 11. `products` - 商品/服務項目 ⭐ NEW
+
+**用途**：管理團隊的商品或服務項目，支援多行業通用設計，整合 AI 智能推薦功能。
+
+#### 欄位清單
+
+| 欄位名稱              | 類型          | 約束                    | 說明                                            |
+| --------------------- | ------------- | ----------------------- | ----------------------------------------------- |
+| `id`                  | UUID          | PRIMARY KEY             | 商品唯一識別碼                                  |
+| `team_id`             | UUID          | FK: teams(id), NOT NULL | 所屬團隊 ID ⭐                                  |
+| **基本資訊**          |
+| `name`                | TEXT          | NOT NULL                | 商品/服務名稱（如：巴斯克蛋糕 6 吋、女生剪髮）  |
+| `price`               | DECIMAL(10,2) | NOT NULL                | 價格                                            |
+| `description`         | TEXT          | -                       | 商品描述                                        |
+| **分類與單位**        |
+| `category`            | TEXT          | NOT NULL                | 商品分類（行業自訂：蛋糕/麵包、剪髮/染髮等）    |
+| `unit`                | TEXT          | NOT NULL, DEFAULT '個'  | 計量單位（個/份/次/小時/盒/條）                 |
+| **庫存管理**          |
+| `stock`               | INT           | -                       | 庫存數量（NULL = 不追蹤庫存，適用於服務型行業） |
+| `low_stock_threshold` | INT           | -                       | 低庫存警告門檻                                  |
+| **狀態**              |
+| `is_available`        | BOOLEAN       | DEFAULT true            | 是否上架（AI 只會推薦上架商品）⭐               |
+| **行業特定資料**      |
+| `metadata`            | JSONB         | DEFAULT '{}'            | 行業特定欄位（彈性擴展）⭐                      |
+| **排序與顯示**        |
+| `sort_order`          | INT           | DEFAULT 0               | 自訂排序順序（數字越小越前面）                  |
+| `image_url`           | TEXT          | -                       | 商品圖片 URL（未來擴展）                        |
+| **統計**              |
+| `total_sold`          | INT           | DEFAULT 0               | 總銷售數量（快取，未來擴展）                    |
+| **時間戳記**          |
+| `created_at`          | TIMESTAMPTZ   | DEFAULT NOW()           | 建立時間                                        |
+| `updated_at`          | TIMESTAMPTZ   | DEFAULT NOW()           | 更新時間（自動）                                |
+
+#### `metadata` JSONB 範例
+
+**烘焙業範例**：
+
+```json
+{
+  "allergens": ["蛋", "奶"],
+  "storage": "refrigerated",
+  "shelf_life_days": 3
+}
+```
+
+**美容業範例**：
+
+```json
+{
+  "duration_minutes": 90,
+  "stylist_level": "senior",
+  "suitable_for": ["長髮", "中髮"]
+}
+```
+
+**按摩業範例**：
+
+```json
+{
+  "duration_minutes": 60,
+  "massage_type": "oil",
+  "suitable_for": ["全身", "局部"]
+}
+```
+
+#### 索引設計
+
+```sql
+-- 基礎索引
+CREATE INDEX idx_products_team_id ON products(team_id);
+CREATE INDEX idx_products_category ON products(category);
+CREATE INDEX idx_products_is_available ON products(is_available);
+
+-- 複合索引（常見查詢優化）
+CREATE INDEX idx_products_team_available ON products(team_id, is_available);
+CREATE INDEX idx_products_team_category ON products(team_id, category);
+CREATE INDEX idx_products_team_sort ON products(team_id, sort_order);
+
+-- 部分索引（只索引上架商品，用於 AI 查詢）⭐
+CREATE INDEX idx_products_team_available_only ON products(team_id, category, name)
+  WHERE is_available = true;
+```
+
+#### 業務規則
+
+- **團隊隔離**：商品屬於團隊，RLS 基於 `team_id` 控制存取權限
+- **權限控制**：只有 `can_manage_orders` 的成員可以管理商品
+- **AI 整合**：AI 只會讀取 `is_available = true` 的商品進行推薦 ⭐
+- **通用設計**：支援烘焙、美容、按摩等 8+ 行業，透過 `metadata` JSONB 彈性擴展
+- **庫存可選**：服務型行業可不使用庫存功能（`stock = NULL`）
+
+#### 與 AI 整合流程 ⭐
+
+1. **客人詢問商品**：「你們有什麼蛋糕？」
+2. **AI 查詢商品**：從 `products` 表查詢該團隊的上架商品
+3. **智能推薦**：「我們有巴斯克蛋糕 $450、檸檬塔 $120...」
+4. **自動填價**：客人下單時，AI 自動匹配商品並填入價格
+
+#### JSON 範例
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "team_id": "7f8e9d0c-1234-5678-90ab-cdef12345678",
+  "name": "巴斯克蛋糕 6吋",
+  "price": 450.0,
+  "description": "經典巴斯克蛋糕，濃郁香醇",
+  "category": "蛋糕",
+  "unit": "個",
+  "stock": 5,
+  "low_stock_threshold": 2,
+  "is_available": true,
+  "metadata": {
+    "allergens": ["蛋", "奶"],
+    "storage": "refrigerated",
+    "shelf_life_days": 3
+  },
+  "sort_order": 1,
+  "total_sold": 125,
+  "created_at": "2025-10-29T10:00:00Z",
+  "updated_at": "2025-10-29T10:00:00Z"
+}
+```
+
+---
+
 ## 資料庫函數
 
 ### 訂單相關函數
@@ -1144,6 +1271,7 @@ OFlow 採用 **多層次權限控制**：
 | `team_invites`              | ✅ 已加入 | ✅ Owner/Admin          | ✅ Owner/Admin          | ❌                      | `role IN ('owner', 'admin') OR can_invite_members` |
 | `team_settings`             | ✅ 已加入 | ✅ System               | ✅ can_manage_settings  | ✅ can_manage_settings  | `can_manage_settings = true`                       |
 | `orders`                    | ✅ 已加入 | ✅ can_manage_orders    | ✅ can_manage_orders    | ✅ can_manage_orders    | `can_manage_orders = true`                         |
+| `products` ⭐               | ✅ 已加入 | ✅ can_manage_orders    | ✅ can_manage_orders    | ✅ can_manage_orders    | `can_manage_orders = true`                         |
 | `customers`                 | ✅ 已加入 | ✅ can_manage_customers | ✅ can_manage_customers | ✅ can_manage_customers | `can_manage_customers = true`                      |
 | `line_messages`             | ✅ 已加入 | ✅ System               | ❌                      | ❌                      | 用於查看訊息記錄                                   |
 | `conversations`             | ✅ 已加入 | ✅ System               | ✅ System               | ❌                      | 用於查看對話記錄                                   |
@@ -1215,11 +1343,11 @@ WHERE team_id IN (
 
 ---
 
-### 2. `ai-parse-message`
+### 2. `ai-parse-message` ⭐ 已整合商品資料
 
 **路徑**：`/functions/v1/ai-parse-message`
 
-**用途**：使用 AI（OpenAI GPT-4）解析 LINE 訊息，判斷意圖並提取訂單資訊。
+**用途**：使用 AI（OpenAI GPT-4）解析 LINE 訊息，判斷意圖並提取訂單資訊。整合商品資料，支援智能推薦與自動填價。
 
 **請求方式**：`POST`
 
@@ -1357,7 +1485,124 @@ POST /order-operations?action=update
 
 ---
 
-### 5. `auth-line-callback`
+### 5. `product-operations` ⭐ NEW
+
+**路徑**：`/functions/v1/product-operations`
+
+**用途**：處理商品/服務項目的 CRUD 操作，支援 AI 商品推薦整合。
+
+**驗證**：需要 JWT token
+
+**請求方式**：`GET`, `POST`, `PUT`, `DELETE`
+
+#### 支援操作
+
+**1. 查詢商品列表**
+
+```http
+GET /product-operations?action=list&team_id={team_id}&category={category}&search={search}&available_only=true
+```
+
+**參數**：
+
+- `team_id` (必填)：團隊 ID
+- `category` (選填)：商品分類（如：蛋糕、剪髮）
+- `search` (選填)：搜尋關鍵字
+- `available_only` (選填)：只顯示上架商品
+
+**回應**：
+
+```json
+{
+  "success": true,
+  "products": [
+    {
+      "id": "...",
+      "name": "巴斯克蛋糕 6吋",
+      "price": 450.00,
+      "category": "蛋糕",
+      "is_available": true,
+      ...
+    }
+  ]
+}
+```
+
+**2. 查詢商品詳情**
+
+```http
+GET /product-operations?action=detail&product_id={product_id}
+```
+
+**3. 新增商品**
+
+```http
+POST /product-operations?action=create
+Content-Type: application/json
+
+{
+  "team_id": "...",
+  "name": "巴斯克蛋糕 6吋",
+  "price": 450.00,
+  "category": "蛋糕",
+  "unit": "個",
+  "description": "經典巴斯克蛋糕",
+  "stock": 10,
+  "is_available": true,
+  "metadata": {
+    "allergens": ["蛋", "奶"]
+  }
+}
+```
+
+**4. 更新商品**
+
+```http
+PUT /product-operations?action=update
+Content-Type: application/json
+
+{
+  "product_id": "...",
+  "name": "巴斯克蛋糕 8吋",
+  "price": 650.00,
+  "stock": 5
+}
+```
+
+**5. 切換上架狀態**
+
+```http
+PUT /product-operations?action=toggle-availability
+Content-Type: application/json
+
+{
+  "product_id": "...",
+  "is_available": false
+}
+```
+
+**6. 刪除商品**
+
+```http
+DELETE /product-operations?product_id={product_id}
+```
+
+#### 權限控制
+
+- 查看商品：團隊成員
+- 管理商品：`can_manage_orders = true` 或 role = owner/admin
+
+#### 與 AI 整合 ⭐
+
+`ai-parse-message` 會自動查詢團隊的上架商品（`is_available = true`）並整合進 AI Prompt，實現：
+
+- 商品詢問智能回答
+- 下單時自動匹配商品並填入價格
+- 根據商品目錄生成推薦
+
+---
+
+### 6. `auth-line-callback`
 
 **路徑**：`/functions/v1/auth-line-callback`
 

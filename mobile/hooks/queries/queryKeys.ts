@@ -72,5 +72,9 @@ export const queryKeys = {
     // 單一商品詳情
     detail: (productId: string) =>
       [...queryKeys.products.all(), "detail", productId] as const,
+
+    // 團隊商品分類列表
+    categories: (teamId: string) =>
+      [...queryKeys.products.all(), "categories", teamId] as const,
   },
 } as const;

@@ -5,6 +5,7 @@
 import {
   createProduct,
   deleteProduct,
+  getProductCategories,
   getProducts,
   toggleProductAvailability,
   updateProduct,
@@ -27,6 +28,21 @@ export function useProducts(teamId: string | null, enabled: boolean = true) {
     queryFn: () => getProducts(teamId!),
     enabled: enabled && !!teamId,
     staleTime: 1000 * 60 * 5, // 5 分鐘
+  });
+}
+
+/**
+ * 查詢團隊商品的常用分類
+ */
+export function useProductCategories(
+  teamId: string | null,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: queryKeys.products.categories(teamId || ""),
+    queryFn: () => getProductCategories(teamId!),
+    enabled: enabled && !!teamId,
+    staleTime: 1000 * 60 * 10, // 10 分鐘
   });
 }
 

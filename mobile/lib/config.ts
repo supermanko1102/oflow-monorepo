@@ -59,6 +59,7 @@ export const config = {
   api: {
     teamOperations: `${expoConfig?.supabaseUrl}/functions/v1/team-operations`,
     orderOperations: `${expoConfig?.supabaseUrl}/functions/v1/order-operations`,
+    productOperations: `${expoConfig?.supabaseUrl}/functions/v1/product-operations`,
     lineWebhook: `${expoConfig?.supabaseUrl}/functions/v1/line-webhook`,
     aiParseMessage: `${expoConfig?.supabaseUrl}/functions/v1/ai-parse-message`,
     authLineCallback: `${expoConfig?.supabaseUrl}/functions/v1/auth-line-callback`,
