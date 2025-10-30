@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
+import { Chip } from "@/components/native/Chip";
 import {
   ProductFormModal,
   type ProductFormData,
@@ -17,11 +18,12 @@ import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Product } from "@/types/product";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
   RefreshControl,
+  ScrollView,
   Switch,
   Text,
   TouchableOpacity,
@@ -55,6 +57,24 @@ export default function ProductsScreen() {
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // 提取所有分類
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    products.forEach((p) => {
+      if (p.category) cats.add(p.category);
+    });
+    return ["全部", ...Array.from(cats).sort()];
+  }, [products]);
+
+  // 分類篩選狀態
+  const [selectedCategory, setSelectedCategory] = useState<string>("全部");
+
+  // 篩選商品
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === "全部") return products;
+    return products.filter((p) => p.category === selectedCategory);
+  }, [products, selectedCategory]);
 
   // Refresh
   const onRefresh = useCallback(async () => {
@@ -275,23 +295,71 @@ export default function ProductsScreen() {
         className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        <Text className="text-4xl font-black text-gray-900 mb-2">商品管理</Text>
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-4xl font-black text-gray-900">商品管理</Text>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.light();
+              toast.info("統計功能即將推出");
+            }}
+            className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name="chart-box-outline"
+              size={24}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
+        </View>
         <Text className="text-base text-gray-600">
           {products.length} 個商品
         </Text>
       </View>
 
+      {/* Category Tabs - 只在有分類時顯示 */}
+      {categories.length > 1 && (
+        <View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="bg-white px-6 py-3 border-b border-gray-100 space-x-2  "
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {categories.map((cat) => (
+              <Chip
+                key={cat}
+                label={cat}
+                selected={selectedCategory === cat}
+                onPress={() => {
+                  haptics.light();
+                  setSelectedCategory(cat);
+                }}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Product List */}
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <View className="flex-1 justify-center items-center">
           <EmptyState
-            title="還沒有商品"
-            description="點擊右下角按鈕新增第一個商品"
+            title={
+              selectedCategory === "全部"
+                ? "還沒有商品"
+                : `沒有「${selectedCategory}」分類的商品`
+            }
+            description={
+              selectedCategory === "全部"
+                ? "點擊右下角按鈕新增第一個商品"
+                : "試試切換其他分類或新增商品"
+            }
           />
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={filteredProducts}
           renderItem={renderProduct}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 16 }}
