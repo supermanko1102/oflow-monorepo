@@ -20,6 +20,8 @@ import {
 } from "react-native";
 import { Searchbar } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FilterBottomSheet } from "@/components/orders/FilterBottomSheet";
+import { MoreMenuBottomSheet } from "@/components/orders/MoreMenuBottomSheet";
 
 type FilterType = "all" | OrderStatus;
 type DateFilterType = "all" | "today" | "week" | "future";
@@ -30,6 +32,8 @@ export default function OrdersScreen() {
   const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const toast = useToast();
   const haptics = useHaptics();
 
@@ -134,24 +138,59 @@ export default function OrdersScreen() {
         className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        {/* Title and Search Icon */}
+        {/* Title and Action Icons */}
         {!isSearching ? (
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-4xl font-black text-gray-900">訂單管理</Text>
-            <TouchableOpacity
-              onPress={() => {
-                haptics.light();
-                setIsSearching(true);
-              }}
-              className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons
-                name="magnify"
-                size={24}
-                color="#6B7280"
-              />
-            </TouchableOpacity>
+            <View className="flex-row gap-3">
+              {/* 搜尋 Icon */}
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.light();
+                  setIsSearching(true);
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="magnify"
+                  size={24}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              
+              {/* 篩選 Icon */}
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.light();
+                  setShowFilterSheet(true);
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="filter-variant"
+                  size={24}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              
+              {/* 更多 Icon */}
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.light();
+                  setShowMoreSheet(true);
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="dots-horizontal"
+                  size={24}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <View className="mb-4">
@@ -196,13 +235,8 @@ export default function OrdersScreen() {
           </View>
         )}
 
-        {/* Status Filters */}
-        <View className="flex-row gap-2 mb-3">
-          <Chip
-            label={`全部 (${allOrders.length})`}
-            selected={statusFilter === "all"}
-            onPress={() => setStatusFilter("all")}
-          />
+        {/* Status Filters - 只保留待處理和已完成 */}
+        <View className="flex-row gap-2">
           <Chip
             label={`待處理 (${pendingCount})`}
             selected={statusFilter === "pending"}
@@ -212,30 +246,6 @@ export default function OrdersScreen() {
             label={`已完成 (${completedCount})`}
             selected={statusFilter === "completed"}
             onPress={() => setStatusFilter("completed")}
-          />
-        </View>
-
-        {/* Date Filters */}
-        <View className="flex-row gap-2">
-          <Chip
-            label="全部時間"
-            selected={dateFilter === "all"}
-            onPress={() => setDateFilter("all")}
-          />
-          <Chip
-            label="今天"
-            selected={dateFilter === "today"}
-            onPress={() => setDateFilter("today")}
-          />
-          <Chip
-            label="本週"
-            selected={dateFilter === "week"}
-            onPress={() => setDateFilter("week")}
-          />
-          <Chip
-            label="未來"
-            selected={dateFilter === "future"}
-            onPress={() => setDateFilter("future")}
           />
         </View>
       </View>
@@ -278,6 +288,33 @@ export default function OrdersScreen() {
           }
         />
       )}
+
+      {/* Filter Bottom Sheet */}
+      <FilterBottomSheet
+        visible={showFilterSheet}
+        onDismiss={() => setShowFilterSheet(false)}
+        currentStatusFilter={statusFilter}
+        currentDateFilter={dateFilter}
+        onApply={(newStatusFilter, newDateFilter) => {
+          setStatusFilter(newStatusFilter);
+          setDateFilter(newDateFilter);
+        }}
+      />
+
+      {/* More Menu Bottom Sheet */}
+      <MoreMenuBottomSheet
+        visible={showMoreSheet}
+        onDismiss={() => setShowMoreSheet(false)}
+        onExport={() => {
+          toast.info("匯出功能即將推出");
+        }}
+        onSort={() => {
+          toast.info("排序功能即將推出");
+        }}
+        onCreateManualOrder={() => {
+          toast.info("手動建立訂單功能即將推出");
+        }}
+      />
     </View>
   );
 }
