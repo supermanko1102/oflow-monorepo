@@ -1,7 +1,7 @@
 import { TeamMember, TeamRole } from "@/types/team";
 import React from "react";
 import { Alert, Text, View } from "react-native";
-import { Divider, List, Menu } from "react-native-paper";
+import { Divider, IconButton, List, Menu } from "react-native-paper";
 
 interface MemberListProps {
   members: TeamMember[];
@@ -47,7 +47,7 @@ export function MemberList({
     // owner 不能管理自己
     return (
       currentUserRole === "owner" &&
-      member.userId !== currentUserId &&
+      member.user_id !== currentUserId &&
       member.role !== "owner"
     );
   };
@@ -90,14 +90,16 @@ export function MemberList({
   return (
     <View>
       {members.map((member, index) => (
-        <React.Fragment key={member.id}>
+        <React.Fragment key={member.member_id}>
           <List.Item
-            title={member.userName}
-            description={member.userId === currentUserId ? "（你）" : undefined}
+            title={member.user_name}
+            description={
+              member.user_id === currentUserId ? "（你）" : undefined
+            }
             left={(props) => (
               <View className="justify-center items-center w-10 h-10 bg-gray-200 rounded-full ml-2">
                 <Text className="text-lg font-semibold text-gray-600">
-                  {member.userName.charAt(0)}
+                  {member.user_name.charAt(0)}
                 </Text>
               </View>
             )}
@@ -105,29 +107,30 @@ export function MemberList({
               <View className="flex-row items-center">
                 <View
                   className={`px-2 py-1 rounded ${getRoleBadgeColor(
-                    member.role
+                    member.role as TeamRole
                   )}`}
                 >
                   <Text className="text-xs font-medium">
-                    {getRoleText(member.role)}
+                    {getRoleText(member.role as TeamRole)}
                   </Text>
                 </View>
                 {canManageMember(member) && (
                   <Menu
-                    visible={menuVisible === member.userId}
+                    visible={menuVisible === member.user_id}
                     onDismiss={() => setMenuVisible(null)}
                     anchor={
-                      <List.Icon
+                      <IconButton
                         icon="dots-vertical"
-                        onPress={() => setMenuVisible(member.userId)}
+                        size={20}
+                        onPress={() => setMenuVisible(member.user_id)}
                       />
                     }
                   >
                     <Menu.Item
                       onPress={() =>
                         handleRoleChange(
-                          member.userId,
-                          member.userName,
+                          member.user_id,
+                          member.user_name,
                           "admin"
                         )
                       }
@@ -137,8 +140,8 @@ export function MemberList({
                     <Menu.Item
                       onPress={() =>
                         handleRoleChange(
-                          member.userId,
-                          member.userName,
+                          member.user_id,
+                          member.user_name,
                           "member"
                         )
                       }
@@ -148,7 +151,7 @@ export function MemberList({
                     <Divider />
                     <Menu.Item
                       onPress={() =>
-                        handleRemove(member.userId, member.userName)
+                        handleRemove(member.user_id, member.user_name)
                       }
                       title="移除成員"
                       titleStyle={{ color: "#EF4444" }}
