@@ -9,16 +9,23 @@ import { useUpdateOrderStatus } from "@/hooks/queries/useOrders";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useCallback } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import {
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
-  const merchantName = useAuthStore((state) => state.userName);
-  const currentTeamId = useAuthStore((state) => state.currentTeamId); // 統一使用 AuthStore
+  const currentTeamId = useAuthStore((state) => state.currentTeamId);
   const toast = useToast();
   const haptics = useHaptics();
+
+  // 視圖切換狀態
 
   // 使用 Dashboard Summary API（後端已完成分類和排序）
   const {
@@ -76,22 +83,10 @@ export default function TodayScreen() {
       toast,
     ]
   );
-
-  const today = new Date();
-
-  const getCurrentGreeting = () => {
-    const hour = today.getHours();
-    if (hour < 12) return "早安";
-    if (hour < 18) return "午安";
-    return "晚安";
-  };
-
-  const formatDate = () => {
-    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-    const month = today.getMonth() + 1;
-    const date = today.getDate();
-    const weekday = weekdays[today.getDay()];
-    return `${month}/${date} (${weekday})`;
+  // 通知處理
+  const handleNotification = () => {
+    haptics.light();
+    toast.info("通知功能即將推出");
   };
 
   // 計算今日總營收
@@ -99,13 +94,6 @@ export default function TodayScreen() {
     (sum, order) => sum + order.totalAmount,
     0
   );
-
-  // 取得首筆取貨時間
-  const firstPickupTime =
-    todayPendingOrders.length > 0
-      ? todayPendingOrders[0].pickupTime
-      : undefined;
-
   // Loading state
   if (isLoading && !dashboardData) {
     return <LoadingState message="載入中..." />;
@@ -122,17 +110,26 @@ export default function TodayScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Sticky Header */}
+      {/* 極簡功能型 Header */}
       <View
-        className="pb-5 px-6 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-end px-6 py-4 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        <Text className="text-4xl font-black text-gray-900 mb-2">
-          {getCurrentGreeting()}，{merchantName}
-        </Text>
-        <Text className="text-base font-semibold text-gray-600">
-          今天是 {formatDate()}
-        </Text>
+        {/* 右側：功能圖標 */}
+        <View className="flex-row gap-4">
+          {/* 通知 icon */}
+          <TouchableOpacity
+            onPress={handleNotification}
+            activeOpacity={0.6}
+            accessibilityLabel="通知"
+          >
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={24}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 可滾動內容 */}
@@ -151,17 +148,15 @@ export default function TodayScreen() {
         <TodaySummaryCard
           orderCount={todayPendingOrders.length + todayCompletedOrders.length}
           totalRevenue={totalRevenue}
-          firstPickupTime={firstPickupTime}
         />
-
-        {/* 今日待辦清單 */}
+        {/* 今日訂單列表（待處理 + 已完成） */}
         <TodayTodoList
           pendingOrders={todayPendingOrders}
           completedOrders={todayCompletedOrders}
           onToggleComplete={handleToggleComplete}
         />
 
-        {/* 未來訂單 */}
+        {/* 未來訂單區塊 */}
         <FutureOrdersSection futureOrders={futureOrders} />
 
         {/* 底部間距 */}
