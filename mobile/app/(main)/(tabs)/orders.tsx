@@ -8,8 +8,16 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { OrderStatus } from "@/types/order";
+import { isFuture, isThisWeek, isToday } from "@/utils/timeHelpers";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, RefreshControl, Text, View } from "react-native";
+import {
+  FlatList,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Searchbar } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,8 +27,9 @@ type DateFilterType = "all" | "today" | "week" | "future";
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const [statusFilter, setStatusFilter] = useState<FilterType>("pending");
-  const [dateFilter, setDateFilter] = useState<DateFilterType>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const toast = useToast();
   const haptics = useHaptics();
 
@@ -43,33 +52,6 @@ export default function OrdersScreen() {
     await refetch();
     toast.success("訂單已更新");
   }, [haptics, toast, refetch]);
-
-  // 日期篩選輔助函數
-  const isToday = (dateStr: string): boolean => {
-    const today = new Date();
-    const date = new Date(dateStr);
-    return (
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth() &&
-      date.getDate() === today.getDate()
-    );
-  };
-
-  const isThisWeek = (dateStr: string): boolean => {
-    const today = new Date();
-    const date = new Date(dateStr);
-    const weekFromNow = new Date(today);
-    weekFromNow.setDate(weekFromNow.getDate() + 7);
-    return date >= today && date <= weekFromNow;
-  };
-
-  const isFuture = (dateStr: string): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
-    return date > today;
-  };
 
   // 篩選訂單
   const filteredOrders = useMemo(() => {
@@ -119,7 +101,7 @@ export default function OrdersScreen() {
           status: "completed",
         });
         haptics.success();
-      } catch (error) {
+      } catch {
         toast.error("更新失敗，請稍後再試");
       }
     },
@@ -152,16 +134,67 @@ export default function OrdersScreen() {
         className="pb-5 px-6 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
-        <Text className="text-4xl font-black text-gray-900 mb-4">訂單管理</Text>
-
-        {/* Search Bar */}
-        <Searchbar
-          placeholder="搜尋客戶、電話或商品"
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          className="mb-3"
-          style={{ backgroundColor: "#F3F4F6" }}
-        />
+        {/* Title and Search Icon */}
+        {!isSearching ? (
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-4xl font-black text-gray-900">訂單管理</Text>
+            <TouchableOpacity
+              onPress={() => {
+                haptics.light();
+                setIsSearching(true);
+              }}
+              className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="magnify"
+                size={24}
+                color="#6B7280"
+              />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View className="mb-4">
+            <Searchbar
+              placeholder="搜尋客戶、電話或商品"
+              onChangeText={setSearchQuery}
+              value={searchQuery}
+              autoFocus
+              style={{ backgroundColor: "#F3F4F6" }}
+              icon={() => (
+                <TouchableOpacity
+                  onPress={() => {
+                    haptics.light();
+                    setIsSearching(false);
+                    setSearchQuery("");
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="arrow-left"
+                    size={24}
+                    color="#6B7280"
+                  />
+                </TouchableOpacity>
+              )}
+              clearIcon={() =>
+                searchQuery ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      haptics.light();
+                      setSearchQuery("");
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="close"
+                      size={20}
+                      color="#6B7280"
+                    />
+                  </TouchableOpacity>
+                ) : null
+              }
+            />
+          </View>
+        )}
 
         {/* Status Filters */}
         <View className="flex-row gap-2 mb-3">

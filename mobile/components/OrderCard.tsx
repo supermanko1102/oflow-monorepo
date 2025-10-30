@@ -1,12 +1,12 @@
 import { SHADOWS } from "@/constants/design";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
-import { Order } from "@/types/order";
-import { formatRelativeTime } from "@/utils/timeHelpers";
+import { DELIVERY_METHOD_LABELS, Order } from "@/types/order";
+import { formatOrderTime } from "@/utils/timeHelpers";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Linking, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { Card } from "react-native-paper";
 import { StatusBadge } from "./StatusBadge";
 
@@ -20,10 +20,16 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
   const haptics = useHaptics();
   const toast = useToast();
 
-  const relativeTime = formatRelativeTime(
-    order.pickupDate || order.appointmentDate,
-    order.pickupTime || order.appointmentTime
-  );
+  // 向後兼容：優先使用新欄位
+  const orderDate = order.appointmentDate;
+  const orderTime = order.appointmentTime;
+  const deliveryMethod = order.deliveryMethod;
+
+  // 使用新的格式化函數
+  const formattedTime = formatOrderTime(orderDate, orderTime, deliveryMethod);
+
+  // 取得配送方式標籤
+  const deliveryLabel = DELIVERY_METHOD_LABELS[deliveryMethod] || "自取";
 
   const itemsSummary =
     order.items.length === 1
@@ -40,28 +46,6 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
     haptics.success();
     toast.success("訂單已標記為完成");
     onComplete?.(order.id);
-  };
-
-  const handleCall = (e: any) => {
-    e.stopPropagation();
-    haptics.light();
-    if (order.customerPhone) {
-      Linking.openURL(`tel:${order.customerPhone}`);
-      toast.info("已撥打電話");
-    } else {
-      toast.warning("沒有客戶電話");
-    }
-  };
-
-  const handleMessage = (e: any) => {
-    e.stopPropagation();
-    haptics.light();
-    if (order.customerPhone) {
-      Linking.openURL(`sms:${order.customerPhone}`);
-      toast.info("已開啟簡訊");
-    } else {
-      toast.warning("沒有客戶電話");
-    }
   };
 
   return (
@@ -82,23 +66,40 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
             </View>
           </View>
 
-          {/* Time and Amount */}
+          {/* Time, Delivery Method and Amount */}
           <View className="flex-row justify-between items-center mb-4">
-            <View className="flex-row items-center px-4 py-2 rounded-full bg-gray-100">
-              <Text className="text-sm font-semibold text-gray-700">
-                {relativeTime}
-              </Text>
+            <View className="flex-col gap-2">
+              <View className="flex-row items-center px-3 py-1.5 rounded-lg bg-gray-100">
+                <Text className="text-sm font-semibold text-gray-700">
+                  {formattedTime}
+                </Text>
+              </View>
+              <View className="flex-row items-center px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100">
+                <MaterialCommunityIcons
+                  name={
+                    deliveryMethod === "black_cat" ||
+                    deliveryMethod === "convenience_store"
+                      ? "truck"
+                      : "store"
+                  }
+                  size={14}
+                  color="#3B82F6"
+                />
+                <Text className="text-xs font-semibold text-blue-700 ml-1">
+                  {deliveryLabel}
+                </Text>
+              </View>
             </View>
             <Text className="text-3xl font-bold text-gray-900">
               ${order.totalAmount}
             </Text>
           </View>
 
-          {/* Quick Actions - 統一灰色風格 */}
+          {/* Quick Actions - 只保留完成按鈕 */}
           {order.status === "pending" && (
-            <View className="flex-row gap-3 pt-4 border-t border-neutral-100">
+            <View className="pt-4 border-t border-neutral-100">
               <TouchableOpacity
-                className="flex-1 flex-row items-center justify-center bg-line-green py-3 rounded-xl"
+                className="flex-row items-center justify-center bg-line-green py-3 rounded-xl"
                 onPress={handleComplete}
                 activeOpacity={0.7}
               >
@@ -108,32 +109,6 @@ export function OrderCard({ order, onComplete }: OrderCardProps) {
                   color="#FFFFFF"
                 />
                 <Text className="ml-2 text-sm font-bold text-white">完成</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="w-12 h-12 items-center justify-center bg-gray-100 rounded-xl"
-                onPress={handleCall}
-                disabled={!order.customerPhone}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name="phone"
-                  size={20}
-                  color="#6B7280"
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="w-12 h-12 items-center justify-center bg-gray-100 rounded-xl"
-                onPress={handleMessage}
-                disabled={!order.customerPhone}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name="message-text"
-                  size={20}
-                  color="#6B7280"
-                />
               </TouchableOpacity>
             </View>
           )}
