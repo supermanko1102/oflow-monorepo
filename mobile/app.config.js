@@ -61,5 +61,11 @@ module.exports = {
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     },
     owner: "alexanderko",
+    updates: {
+      url: "https://u.expo.dev/0d0c2fcb-f6e8-4a91-8e50-7daff97ee666",
+    },
+    runtimeVersion: {
+      policy: "appVersion",
+    },
   },
 };
