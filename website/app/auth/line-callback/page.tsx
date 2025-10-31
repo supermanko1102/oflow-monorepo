@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+export const dynamic = "force-dynamic";
 
 /**
  * LINE Login Callback Handler (Server-Side Redirect)
@@ -12,14 +13,16 @@ import { redirect } from "next/navigation";
 export default async function LineCallbackPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   try {
+    const params = await searchParams;
+
     // 取得 URL 參數
-    const code = searchParams.code as string | undefined;
-    const state = searchParams.state as string | undefined;
-    const codeVerifier = searchParams.code_verifier as string | undefined;
-    const error = searchParams.error as string | undefined;
+    const code = params.code as string;
+    const state = params.state as string;
+    const codeVerifier = params.code_verifier as string;
+    const error = params.error as string;
 
     console.log("[LINE Callback] 收到參數:", {
       code: !!code,
@@ -89,18 +92,23 @@ export default async function LineCallbackPage({
     console.log("[LINE Callback] 取得 session 成功");
     console.log("[LINE Callback] 團隊數:", result.teams?.length || 0);
 
-    // 建立 deep link 並使用 server-side redirect
+    // 建立 Universal Link 並使用 server-side redirect
+    // Universal Link 會在 App 內開啟 /auth/callback 頁面
+    // 該頁面再觸發 custom URL scheme 讓 openAuthSessionAsync 關閉
     const teamsJson = JSON.stringify(result.teams || []);
-    const deepLink = `oflow://auth?access_token=${encodeURIComponent(
+    const universalLink = `https://${
+      process.env.NEXT_PUBLIC_VERCEL_URL || "oflow-website.vercel.app"
+    }/auth/callback?access_token=${encodeURIComponent(
       result.session.access_token
     )}&refresh_token=${encodeURIComponent(
       result.session.refresh_token
     )}&teams=${encodeURIComponent(teamsJson)}`;
 
-    console.log("[LINE Callback] Server-side redirect 回 app");
+    console.log("[LINE Callback] Server-side redirect 到 Universal Link");
 
-    // 使用 HTTP 302 redirect - 這會讓 openAuthSessionAsync 正確關閉瀏覽器
-    redirect(deepLink);
+    // 使用 HTTP 302 redirect 到 Universal Link
+    // iOS 會在 App 內開啟這個 URL（因為 apple-app-site-association）
+    redirect(universalLink);
   } catch (error) {
     console.error("[LINE Callback] 處理失敗:", error);
 
