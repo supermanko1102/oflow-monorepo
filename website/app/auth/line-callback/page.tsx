@@ -35,8 +35,9 @@ export default function LineCallbackPage() {
         // 檢查是否有錯誤
         if (error) {
           console.error("[LINE Callback] 授權錯誤:", error);
+          // 使用 Universal Link 而非 URL Scheme
           window.location.replace(
-            `oflow://auth?error=${encodeURIComponent(error)}`
+            `https://oflow-website.vercel.app/auth/callback?error=${encodeURIComponent(error)}`
           );
           return;
         }
@@ -44,7 +45,10 @@ export default function LineCallbackPage() {
         // 檢查必要參數
         if (!code || !state) {
           console.error("[LINE Callback] 缺少必要參數");
-          window.location.replace("oflow://auth?error=missing_parameters");
+          // 使用 Universal Link 而非 URL Scheme
+          window.location.replace(
+            "https://oflow-website.vercel.app/auth/callback?error=missing_parameters"
+          );
           return;
         }
 
@@ -54,8 +58,9 @@ export default function LineCallbackPage() {
         if (!supabaseUrl) {
           console.error("[LINE Callback] NEXT_PUBLIC_SUPABASE_URL 未設定");
           setStatus("設定錯誤");
+          // 使用 Universal Link 而非 URL Scheme
           window.location.replace(
-            "oflow://auth?error=Configuration%20error%20-%20SUPABASE_URL%20not%20set"
+            "https://oflow-website.vercel.app/auth/callback?error=Configuration%20error%20-%20SUPABASE_URL%20not%20set"
           );
           return;
         }
@@ -95,26 +100,27 @@ export default function LineCallbackPage() {
         console.log("[LINE Callback] 取得 session 成功");
         console.log("[LINE Callback] 團隊數:", result.teams?.length || 0);
 
-        // 建立 deep link 並傳遞 session tokens 和團隊資料
+        // 建立 Universal Link 並傳遞 session tokens 和團隊資料
+        // 使用 Universal Link 而非 URL Scheme，避免 iOS 安全限制
         setStatus("登入成功！正在跳轉...");
         const teamsJson = JSON.stringify(result.teams || []);
-        const deepLink = `oflow://auth?access_token=${encodeURIComponent(
+        const universalLink = `https://oflow-website.vercel.app/auth/callback?access_token=${encodeURIComponent(
           result.session.access_token
         )}&refresh_token=${encodeURIComponent(
           result.session.refresh_token
         )}&teams=${encodeURIComponent(teamsJson)}`;
 
-        console.log("[LINE Callback] 重定向回 app");
-        window.location.replace(deepLink);
+        console.log("[LINE Callback] 重定向回 app (Universal Link)");
+        window.location.replace(universalLink);
       } catch (error) {
         console.error("[LINE Callback] 處理失敗:", error);
         setStatus("登入失敗");
 
-        // 錯誤也要回傳給 app
+        // 錯誤也要回傳給 app (使用 Universal Link)
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         window.location.replace(
-          `oflow://auth?error=${encodeURIComponent(errorMessage)}`
+          `https://oflow-website.vercel.app/auth/callback?error=${encodeURIComponent(errorMessage)}`
         );
       }
     };

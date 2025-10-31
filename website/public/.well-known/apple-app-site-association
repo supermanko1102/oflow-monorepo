@@ -4,7 +4,7 @@
     "details": [
       {
         "appID": "NK45C26RDB.com.oflow.app",
-        "paths": ["/auth/line-callback"]
+        "paths": ["/auth/callback"]
       }
     ]
   }
