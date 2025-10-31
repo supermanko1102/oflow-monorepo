@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
   console.log("[Universal Link] 是否在 app 內:", isInApp);
 
   // 如果在瀏覽器中打開（app 未安裝），顯示下載頁
-  if (!isInApp) {
-    console.log("[Universal Link] 重定向到下載頁");
-    return NextResponse.redirect(new URL("/download", request.url));
-  }
+  // if (!isInApp) {
+  //   console.log("[Universal Link] 重定向到下載頁");
+  //   return NextResponse.redirect(new URL("/download", request.url));
+  // }
 
   // 如果在 app 內，返回 HTML 並通過 JavaScript 觸發 deep link
   // 這個頁面會被 iOS 的 Universal Link 機制攔截，參數會傳遞給 app
