@@ -15,7 +15,7 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
-      buildNumber: "4",
+      buildNumber: "5",
     },
     android: {
       adaptiveIcon: {
