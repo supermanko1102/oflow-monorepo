@@ -107,9 +107,11 @@ export const initiateLineLogin = async (): Promise<string | null> => {
     console.log("[LINE Login] 啟動 OAuth 流程...");
 
     // 開啟授權會話（OAuth 專用，會在重定向後自動關閉）
+    // 使用 Universal Link 而非 URL Scheme，避免 iOS 安全限制
+    // 當重定向到 /auth/callback 時，瀏覽器會自動關閉
     const result = await WebBrowser.openAuthSessionAsync(
       authUrl,
-      "oflow://" // 當重定向到這個 scheme 時，瀏覽器會自動關閉
+      "https://oflow-website.vercel.app/auth/callback" // 使用 Universal Link
     );
 
     console.log("[LINE Login] Auth session 結果:", result.type);

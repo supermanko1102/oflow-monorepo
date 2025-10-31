@@ -128,20 +128,30 @@ export default function LoginScreen() {
 
   /**
    * 監聽 deep link URL 事件
+   * 支援 Universal Link 和 URL Scheme
    */
   useEffect(() => {
     // 監聽 URL 事件（app 在背景時）
     const subscription = Linking.addEventListener("url", (event) => {
       console.log("[Login] Deep link 事件:", event.url);
-      // 新架構：監聽 oflow://auth?access_token=...
-      if (event.url.includes("oflow://auth")) {
+      // 支援兩種格式：
+      // 1. Universal Link: https://oflow-website.vercel.app/auth/callback?access_token=...
+      // 2. URL Scheme (向後兼容): oflow://auth?access_token=...
+      if (
+        event.url.includes("oflow://auth") ||
+        event.url.includes("oflow-website.vercel.app/auth/callback")
+      ) {
         handleCallback(event.url);
       }
     });
 
     // 檢查初始 URL（app 從關閉狀態啟動）
     Linking.getInitialURL().then((url) => {
-      if (url && url.includes("oflow://auth")) {
+      if (
+        url &&
+        (url.includes("oflow://auth") ||
+          url.includes("oflow-website.vercel.app/auth/callback"))
+      ) {
         console.log("[Login] 初始 URL:", url);
         handleCallback(url);
       }
