@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 /**
- * Universal Link Fallback 頁面
- *
- * 當 Universal Link 尚未生效或配置未完成時，iOS 會在瀏覽器中開啟此頁面。
- * 此頁面提供手動開啟 App 的選項和故障排除資訊。
+ * Universal Link Fallback 頁面內部組件
+ * 使用 Suspense 包裹以符合 Next.js 要求
  */
-export default function MobileRedirectPage() {
+function MobileRedirectContent() {
   const searchParams = useSearchParams();
   const [customSchemeUrl, setCustomSchemeUrl] = useState<string>("");
 
@@ -114,5 +112,25 @@ export default function MobileRedirectPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Universal Link Fallback 頁面
+ *
+ * 當 Universal Link 尚未生效或配置未完成時，iOS 會在瀏覽器中開啟此頁面。
+ * 此頁面提供手動開啟 App 的選項和故障排除資訊。
+ */
+export default function MobileRedirectPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        </div>
+      }
+    >
+      <MobileRedirectContent />
+    </Suspense>
   );
 }
