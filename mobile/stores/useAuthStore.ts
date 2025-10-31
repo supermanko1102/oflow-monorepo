@@ -115,7 +115,9 @@ export const useAuthStore = create<AuthState>()(
         }
 
         // 標記為已 hydrated
-        state?.setHasHydrated(true);
+        const setHasHydrated =
+          state?.setHasHydrated || useAuthStore.getState().setHasHydrated;
+        setHasHydrated(true);
         console.log("[AuthStore] === Hydration 完成 ===");
       },
       // 只持久化必要的欄位，不持久化 _hasHydrated
