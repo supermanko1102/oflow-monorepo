@@ -107,9 +107,10 @@ export const initiateLineLogin = async (): Promise<string | null> => {
     console.log("[LINE Login] 啟動 OAuth 流程...");
 
     // 開啟授權會話（OAuth 專用，會在重定向後自動關閉）
+    // redirectUrl 必須與實際 redirect 的 URL 完全匹配（包括 path）
     const result = await WebBrowser.openAuthSessionAsync(
       authUrl,
-      "oflow://" // 當重定向到這個 scheme 時，瀏覽器會自動關閉
+      "oflow://auth" // 當重定向到這個 URL 時，瀏覽器會自動關閉
     );
 
     console.log("[LINE Login] Auth session 結果:", result.type);
