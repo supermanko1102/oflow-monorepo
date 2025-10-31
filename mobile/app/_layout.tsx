@@ -15,9 +15,6 @@ import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
 
-// 防止 splash screen 自動隱藏
-SplashScreen.preventAutoHideAsync();
-
 const paperLightTheme = {
   ...MD3LightTheme,
   colors: {
