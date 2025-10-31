@@ -3,7 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 
 /**
@@ -28,22 +28,36 @@ export default function MobileRedirectScreen() {
 
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+  const hasHandledRef = useRef(false);
+
+  const getSingleParam = (value?: string | string[]) =>
+    Array.isArray(value) ? value[0] : value;
 
   useEffect(() => {
+    if (!hasHydrated || hasHandledRef.current) {
+      return;
+    }
+
+    hasHandledRef.current = true;
     handleCallback();
-  }, []);
+  }, [hasHydrated]);
 
   const handleCallback = async () => {
     try {
       console.log("[Mobile Redirect] 處理 Universal Link callback");
 
       // 檢查是否有錯誤
-      if (params.error) {
-        throw new Error(`授權失敗: ${params.error}`);
+      const errorParam = getSingleParam(params.error);
+      if (errorParam) {
+        throw new Error(`授權失敗: ${decodeURIComponent(errorParam)}`);
       }
 
       // 檢查必要參數
-      if (!params.access_token || !params.refresh_token) {
+      const accessTokenParam = getSingleParam(params.access_token);
+      const refreshTokenParam = getSingleParam(params.refresh_token);
+
+      if (!accessTokenParam || !refreshTokenParam) {
         throw new Error("未收到有效的 session tokens");
       }
 
@@ -53,8 +67,8 @@ export default function MobileRedirectScreen() {
       console.log("[Mobile Redirect] 設定 Supabase session...");
       const { data: sessionData, error: sessionError } =
         await supabase.auth.setSession({
-          access_token: params.access_token,
-          refresh_token: params.refresh_token,
+          access_token: accessTokenParam,
+          refresh_token: refreshTokenParam,
         });
 
       if (sessionError || !sessionData.user) {
@@ -76,7 +90,7 @@ export default function MobileRedirectScreen() {
         sessionData.user.id,
         displayName,
         pictureUrl,
-        params.access_token
+        accessTokenParam
       );
 
       // 4. Prefetch teams data
@@ -85,9 +99,10 @@ export default function MobileRedirectScreen() {
 
       // 5. 解析團隊資訊
       let teams: any[] = [];
-      if (params.teams) {
+      const teamsParam = getSingleParam(params.teams);
+      if (teamsParam) {
         try {
-          teams = JSON.parse(params.teams);
+          teams = JSON.parse(decodeURIComponent(teamsParam));
         } catch (e) {
           console.warn("[Mobile Redirect] 團隊資料解析失敗:", e);
         }
