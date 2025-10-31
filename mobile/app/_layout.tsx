@@ -7,12 +7,17 @@ import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Redirect, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { MD3LightTheme, PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
+
+// 必須在 app 啟動時調用，讓 openAuthSessionAsync 能正確處理 redirect
+// 這是 production build 必需的（Expo Go 會自動處理）
+WebBrowser.maybeCompleteAuthSession();
 
 const paperLightTheme = {
   ...MD3LightTheme,
