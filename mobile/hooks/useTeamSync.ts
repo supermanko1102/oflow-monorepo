@@ -24,6 +24,7 @@ interface Team {
 interface UseTeamSyncOptions {
   teams: Team[] | undefined;
   isLoggedIn: boolean;
+  enabled?: boolean; // 是否啟用此 hook（預設 true）
 }
 
 /**
@@ -39,11 +40,21 @@ interface UseTeamSyncOptions {
  * useTeamSync({ teams, isLoggedIn });
  * ```
  */
-export function useTeamSync({ teams, isLoggedIn }: UseTeamSyncOptions) {
+export function useTeamSync({
+  teams,
+  isLoggedIn,
+  enabled = true,
+}: UseTeamSyncOptions) {
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   useEffect(() => {
+    // 守衛：未啟用時不執行
+    if (!enabled) {
+      console.log("[TeamSync] 未啟用，跳過同步邏輯");
+      return;
+    }
+
     // 前置條件檢查
     if (!isLoggedIn || !teams || teams.length === 0) {
       console.log("[TeamSync] 跳過同步:", {
@@ -86,5 +97,5 @@ export function useTeamSync({ teams, isLoggedIn }: UseTeamSyncOptions) {
       console.log("[TeamSync] 所有團隊都已完成設定，等待用戶手動選擇");
       // 不自動設定，讓用戶進入 team-select 頁面選擇
     }
-  }, [isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
+  }, [enabled, isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
 }
