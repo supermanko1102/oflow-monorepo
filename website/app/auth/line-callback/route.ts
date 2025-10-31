@@ -32,15 +32,19 @@ export async function GET(request: NextRequest) {
     // 檢查是否有錯誤
     if (error) {
       console.error("[LINE Callback] 授權錯誤:", error);
+      const baseUrl = request.nextUrl.origin;
       return NextResponse.redirect(
-        `oflow://auth?error=${encodeURIComponent(error)}`
+        `${baseUrl}/auth/mobile-redirect?error=${encodeURIComponent(error)}`
       );
     }
 
     // 檢查必要參數
     if (!code || !state) {
       console.error("[LINE Callback] 缺少必要參數");
-      return NextResponse.redirect("oflow://auth?error=missing_parameters");
+      const baseUrl = request.nextUrl.origin;
+      return NextResponse.redirect(
+        `${baseUrl}/auth/mobile-redirect?error=missing_parameters`
+      );
     }
 
     // 檢查必要的環境變數
@@ -49,7 +53,10 @@ export async function GET(request: NextRequest) {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error("[LINE Callback] Supabase 環境變數未設定");
-      return NextResponse.redirect("oflow://auth?error=Configuration%20error");
+      const baseUrl = request.nextUrl.origin;
+      return NextResponse.redirect(
+        `${baseUrl}/auth/mobile-redirect?error=Configuration%20error`
+      );
     }
 
     // 呼叫 Edge Function
@@ -73,8 +80,9 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("[LINE Callback] Edge Function 失敗:", errorData);
+      const baseUrl = request.nextUrl.origin;
       return NextResponse.redirect(
-        `oflow://auth?error=${encodeURIComponent(
+        `${baseUrl}/auth/mobile-redirect?error=${encodeURIComponent(
           errorData.error || "Edge Function 失敗"
         )}`
       );
@@ -84,33 +92,43 @@ export async function GET(request: NextRequest) {
 
     if (!result.success || !result.session) {
       console.error("[LINE Callback] 未收到有效的 session");
-      return NextResponse.redirect("oflow://auth?error=Invalid%20session");
+      const baseUrl = request.nextUrl.origin;
+      return NextResponse.redirect(
+        `${baseUrl}/auth/mobile-redirect?error=Invalid%20session`
+      );
     }
 
     console.log("[LINE Callback] 取得 session 成功");
     console.log("[LINE Callback] 團隊數:", result.teams?.length || 0);
 
-    // 建立 deep link URL
+    // 建立 redirect URL（使用 Universal Link for production）
     const teamsJson = JSON.stringify(result.teams || []);
-    const deepLink = `oflow://auth?access_token=${encodeURIComponent(
+    const baseUrl = request.nextUrl.origin;
+
+    // 使用 Universal Link（iOS production build 需要）
+    const universalLink = `${baseUrl}/auth/mobile-redirect?access_token=${encodeURIComponent(
       result.session.access_token
     )}&refresh_token=${encodeURIComponent(
       result.session.refresh_token
     )}&teams=${encodeURIComponent(teamsJson)}`;
 
-    console.log("[LINE Callback] HTTP 302 redirect 到 oflow://");
+    console.log("[LINE Callback] HTTP 302 redirect 到 Universal Link");
 
     // 使用 NextResponse.redirect() 產生真正的 HTTP 302 redirect
-    // 這會讓 openAuthSessionAsync 正確捕獲 oflow:// 並關閉瀏覽器
-    return NextResponse.redirect(deepLink);
+    // iOS 會透過 Universal Link 自動開啟 App
+    // Expo Go 開發環境也能正常運作（會顯示網頁，然後手動觸發 custom scheme）
+    return NextResponse.redirect(universalLink);
   } catch (error) {
     console.error("[LINE Callback] 處理失敗:", error);
 
-    // 錯誤也要回傳給 app
+    // 錯誤也要回傳給 app（使用 Universal Link）
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
+    const baseUrl = request.nextUrl.origin;
     return NextResponse.redirect(
-      `oflow://auth?error=${encodeURIComponent(errorMessage)}`
+      `${baseUrl}/auth/mobile-redirect?error=${encodeURIComponent(
+        errorMessage
+      )}`
     );
   }
 }
