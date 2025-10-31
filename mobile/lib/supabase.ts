@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "./config";
 
+const isServer = typeof window === "undefined";
+
 // 建立 Supabase Client
 export const supabase = createClient(
   config.supabase.url,
@@ -9,9 +11,9 @@ export const supabase = createClient(
   {
     auth: {
       // 使用 AsyncStorage 儲存 session
-      storage: AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
+      storage: isServer ? undefined : AsyncStorage,
+      persistSession: !isServer,
+      autoRefreshToken: !isServer,
       detectSessionInUrl: false,
     },
   }
