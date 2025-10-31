@@ -107,10 +107,11 @@ export const initiateLineLogin = async (): Promise<string | null> => {
     console.log("[LINE Login] 啟動 OAuth 流程...");
 
     // 開啟授權會話（OAuth 專用，會在重定向後自動關閉）
-    // redirectUrl 必須與實際 redirect 的 URL 完全匹配（包括 path）
+    // 使用 Universal Link 作為 redirect URL（iOS production build 需要）
+    // Expo Go 開發環境會 fallback 到 custom scheme
     const result = await WebBrowser.openAuthSessionAsync(
       authUrl,
-      "oflow://auth" // 當重定向到這個 URL 時，瀏覽器會自動關閉
+      "https://oflow-website.vercel.app/auth/mobile-redirect" // Universal Link
     );
 
     console.log("[LINE Login] Auth session 結果:", result.type);
@@ -137,8 +138,16 @@ export const initiateLineLogin = async (): Promise<string | null> => {
 };
 
 /**
- * 處理 Auth callback（由 deep link 觸發）
- * 新架構：直接接收 Supabase session tokens（不再處理 LINE code）
+ * 處理 Auth callback
+ *
+ * 支援兩種 URL 格式：
+ * 1. Universal Link: https://oflow-website.vercel.app/auth/mobile-redirect?access_token=...
+ *    （iOS production build 使用，由 mobile-redirect.tsx 處理）
+ * 2. Custom Scheme: oflow://auth?access_token=...
+ *    （Expo Go 開發環境使用，由此函數處理）
+ *
+ * 注意：Universal Link 會由 Expo Router 自動路由到 mobile-redirect.tsx
+ * 所以此函數主要用於處理 custom scheme（開發環境）
  */
 export const handleAuthCallback = async (
   url: string
