@@ -94,7 +94,16 @@ async function replyLineMessage(
   }
 }
 
-// 呼叫 AI 解析服務（支援對話歷史）
+// 判斷業務類型（商品型 vs 服務型）
+function isProductBasedBusiness(businessType: string): boolean {
+  return ["bakery", "flower", "craft", "other"].includes(businessType);
+}
+
+function isServiceBasedBusiness(businessType: string): boolean {
+  return ["beauty", "massage", "nail", "pet"].includes(businessType);
+}
+
+// 呼叫 AI 解析服務（支援對話歷史，根據業務類型路由）
 async function parseMessageWithAI(
   message: string,
   teamContext: any,
@@ -105,8 +114,22 @@ async function parseMessageWithAI(
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
+    // 根據業務類型選擇對應的 AI function
+    const businessType = teamContext?.business_type || "other";
+    let aiFunctionName = "ai-parse-message-goods"; // 預設為商品型
+
+    if (isProductBasedBusiness(businessType)) {
+      aiFunctionName = "ai-parse-message-goods";
+      console.log("[LINE Webhook] 使用商品型 AI 解析");
+    } else if (isServiceBasedBusiness(businessType)) {
+      aiFunctionName = "ai-parse-message-services";
+      console.log("[LINE Webhook] 使用服務型 AI 解析");
+    } else {
+      console.log("[LINE Webhook] 未知業務類型，使用商品型 AI 解析");
+    }
+
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/ai-parse-message`,
+      `${SUPABASE_URL}/functions/v1/${aiFunctionName}`,
       {
         method: "POST",
         headers: {
