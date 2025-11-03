@@ -89,6 +89,44 @@ export interface UpdateLineSettingsResponse {
   message: string;
 }
 
+/**
+ * 驗證 LINE Channel 參數
+ */
+export interface ValidateLineChannelParams {
+  channel_id: string;
+  channel_secret: string;
+  channel_access_token: string;
+}
+
+/**
+ * 驗證 LINE Channel 回應
+ */
+export interface ValidateLineChannelResponse {
+  valid: boolean;
+  bot_name?: string;
+  bot_picture_url?: string;
+  error?: string;
+}
+
+/**
+ * 測試 Webhook 參數
+ */
+export interface TestWebhookParams {
+  team_id: string;
+}
+
+/**
+ * 測試 Webhook 回應
+ */
+export interface TestWebhookResponse {
+  success: boolean;
+  webhook_configured: boolean;
+  webhook_test_success: boolean;
+  webhook_url: string;
+  error?: string;
+  message: string;
+}
+
 // ==================== Business Type ====================
 
 // 業務類別

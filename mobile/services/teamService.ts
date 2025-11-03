@@ -12,8 +12,12 @@ import type {
   CreateTeamResponse,
   Team,
   TeamMember,
+  TestWebhookParams,
+  TestWebhookResponse,
   UpdateLineSettingsParams,
   UpdateLineSettingsResponse,
+  ValidateLineChannelParams,
+  ValidateLineChannelResponse,
 } from "@/types/team";
 
 // 建立 Team API Client 實例
@@ -93,6 +97,56 @@ export async function leaveTeam(teamId: string): Promise<void> {
 }
 
 /**
+ * 驗證 LINE Channel 資訊
+ * 在儲存前先驗證 Channel 資訊是否有效
+ */
+export async function validateLineChannel(
+  params: ValidateLineChannelParams
+): Promise<ValidateLineChannelResponse> {
+  try {
+    // 1. 驗證 Access Token 是否有效
+    const botInfoResponse = await fetch("https://api.line.me/v2/bot/info", {
+      headers: {
+        Authorization: `Bearer ${params.channel_access_token}`,
+      },
+    });
+
+    if (!botInfoResponse.ok) {
+      const errorData = await botInfoResponse.json().catch(() => ({}));
+      return {
+        valid: false,
+        error:
+          errorData.message ||
+          "Access Token 無效或已過期，請檢查是否正確複製",
+      };
+    }
+
+    const botInfo = await botInfoResponse.json();
+
+    // 2. 驗證 Channel ID 格式（LINE Channel ID 是數字）
+    if (!/^\d+$/.test(params.channel_id.trim())) {
+      return {
+        valid: false,
+        error: "Channel ID 格式不正確，應該是純數字",
+      };
+    }
+
+    // 3. 驗證成功，回傳 Bot 資訊
+    return {
+      valid: true,
+      bot_name: botInfo.displayName,
+      bot_picture_url: botInfo.pictureUrl,
+    };
+  } catch (error: any) {
+    console.error("[Validate LINE Channel] 驗證失敗:", error);
+    return {
+      valid: false,
+      error: error.message || "網路錯誤，請檢查網路連線後重試",
+    };
+  }
+}
+
+/**
  * 更新團隊 LINE 官方帳號設定
  */
 export async function updateLineSettings(
@@ -101,6 +155,22 @@ export async function updateLineSettings(
   const response = await teamApi.call<UpdateLineSettingsResponse>(
     "POST",
     "update-line-settings",
+    undefined,
+    params
+  );
+  return response;
+}
+
+/**
+ * 測試並自動設定 Webhook
+ * 當用戶點擊「測試 Webhook」按鈕時呼叫
+ */
+export async function testWebhook(
+  params: TestWebhookParams
+): Promise<TestWebhookResponse> {
+  const response = await teamApi.call<TestWebhookResponse>(
+    "POST",
+    "test-webhook",
     undefined,
     params
   );

@@ -449,6 +449,145 @@ serve(async (req) => {
         );
       }
 
+      // 測試並自動設定 Webhook（用戶點擊測試按鈕時呼叫）
+      if (action === "test-webhook") {
+        const { team_id } = body;
+
+        if (!team_id) {
+          throw new Error("Missing team_id");
+        }
+
+        console.log("[Team Operations] 測試 Webhook:", team_id);
+
+        // 檢查用戶是否為該團隊成員
+        const { data: member, error: memberError } = await supabaseAdmin
+          .from("team_members")
+          .select("role, can_manage_settings")
+          .eq("team_id", team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (memberError || !member) {
+          throw new Error("You are not a member of this team");
+        }
+
+        // 從資料庫取得團隊的 LINE 設定
+        const { data: team, error: teamError } = await supabaseAdmin
+          .from("teams")
+          .select(
+            "line_channel_id, line_channel_secret, line_channel_access_token"
+          )
+          .eq("id", team_id)
+          .single();
+
+        if (teamError || !team) {
+          throw new Error("Team not found");
+        }
+
+        if (
+          !team.line_channel_access_token ||
+          !team.line_channel_id ||
+          !team.line_channel_secret
+        ) {
+          throw new Error(
+            "LINE settings not configured. Please configure LINE settings first."
+          );
+        }
+
+        // 生成 Webhook URL
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const webhookUrl = `${SUPABASE_URL}/functions/v1/line-webhook`;
+
+        let webhookConfigured = false;
+        let webhookTestSuccess = false;
+        let errorMessage: string | undefined;
+
+        try {
+          // 步驟 1: 設定 Webhook URL 到 LINE
+          console.log("[Team Operations] 設定 Webhook URL 到 LINE...");
+          const setWebhookResponse = await fetch(
+            "https://api.line.me/v2/bot/channel/webhook/endpoint",
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${team.line_channel_access_token}`,
+              },
+              body: JSON.stringify({
+                endpoint: webhookUrl,
+              }),
+            }
+          );
+
+          if (!setWebhookResponse.ok) {
+            const errorData = await setWebhookResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.message ||
+                `Failed to set webhook endpoint: ${setWebhookResponse.status}`
+            );
+          }
+
+          webhookConfigured = true;
+          console.log("[Team Operations] ✅ Webhook URL 已成功設定到 LINE");
+
+          // 步驟 2: 測試 Webhook 連線
+          console.log("[Team Operations] 測試 Webhook 連線...");
+          const testWebhookResponse = await fetch(
+            "https://api.line.me/v2/bot/channel/webhook/test",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${team.line_channel_access_token}`,
+              },
+              body: JSON.stringify({
+                endpoint: webhookUrl,
+              }),
+            }
+          );
+
+          if (testWebhookResponse.ok) {
+            const testResult = await testWebhookResponse.json();
+            webhookTestSuccess = testResult.success === true;
+            console.log(
+              "[Team Operations] Webhook 測試結果:",
+              webhookTestSuccess ? "成功" : "失敗"
+            );
+          } else {
+            console.warn(
+              "[Team Operations] Webhook 測試請求失敗:",
+              testWebhookResponse.status
+            );
+          }
+        } catch (error) {
+          console.error("[Team Operations] Webhook 設定或測試失敗:", error);
+          errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error during webhook configuration";
+        }
+
+        // 回傳結果（即使部分失敗也回傳）
+        return new Response(
+          JSON.stringify({
+            success: webhookConfigured,
+            webhook_configured: webhookConfigured,
+            webhook_test_success: webhookTestSuccess,
+            webhook_url: webhookUrl,
+            error: errorMessage,
+            message: webhookConfigured
+              ? webhookTestSuccess
+                ? "Webhook configured and tested successfully"
+                : "Webhook configured but test failed"
+              : "Failed to configure webhook",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: webhookConfigured ? 200 : 400,
+          }
+        );
+      }
+
       throw new Error(`Unknown POST action: ${action}`);
     }
 
