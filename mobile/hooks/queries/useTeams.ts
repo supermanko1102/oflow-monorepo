@@ -231,7 +231,18 @@ export function useDeleteTeam() {
 
   return useMutation({
     mutationFn: teamService.deleteTeam,
-    onSuccess: (_, teamId) => {
+    onSuccess: async (_, teamId) => {
+      // 如果刪除的是當前團隊，清除 currentTeamId
+      const { useAuthStore } = await import("@/stores/useAuthStore");
+      const currentTeamId = useAuthStore.getState().currentTeamId;
+      if (currentTeamId === teamId) {
+        console.log(
+          "[useDeleteTeam] 刪除的是當前團隊，清除 currentTeamId:",
+          teamId
+        );
+        useAuthStore.getState().setCurrentTeamId(null);
+      }
+
       // 刪除成功後，重新載入團隊列表
       queryClient.invalidateQueries({
         queryKey: queryKeys.teams.list(),
