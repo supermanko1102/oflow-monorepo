@@ -32,7 +32,7 @@ export default function TeamSetupScreen() {
         </View>
 
         {/* 按鈕 */}
-        <View className="w-full space-y-3">
+        <View className="w-full  flex gap-4">
           <Button
             onPress={() => router.push("/(auth)/team-create")}
             variant="primary"
@@ -48,13 +48,6 @@ export default function TeamSetupScreen() {
           >
             加入現有團隊
           </Button>
-        </View>
-
-        {/* Footer */}
-        <View className="mt-8">
-          <Text className="text-xs text-gray-400 text-center">
-            建立團隊後，你將成為該團隊的擁有者
-          </Text>
         </View>
       </View>
     </ScrollView>

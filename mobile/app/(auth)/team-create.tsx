@@ -2,10 +2,7 @@ import { Button } from "@/components/native/Button";
 import { useCreateTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import {
-  BUSINESS_TYPE_OPTIONS,
-  type TeamCreateFormData,
-} from "@/types/team";
+import { BUSINESS_TYPE_OPTIONS, type TeamCreateFormData } from "@/types/team";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -164,17 +161,6 @@ export default function TeamCreateScreen() {
               />
               <Text className="text-xs text-gray-500 mt-2">
                 系統會根據您的業務類別自動調整 AI 對話和訂單欄位
-              </Text>
-            </View>
-
-            {/* 說明 */}
-            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <Text className="text-sm text-blue-900 font-semibold mb-2">
-                💡 提示
-              </Text>
-              <Text className="text-sm text-blue-800 leading-5">
-                建立團隊後，你將成為團隊的擁有者。{"\n"}
-                你可以邀請其他成員加入，並管理團隊設定。
               </Text>
             </View>
           </View>
