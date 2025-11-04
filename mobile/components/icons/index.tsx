@@ -4,8 +4,8 @@
  * 參考 Heroicons 風格
  */
 
-import React from 'react';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import React from "react";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 interface IconProps {
   size?: number;
@@ -15,9 +15,15 @@ interface IconProps {
 /**
  * 訂單/包裹 Icon
  */
-export function PackageIcon({ size = 24, color = '#3B82F6' }: IconProps) {
+export function PackageIcon({ size = 24, color = "#3B82F6" }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      onLayout={undefined}
+    >
       <Path
         d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21"
         stroke={color}
@@ -32,7 +38,7 @@ export function PackageIcon({ size = 24, color = '#3B82F6' }: IconProps) {
 /**
  * 現金/營收 Icon
  */
-export function CashIcon({ size = 24, color = '#10B981' }: IconProps) {
+export function CashIcon({ size = 24, color = "#10B981" }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Rect
@@ -58,7 +64,7 @@ export function CashIcon({ size = 24, color = '#10B981' }: IconProps) {
 /**
  * 時鐘/待處理 Icon
  */
-export function ClockIcon({ size = 24, color = '#F59E0B' }: IconProps) {
+export function ClockIcon({ size = 24, color = "#F59E0B" }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={2} />
@@ -77,9 +83,15 @@ export function ClockIcon({ size = 24, color = '#F59E0B' }: IconProps) {
  * OFlow Logo Icon
  * 簡潔的文件/訂單圖示
  */
-export function LogoIcon({ size = 64, color = '#00B900' }: IconProps) {
+export function LogoIcon({ size = 64, color = "#00B900" }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      onLayout={undefined}
+    >
       {/* 外框 */}
       <Rect
         x={12}
@@ -112,7 +124,7 @@ export function LogoIcon({ size = 64, color = '#00B900' }: IconProps) {
 /**
  * 勾選圓圈 Icon（營業中）
  */
-export function CheckCircleIcon({ size = 32, color = '#10B981' }: IconProps) {
+export function CheckCircleIcon({ size = 32, color = "#10B981" }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} fill={color} opacity={0.15} />
@@ -131,7 +143,7 @@ export function CheckCircleIcon({ size = 32, color = '#10B981' }: IconProps) {
 /**
  * 關閉圓圈 Icon（休息）
  */
-export function CloseCircleIcon({ size = 32, color = '#9CA3AF' }: IconProps) {
+export function CloseCircleIcon({ size = 32, color = "#9CA3AF" }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} fill={color} opacity={0.15} />
@@ -146,4 +158,3 @@ export function CloseCircleIcon({ size = 32, color = '#9CA3AF' }: IconProps) {
     </Svg>
   );
 }
-
