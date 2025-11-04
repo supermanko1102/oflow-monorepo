@@ -55,7 +55,6 @@ export default function AuthLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="team-setup" />
-        <Stack.Screen name="team-select" />
         <Stack.Screen name="team-create" />
         <Stack.Screen name="team-join" />
         <Stack.Screen name="team-webhook" />

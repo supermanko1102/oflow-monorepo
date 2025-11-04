@@ -15,7 +15,6 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
-      buildNumber: "7",
     },
     android: {
       adaptiveIcon: {
@@ -27,10 +26,6 @@ module.exports = {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.oflow.app",
-    },
-    web: {
-      output: "static",
-      favicon: "./assets/images/favicon.png",
     },
     plugins: [
       "expo-router",

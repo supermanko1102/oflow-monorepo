@@ -95,7 +95,7 @@ export function useTeamSync({
       setCurrentTeamId(incompleteTeam.team_id);
     } else {
       console.log("[TeamSync] 所有團隊都已完成設定，等待用戶手動選擇");
-      // 不自動設定，讓用戶進入 team-select 頁面選擇
+      // 不自動設定，讓用戶在 settings 的 modal 中選擇團隊
     }
   }, [enabled, isLoggedIn, teams, currentTeamId, setCurrentTeamId]);
 }

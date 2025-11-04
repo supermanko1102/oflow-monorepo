@@ -84,18 +84,15 @@ export default function LoginScreen() {
             );
             setCurrentTeamId(incompleteTeam.team_id);
             router.replace("/(auth)/team-webhook");
-          } else if (teams.length === 1) {
-            // 只有一個團隊且已完成設定
+          } else {
+            // 單個或多個團隊且都已完成設定，選擇第一個進入
+            // 用戶可以之後在 settings 切換團隊
             console.log(
-              "[Login] 單一團隊且已設定，進入主頁:",
+              "[Login] 團隊已設定，選擇第一個團隊進入主頁:",
               teams[0].team_name
             );
             setCurrentTeamId(teams[0].team_id);
             router.replace("/(main)/(tabs)");
-          } else {
-            // 多個團隊且都已完成設定
-            console.log("[Login] 多個團隊（都已完成設定），導向選擇頁");
-            router.replace("/(auth)/team-select");
           }
         }
       } catch (error: any) {
