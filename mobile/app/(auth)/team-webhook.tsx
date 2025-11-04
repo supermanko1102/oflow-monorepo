@@ -3,6 +3,8 @@ import { StepIntroduction } from "@/components/line-setup/StepIntroduction";
 import { StepPrepare } from "@/components/line-setup/StepPrepare";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { queryKeys } from "@/hooks/queries/queryKeys";
+import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { type LineSettingsFormData } from "@/types/team";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -53,7 +55,10 @@ export default function TeamLineSetupScreen() {
   };
 
   // 完成設定，進入主頁
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.teams.list(),
+    });
     router.replace("/(main)/(tabs)");
   };
 
