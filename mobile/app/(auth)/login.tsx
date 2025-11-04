@@ -1,5 +1,5 @@
-import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
+import { queryKeys } from "@/hooks/queries/queryKeys";
 import { prefetchTeams } from "@/hooks/queries/useTeams";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
@@ -64,8 +64,10 @@ export default function LoginScreen() {
         console.log("[Login] Prefetch 團隊資料...");
         await prefetchTeams(queryClient);
 
-        // 6. 從登入回應取得團隊資訊
-        const teams = session.teams || [];
+        // 6. 從 cache 讀取團隊資料（使用已 prefetch 的真實資料）
+        const teams =
+          queryClient.getQueryData<any[]>(queryKeys.teams.list()) || [];
+        console.log("[Login] 從 cache 讀取團隊資料:", teams.length, "個團隊");
 
         // 7. 根據團隊數量和 LINE 設定狀態決定導航
         if (teams.length === 0) {
@@ -196,9 +198,6 @@ export default function LoginScreen() {
       <View className="flex-1 justify-center items-center px-6 py-12 min-h-screen">
         {/* Logo / Icon */}
         <View className="mb-8 items-center">
-          <View className="mb-4">
-            <LogoIcon size={100} color="#00B900" />
-          </View>
           <Text className="text-4xl font-black text-gray-900 text-center mb-2">
             OFlow
           </Text>
