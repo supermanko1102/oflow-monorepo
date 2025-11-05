@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "OFlow",
     slug: "mobile",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: "oflow",
@@ -15,7 +15,6 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
-      buildNumber: "10",
     },
     android: {
       adaptiveIcon: {

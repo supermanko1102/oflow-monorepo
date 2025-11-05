@@ -1,4 +1,3 @@
-import { LogoIcon } from "@/components/icons";
 import { Button } from "@/components/native/Button";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -12,9 +11,6 @@ export default function TeamSetupScreen() {
       <View className="flex-1 justify-center items-center px-6 py-12 min-h-screen">
         {/* Logo */}
         <View className="mb-8 items-center">
-          <View className="mb-4">
-            <LogoIcon size={80} color="#00B900" />
-          </View>
           <Text className="text-3xl font-black text-gray-900 text-center mb-2">
             歡迎使用 OFlow
           </Text>
