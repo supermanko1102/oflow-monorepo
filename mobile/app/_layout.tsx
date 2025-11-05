@@ -7,6 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import * as Updates from "expo-updates";
 import { useEffect } from "react";
 import { MD3LightTheme, PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
@@ -34,7 +35,7 @@ SplashScreen.preventAutoHideAsync();
 /**
  * 內部組件：提供基本的 Stack 結構
  * 路由守衛邏輯由各個 Layout 自行處理（分散式守衛架構）
- * 
+ *
  * 此組件負責：
  * - 等待 hydration 和團隊資料加載完成後才隱藏 SplashScreen
  * - 提供基本的 Stack 結構
@@ -73,12 +74,37 @@ function RootNavigator() {
  * 1. 提供全局 providers (Theme, Paper, React Query)
  * 2. 渲染基本的 navigator 結構
  * 3. 管理 SplashScreen
+ * 4. 檢查並套用 OTA 更新
  *
  * 架構模式：分散式認證守衛
  * - Root Layout 只提供基礎設施，不處理路由守衛
  * - 各 Layout ((auth) 和 (main)) 各自負責守護自己的路由範圍
  */
 export default function RootLayout() {
+  // OTA 更新檢查
+  useEffect(() => {
+    async function checkForUpdates() {
+      // 開發模式跳過 OTA 檢查
+      if (__DEV__) {
+        return;
+      }
+
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          // 立即套用更新
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        // 靜默失敗，不影響用戶體驗
+        console.error("OTA update check failed:", error);
+      }
+    }
+
+    checkForUpdates();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>

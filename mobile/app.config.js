@@ -11,12 +11,14 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.oflow.app",
+      buildNumber: "11",
       associatedDomains: ["applinks:oflow-website.vercel.app"],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
+      versionCode: 11,
       adaptiveIcon: {
         backgroundColor: "#00C300",
         foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -58,9 +60,11 @@ module.exports = {
     owner: "alexanderko",
     updates: {
       url: "https://u.expo.dev/0d0c2fcb-f6e8-4a91-8e50-7daff97ee666",
+      checkAutomatically: "ON_LOAD",
+      fallbackToCacheTimeout: 0,
     },
     runtimeVersion: {
-      policy: "appVersion",
+      policy: "nativeVersion",
     },
   },
 };
