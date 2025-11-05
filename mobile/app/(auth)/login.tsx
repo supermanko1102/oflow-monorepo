@@ -8,11 +8,24 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // App Store 審核用帳密登入
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
@@ -193,6 +206,104 @@ export default function LoginScreen() {
     }
   };
 
+  /**
+   * 處理帳密登入（僅供 App Store 審核使用）
+   * 使用 Supabase email/password 登入
+   */
+  const handleEmailLogin = async () => {
+    try {
+      setIsLoading(true);
+      console.log("[Login] 開始帳密登入...");
+
+      // 驗證輸入
+      if (!email || !password) {
+        Alert.alert("請輸入帳號密碼", "請填寫完整的帳號和密碼", [
+          { text: "確定" },
+        ]);
+        setIsLoading(false);
+        return;
+      }
+
+      // 使用 Supabase email/password 登入
+      console.log("[Login] 使用帳密登入 Supabase...");
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password,
+        });
+
+      if (authError || !authData.user) {
+        throw new Error(authError?.message || "登入失敗");
+      }
+
+      console.log("[Login] 帳密登入成功");
+
+      // 從 user metadata 取得資料
+      const lineUserId =
+        authData.user.user_metadata?.line_user_id || "TEST_REVIEWER_LINE_ID";
+      const displayName =
+        authData.user.user_metadata?.display_name ||
+        authData.user.email?.split("@")[0] ||
+        "測試用戶";
+      const pictureUrl = authData.user.user_metadata?.picture_url || null;
+
+      // 更新本地 store
+      console.log("[Login] 更新本地狀態...");
+      loginWithLine(
+        lineUserId,
+        authData.user.id,
+        displayName,
+        pictureUrl,
+        authData.session?.access_token || ""
+      );
+
+      // Prefetch teams data
+      console.log("[Login] Prefetch 團隊資料...");
+      await prefetchTeams(queryClient);
+
+      // 從 cache 讀取團隊資料
+      const teams =
+        queryClient.getQueryData<any[]>(queryKeys.teams.list()) || [];
+      console.log("[Login] 團隊數量:", teams.length);
+
+      // 導航到主頁面
+      if (teams.length === 0) {
+        console.log("[Login] 無團隊，導向團隊設置頁");
+        router.replace("/(auth)/team-setup");
+      } else {
+        // 檢查是否有未完成 LINE 設定的團隊
+        const incompleteTeam = teams.find((t) => !t.line_channel_id);
+
+        if (incompleteTeam) {
+          console.log("[Login] 團隊未完成設定");
+          setCurrentTeamId(incompleteTeam.team_id);
+          router.replace("/(auth)/team-webhook");
+        } else {
+          // 選擇第一個團隊進入主頁
+          console.log("[Login] 登入成功，進入主頁:", teams[0].team_name);
+          setCurrentTeamId(teams[0].team_id);
+          router.replace("/(main)/(tabs)");
+        }
+      }
+    } catch (error: any) {
+      console.error("[Login] 帳密登入失敗:", error);
+      setIsLoading(false);
+
+      // 友善的錯誤訊息
+      let errorMessage = "登入失敗，請稍後再試";
+
+      if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "帳號或密碼錯誤，請重新輸入";
+      } else if (error.message?.includes("Email not confirmed")) {
+        errorMessage = "Email 尚未驗證，請先驗證 Email";
+      } else if (error.message?.includes("network")) {
+        errorMessage = "網路連線有問題，請檢查網路設定";
+      }
+
+      Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
+    }
+  };
+
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 justify-center items-center px-6 py-12 min-h-screen">
@@ -261,6 +372,121 @@ export default function LoginScreen() {
             )}
           </Button>
         </View>
+
+        {/* ============================================ */}
+        {/* 🚨 App Store 審核用帳密登入區塊 */}
+        {/* 審核通過後，請註解掉以下整個區塊 */}
+        {/* ============================================ */}
+        <View className="w-full mb-4">
+          {/* 分隔線 */}
+          <View className="flex-row items-center mb-4">
+            <View className="flex-1 h-px bg-gray-300" />
+            <Text className="mx-3 text-xs text-gray-500">或</Text>
+            <View className="flex-1 h-px bg-gray-300" />
+          </View>
+
+          {/* 一般帳號登入按鈕 */}
+          {!showEmailLogin ? (
+            <Pressable
+              onPress={() => setShowEmailLogin(true)}
+              disabled={isLoading}
+              className="px-6 py-4 rounded-xl w-full bg-gray-100 border border-gray-300"
+              style={({ pressed }) => [
+                { opacity: pressed && !isLoading ? 0.8 : 1 },
+                pressed && !isLoading && { transform: [{ scale: 0.98 }] },
+              ]}
+            >
+              <View className="flex-row items-center justify-center">
+                <Text className="text-gray-700 font-semibold">帳號登入</Text>
+              </View>
+            </Pressable>
+          ) : (
+            <>
+              {/* Email 輸入框 */}
+              <View className="mb-3">
+                <Text className="text-sm font-medium text-gray-700 mb-1.5">
+                  Email
+                </Text>
+                <TextInput
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                  placeholder="example@email.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Password 輸入框 */}
+              <View className="mb-3">
+                <Text className="text-sm font-medium text-gray-700 mb-1.5">
+                  密碼
+                </Text>
+                <TextInput
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                  placeholder="••••••••"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* 登入和返回按鈕 */}
+              <View className="flex-row gap-3">
+                {/* 返回按鈕 */}
+                <Pressable
+                  onPress={() => {
+                    setShowEmailLogin(false);
+                    setEmail("");
+                    setPassword("");
+                  }}
+                  disabled={isLoading}
+                  className="px-4 py-4 rounded-xl bg-gray-100 border border-gray-300"
+                  style={({ pressed }) => [
+                    { opacity: pressed && !isLoading ? 0.8 : 1 },
+                    pressed && !isLoading && { transform: [{ scale: 0.98 }] },
+                  ]}
+                >
+                  <Text className="text-gray-700 font-semibold text-center">
+                    返回
+                  </Text>
+                </Pressable>
+
+                {/* 登入按鈕 */}
+                <Pressable
+                  onPress={handleEmailLogin}
+                  disabled={isLoading}
+                  className="flex-1 px-6 py-4 rounded-xl bg-orange-500"
+                  style={({ pressed }) => [
+                    { opacity: pressed && !isLoading ? 0.8 : 1 },
+                    pressed && !isLoading && { transform: [{ scale: 0.98 }] },
+                  ]}
+                >
+                  {isLoading ? (
+                    <View className="flex-row items-center justify-center">
+                      <ActivityIndicator color="white" className="mr-2" />
+                      <Text className="text-white font-semibold">
+                        登入中...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className="text-white font-semibold text-center">
+                      登入
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+        {/* ============================================ */}
 
         {/* Footer */}
         <View className="mt-4">
