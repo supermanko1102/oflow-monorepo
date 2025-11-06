@@ -1,21 +1,14 @@
 import { LineSettingsBottomSheet } from "@/components/settings/LineSettingsBottomSheet";
 import { MembersBottomSheet } from "@/components/settings/MembersBottomSheet";
 import { MoreMenuBottomSheet } from "@/components/settings/MoreMenuBottomSheet";
-import { useTeams } from "@/hooks/queries/useTeams";
+import { useTeams, useUpdateAutoMode } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import * as NotificationService from "@/utils/notificationService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { Card, Divider, IconButton, List } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -29,6 +22,7 @@ export default function SettingsScreen() {
 
   // React Query (server state)
   const { data: teams } = useTeams();
+  const updateAutoModeMutation = useUpdateAutoMode();
 
   // Settings store
   const notificationsEnabled = useSettingsStore(
@@ -37,8 +31,6 @@ export default function SettingsScreen() {
   const setNotificationsEnabled = useSettingsStore(
     (state) => state.setNotificationsEnabled
   );
-  const autoMode = useSettingsStore((state) => state.autoMode);
-  const setAutoMode = useSettingsStore((state) => state.setAutoMode);
 
   // BottomSheet visibility state
   const [membersSheetVisible, setMembersSheetVisible] = useState(false);
@@ -143,6 +135,29 @@ export default function SettingsScreen() {
     );
   };
 
+  // 處理自動模式切換 (使用 Server State - React Query Mutation)
+  const handleToggleAutoMode = async (value: boolean) => {
+    if (!currentTeamId) {
+      toast.error("請先選擇團隊");
+      return;
+    }
+
+    try {
+      const newAutoMode = !value;
+
+      // 直接更新後端，React Query 會自動 invalidate 並重新查詢
+      await updateAutoModeMutation.mutateAsync({
+        teamId: currentTeamId,
+        autoMode: newAutoMode,
+      });
+
+      toast.success(newAutoMode ? "已切換至全自動模式" : "已切換至半自動模式");
+    } catch (error) {
+      console.error("更新自動模式失敗:", error);
+      toast.error("更新失敗，請稍後再試");
+    }
+  };
+
   // 發送測試通知
   const handleTestNotification = async () => {
     await NotificationService.sendTestNotification();
@@ -191,7 +206,7 @@ export default function SettingsScreen() {
           <View className="px-4 pb-4">
             <Card
               className={`border-2 ${
-                autoMode
+                currentTeam?.auto_mode ?? false
                   ? "border-line-green bg-white"
                   : "border-gray-200 bg-white"
               }`}
@@ -203,11 +218,17 @@ export default function SettingsScreen() {
                       <MaterialCommunityIcons
                         name="robot"
                         size={24}
-                        color={autoMode ? "#00B900" : "#6B7280"}
+                        color={
+                          currentTeam?.auto_mode ?? false
+                            ? "#00B900"
+                            : "#6B7280"
+                        }
                       />
                       <Text
                         className={`text-lg font-bold ml-2 ${
-                          autoMode ? "text-line-green" : "text-gray-900"
+                          currentTeam?.auto_mode ?? false
+                            ? "text-line-green"
+                            : "text-gray-900"
                         }`}
                       >
                         全自動模式
@@ -218,13 +239,8 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                   <Switch
-                    value={autoMode}
-                    onValueChange={(value) => {
-                      setAutoMode(value);
-                      toast.success(
-                        value ? "已切換至全自動模式" : "已切換至半自動模式"
-                      );
-                    }}
+                    value={currentTeam?.auto_mode ?? false}
+                    onValueChange={(value) => handleToggleAutoMode(!value)}
                     trackColor={{ true: "#00B900" }}
                   />
                 </View>
@@ -236,7 +252,7 @@ export default function SettingsScreen() {
           <View className="px-4 pb-4">
             <Card
               className={`border-2 ${
-                !autoMode
+                !(currentTeam?.auto_mode ?? false)
                   ? "border-line-green bg-white"
                   : "border-gray-200 bg-white"
               }`}
@@ -248,11 +264,17 @@ export default function SettingsScreen() {
                       <MaterialCommunityIcons
                         name="account-check"
                         size={24}
-                        color={!autoMode ? "#00B900" : "#6B7280"}
+                        color={
+                          !(currentTeam?.auto_mode ?? false)
+                            ? "#00B900"
+                            : "#6B7280"
+                        }
                       />
                       <Text
                         className={`text-lg font-bold ml-2 ${
-                          !autoMode ? "text-line-green" : "text-gray-900"
+                          !(currentTeam?.auto_mode ?? false)
+                            ? "text-line-green"
+                            : "text-gray-900"
                         }`}
                       >
                         半自動模式
@@ -263,18 +285,44 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                   <Switch
-                    value={!autoMode}
-                    onValueChange={(value) => {
-                      setAutoMode(!value);
-                      toast.success(
-                        !value ? "已切換至全自動模式" : "已切換至半自動模式"
-                      );
-                    }}
+                    value={!(currentTeam?.auto_mode ?? false)}
+                    onValueChange={handleToggleAutoMode}
                     trackColor={{ true: "#00B900" }}
                   />
                 </View>
               </Card.Content>
             </Card>
+
+            {/* 新增：使用說明（只在半自動模式顯示）*/}
+            {!(currentTeam?.auto_mode ?? false) && (
+              <Card className="mt-3 bg-blue-50 border border-blue-200">
+                <Card.Content className="p-3">
+                  <View className="flex-row items-start">
+                    <MaterialCommunityIcons
+                      name="information"
+                      size={20}
+                      color="#0066CC"
+                    />
+                    <View className="flex-1 ml-2">
+                      <Text className="font-bold text-blue-900 mb-1">
+                        💡 使用方式
+                      </Text>
+                      <Text className="text-sm text-blue-800 leading-5">
+                        在 LINE 與客人對話完成後，發送以下指令即可自動建立訂單：
+                        {"\n\n"}
+                        <Text className="font-mono font-bold text-base">
+                          /訂單確認
+                        </Text>
+                        {"\n\n"}
+                        系統會自動解析對話內容並建立訂單，客人會立即收到確認通知。
+                        {"\n\n"}
+                        如發現訂單資訊有誤，可在訂單列表中編輯或刪除。
+                      </Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            )}
           </View>
         </List.Section>
       </View>
@@ -338,7 +386,7 @@ export default function SettingsScreen() {
             visible={lineSheetVisible}
             onDismiss={() => setLineSheetVisible(false)}
             teamId={currentTeamId}
-            currentChannelName={currentTeam?.line_channel_name}
+            currentChannelName={currentTeam?.line_channel_name || undefined}
           />
         </>
       )}

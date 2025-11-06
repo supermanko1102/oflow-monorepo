@@ -259,6 +259,47 @@ export function useDeleteTeam() {
   });
 }
 
+/**
+ * 更新團隊自動模式設定
+ *
+ * 成功後：
+ * - 自動 invalidate teams list
+ * - UI 會立即反映新的 auto_mode 狀態
+ *
+ * 使用範例：
+ * ```tsx
+ * const updateAutoMode = useUpdateAutoMode();
+ *
+ * const handleToggle = async (teamId: string, autoMode: boolean) => {
+ *   try {
+ *     await updateAutoMode.mutateAsync({ teamId, autoMode });
+ *     console.log("自動模式已更新");
+ *   } catch (error) {
+ *     console.error("更新失敗:", error);
+ *   }
+ * };
+ * ```
+ */
+export function useUpdateAutoMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      autoMode,
+    }: {
+      teamId: string;
+      autoMode: boolean;
+    }) => teamService.updateAutoMode(teamId, autoMode),
+    onSuccess: () => {
+      // 更新成功後，重新載入團隊列表（包含最新的 auto_mode 狀態）
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.list(),
+      });
+    },
+  });
+}
+
 // ==================== Helper Functions ====================
 
 /**

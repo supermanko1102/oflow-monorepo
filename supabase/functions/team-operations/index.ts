@@ -588,6 +588,65 @@ serve(async (req) => {
         );
       }
 
+      // 更新團隊自動模式設定
+      if (action === "update-auto-mode") {
+        const { team_id, auto_mode } = body;
+
+        if (!team_id) {
+          throw new Error("Missing team_id");
+        }
+
+        if (typeof auto_mode !== "boolean") {
+          throw new Error("auto_mode must be a boolean");
+        }
+
+        console.log("[Team Operations] 更新自動模式:", team_id, auto_mode);
+
+        // 檢查用戶是否為該團隊的 owner 或 admin
+        const { data: member, error: memberError } = await supabaseAdmin
+          .from("team_members")
+          .select("role, can_manage_settings")
+          .eq("team_id", team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (memberError || !member) {
+          throw new Error("You are not a member of this team");
+        }
+
+        if (
+          member.role !== "owner" &&
+          member.role !== "admin" &&
+          !member.can_manage_settings
+        ) {
+          throw new Error("You don't have permission to update team settings");
+        }
+
+        // 更新團隊的自動模式設定
+        const { error: updateError } = await supabaseAdmin
+          .from("teams")
+          .update({ auto_mode: auto_mode })
+          .eq("id", team_id);
+
+        if (updateError) {
+          console.error("[Team Operations] 更新失敗:", updateError);
+          throw updateError;
+        }
+
+        console.log("[Team Operations] ✅ 自動模式更新成功");
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Auto mode updated successfully",
+            auto_mode: auto_mode,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       throw new Error(`Unknown POST action: ${action}`);
     }
 

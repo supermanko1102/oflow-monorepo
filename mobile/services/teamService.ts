@@ -116,8 +116,7 @@ export async function validateLineChannel(
       return {
         valid: false,
         error:
-          errorData.message ||
-          "Access Token 無效或已過期，請檢查是否正確複製",
+          errorData.message || "Access Token 無效或已過期，請檢查是否正確複製",
       };
     }
 
@@ -183,5 +182,20 @@ export async function testWebhook(
 export async function deleteTeam(teamId: string): Promise<void> {
   await teamApi.call<{ message: string }>("POST", "delete", undefined, {
     team_id: teamId,
+  });
+}
+
+/**
+ * 更新團隊自動模式設定
+ * @param teamId 團隊 ID
+ * @param autoMode 是否啟用自動模式
+ */
+export async function updateAutoMode(
+  teamId: string,
+  autoMode: boolean
+): Promise<void> {
+  await teamApi.call("POST", "update-auto-mode", undefined, {
+    team_id: teamId,
+    auto_mode: autoMode,
   });
 }

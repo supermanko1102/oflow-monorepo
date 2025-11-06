@@ -3,12 +3,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SettingsState {
-  autoMode: boolean;
+  // autoMode 已移至 Server State (teams.auto_mode)，請使用 useTeams() 查詢
   notificationsEnabled: boolean;
   reminderToday: boolean;
   reminder3Days: boolean;
   reminder7Days: boolean;
-  setAutoMode: (value: boolean) => void;
   setNotificationsEnabled: (value: boolean) => void;
   setReminderToday: (value: boolean) => void;
   setReminder3Days: (value: boolean) => void;
@@ -18,12 +17,10 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      autoMode: true,
       notificationsEnabled: true,
       reminderToday: true,
       reminder3Days: true,
       reminder7Days: true,
-      setAutoMode: (value) => set({ autoMode: value }),
       setNotificationsEnabled: (value) => set({ notificationsEnabled: value }),
       setReminderToday: (value) => set({ reminderToday: value }),
       setReminder3Days: (value) => set({ reminder3Days: value }),
