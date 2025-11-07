@@ -31,6 +31,7 @@ module.exports = {
     },
     plugins: [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {

@@ -5,12 +5,14 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 interface AuthState {
   isLoggedIn: boolean;
-  userId: string | null; // LINE User ID (向後相容)
-  lineUserId: string | null; // LINE User ID (明確命名)
+  userId: string | null; // User ID (向後相容，LINE 或 Apple)
+  lineUserId: string | null; // LINE User ID
+  appleUserId: string | null; // Apple User ID
   supabaseUserId: string | null; // Supabase UUID
   userName: string;
   userPictureUrl: string | null;
-  accessToken: string | null; // LINE Access Token
+  accessToken: string | null; // Access Token
+  authProvider: 'line' | 'apple' | null; // 登入方式
   currentTeamId: string | null;
   _hasHydrated: boolean;
   login: (
@@ -20,6 +22,13 @@ interface AuthState {
   ) => void;
   loginWithLine: (
     lineUserId: string,
+    supabaseUserId: string,
+    userName: string,
+    userPictureUrl: string | null,
+    accessToken: string
+  ) => void;
+  loginWithApple: (
+    appleUserId: string,
     supabaseUserId: string,
     userName: string,
     userPictureUrl: string | null,
@@ -36,10 +45,12 @@ export const useAuthStore = create<AuthState>()(
       isLoggedIn: false,
       userId: null,
       lineUserId: null,
+      appleUserId: null,
       supabaseUserId: null,
       userName: "",
       userPictureUrl: null,
       accessToken: null,
+      authProvider: null,
       currentTeamId: null,
       _hasHydrated: false,
       login: (
@@ -64,16 +75,38 @@ export const useAuthStore = create<AuthState>()(
           isLoggedIn: true,
           userId: lineUserId, // 向後相容
           lineUserId,
+          appleUserId: null,
           supabaseUserId,
           userName,
           userPictureUrl,
           accessToken,
+          authProvider: 'line',
+        }),
+      loginWithApple: (
+        appleUserId: string,
+        supabaseUserId: string,
+        userName: string,
+        userPictureUrl: string | null,
+        accessToken: string
+      ) =>
+        set({
+          isLoggedIn: true,
+          userId: appleUserId, // 向後相容
+          appleUserId,
+          lineUserId: null,
+          supabaseUserId,
+          userName,
+          userPictureUrl,
+          accessToken,
+          authProvider: 'apple',
         }),
       logout: () =>
         set({
           isLoggedIn: false,
           userId: null,
           lineUserId: null,
+          appleUserId: null,
+          authProvider: null,
           supabaseUserId: null,
           userName: "",
           userPictureUrl: null,
@@ -123,6 +156,8 @@ export const useAuthStore = create<AuthState>()(
         isLoggedIn: state.isLoggedIn,
         userId: state.userId,
         lineUserId: state.lineUserId,
+        appleUserId: state.appleUserId,
+        authProvider: state.authProvider,
         supabaseUserId: state.supabaseUserId,
         userName: state.userName,
         userPictureUrl: state.userPictureUrl,

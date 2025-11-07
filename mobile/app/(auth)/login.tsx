@@ -3,18 +3,19 @@ import { queryKeys } from "@/hooks/queries/queryKeys";
 import { prefetchTeams } from "@/hooks/queries/useTeams";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
+import * as appleLoginService from "@/services/appleLoginService";
 import * as lineLoginService from "@/services/lineLoginService";
 import { useAuthStore } from "@/stores/useAuthStore";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
+  Platform,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -22,12 +23,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // App Store 審核用帳密登入
-  const [showEmailLogin, setShowEmailLogin] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const loginWithLine = useAuthStore((state) => state.loginWithLine);
+  const loginWithApple = useAuthStore((state) => state.loginWithApple);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   /**
@@ -207,97 +204,90 @@ export default function LoginScreen() {
   };
 
   /**
-   * 處理帳密登入（僅供 App Store 審核使用）
-   * 使用 Supabase email/password 登入
+   * 處理 Apple Login 流程
    */
-  const handleEmailLogin = async () => {
+  const handleAppleLogin = async () => {
     try {
       setIsLoading(true);
-      console.log("[Login] 開始帳密登入...");
+      console.log("[Login] 開始 Apple 登入...");
 
-      // 驗證輸入
-      if (!email || !password) {
-        Alert.alert("請輸入帳號密碼", "請填寫完整的帳號和密碼", [
-          { text: "確定" },
-        ]);
-        setIsLoading(false);
-        return;
-      }
+      // 1. 啟動 Apple Sign In
+      const session = await appleLoginService.initiateAppleLogin();
 
-      // 使用 Supabase email/password 登入
-      console.log("[Login] 使用帳密登入 Supabase...");
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
+      // 2. 設定 Supabase session
+      console.log("[Login] 設定 Supabase session...");
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
         });
 
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || "登入失敗");
+      if (sessionError || !sessionData.user) {
+        throw new Error(sessionError?.message || "Session 設定失敗");
       }
 
-      console.log("[Login] 帳密登入成功");
+      console.log("[Login] Supabase session 設定成功");
 
-      // 從 user metadata 取得資料
-      const lineUserId =
-        authData.user.user_metadata?.line_user_id || "TEST_REVIEWER_LINE_ID";
+      // 3. 從 user metadata 取得資料
+      const appleUserId = sessionData.user.user_metadata?.apple_user_id || "";
       const displayName =
-        authData.user.user_metadata?.display_name ||
-        authData.user.email?.split("@")[0] ||
-        "測試用戶";
-      const pictureUrl = authData.user.user_metadata?.picture_url || null;
+        sessionData.user.user_metadata?.display_name || "Apple User";
+      const pictureUrl = sessionData.user.user_metadata?.picture_url || null;
 
-      // 更新本地 store
+      // 4. 更新本地 store
       console.log("[Login] 更新本地狀態...");
-      loginWithLine(
-        lineUserId,
-        authData.user.id,
+      loginWithApple(
+        appleUserId,
+        sessionData.user.id,
         displayName,
         pictureUrl,
-        authData.session?.access_token || ""
+        session.access_token
       );
 
-      // Prefetch teams data
+      // 5. Prefetch teams 並導航（同 LINE Login 邏輯）
       console.log("[Login] Prefetch 團隊資料...");
       await prefetchTeams(queryClient);
 
-      // 從 cache 讀取團隊資料
       const teams =
         queryClient.getQueryData<any[]>(queryKeys.teams.list()) || [];
-      console.log("[Login] 團隊數量:", teams.length);
+      console.log("[Login] 從 cache 讀取團隊資料:", teams.length, "個團隊");
 
-      // 導航到主頁面
+      // 6. 根據團隊數量和 LINE 設定狀態決定導航
       if (teams.length === 0) {
         console.log("[Login] 無團隊，導向團隊設置頁");
         router.replace("/(auth)/team-setup");
       } else {
-        // 檢查是否有未完成 LINE 設定的團隊
         const incompleteTeam = teams.find((t) => !t.line_channel_id);
 
         if (incompleteTeam) {
-          console.log("[Login] 團隊未完成設定");
+          console.log(
+            "[Login] 發現未完成設定的團隊，強制完成:",
+            incompleteTeam.team_name
+          );
           setCurrentTeamId(incompleteTeam.team_id);
           router.replace("/(auth)/team-webhook");
         } else {
-          // 選擇第一個團隊進入主頁
-          console.log("[Login] 登入成功，進入主頁:", teams[0].team_name);
+          console.log(
+            "[Login] 團隊已設定，選擇第一個團隊進入主頁:",
+            teams[0].team_name
+          );
           setCurrentTeamId(teams[0].team_id);
           router.replace("/(main)/(tabs)");
         }
       }
     } catch (error: any) {
-      console.error("[Login] 帳密登入失敗:", error);
+      console.error("[Login] Apple 登入失敗:", error);
       setIsLoading(false);
 
       // 友善的錯誤訊息
       let errorMessage = "登入失敗，請稍後再試";
 
-      if (error.message?.includes("Invalid login credentials")) {
-        errorMessage = "帳號或密碼錯誤，請重新輸入";
-      } else if (error.message?.includes("Email not confirmed")) {
-        errorMessage = "Email 尚未驗證，請先驗證 Email";
-      } else if (error.message?.includes("network")) {
+      if (error.message?.includes("取消")) {
+        errorMessage = "您已取消 Apple 登入";
+      } else if (error.message?.includes("網路")) {
         errorMessage = "網路連線有問題，請檢查網路設定";
+      } else if (error.message?.includes("Session")) {
+        errorMessage = "登入驗證失敗，請重新嘗試";
       }
 
       Alert.alert("登入失敗", errorMessage, [{ text: "確定" }]);
@@ -354,7 +344,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        {/* CTA */}
+        {/* LINE 登入（主要） */}
         <View className="w-full mb-6">
           <Button
             onPress={handleLineLogin}
@@ -373,120 +363,33 @@ export default function LoginScreen() {
           </Button>
         </View>
 
-        {/* ============================================ */}
-        {/* 🚨 App Store 審核用帳密登入區塊 */}
-        {/* 審核通過後，請註解掉以下整個區塊 */}
-        {/* ============================================ */}
-        <View className="w-full mb-4">
-          {/* 分隔線 */}
-          <View className="flex-row items-center mb-4">
-            <View className="flex-1 h-px bg-gray-300" />
-            <Text className="mx-3 text-xs text-gray-500">或</Text>
-            <View className="flex-1 h-px bg-gray-300" />
-          </View>
+        {/* 分隔線與其他登入方式（僅 iOS） */}
+        {Platform.OS === "ios" && (
+          <>
+            <View className="flex-row items-center mb-4 w-full">
+              <View className="flex-1 h-px bg-gray-300" />
+              <Text className="mx-3 text-xs text-gray-500">或</Text>
+              <View className="flex-1 h-px bg-gray-300" />
+            </View>
 
-          {/* 一般帳號登入按鈕 */}
-          {!showEmailLogin ? (
-            <Pressable
-              onPress={() => setShowEmailLogin(true)}
-              disabled={isLoading}
-              className="px-6 py-4 rounded-xl w-full bg-gray-100 border border-gray-300"
-              style={({ pressed }) => [
-                { opacity: pressed && !isLoading ? 0.8 : 1 },
-                pressed && !isLoading && { transform: [{ scale: 0.98 }] },
-              ]}
-            >
-              <View className="flex-row items-center justify-center">
-                <Text className="text-gray-700 font-semibold">帳號登入</Text>
-              </View>
-            </Pressable>
-          ) : (
-            <>
-              {/* Email 輸入框 */}
-              <View className="mb-3">
-                <Text className="text-sm font-medium text-gray-700 mb-1.5">
-                  Email
-                </Text>
-                <TextInput
-                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
-                  placeholder="example@email.com"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-              </View>
-
-              {/* Password 輸入框 */}
-              <View className="mb-3">
-                <Text className="text-sm font-medium text-gray-700 mb-1.5">
-                  密碼
-                </Text>
-                <TextInput
-                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
-                  placeholder="••••••••"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-              </View>
-
-              {/* 登入和返回按鈕 */}
-              <View className="flex-row gap-3">
-                {/* 返回按鈕 */}
-                <Pressable
-                  onPress={() => {
-                    setShowEmailLogin(false);
-                    setEmail("");
-                    setPassword("");
-                  }}
-                  disabled={isLoading}
-                  className="px-4 py-4 rounded-xl bg-gray-100 border border-gray-300"
-                  style={({ pressed }) => [
-                    { opacity: pressed && !isLoading ? 0.8 : 1 },
-                    pressed && !isLoading && { transform: [{ scale: 0.98 }] },
-                  ]}
-                >
-                  <Text className="text-gray-700 font-semibold text-center">
-                    返回
-                  </Text>
-                </Pressable>
-
-                {/* 登入按鈕 */}
-                <Pressable
-                  onPress={handleEmailLogin}
-                  disabled={isLoading}
-                  className="flex-1 px-6 py-4 rounded-xl bg-orange-500"
-                  style={({ pressed }) => [
-                    { opacity: pressed && !isLoading ? 0.8 : 1 },
-                    pressed && !isLoading && { transform: [{ scale: 0.98 }] },
-                  ]}
-                >
-                  {isLoading ? (
-                    <View className="flex-row items-center justify-center">
-                      <ActivityIndicator color="white" className="mr-2" />
-                      <Text className="text-white font-semibold">
-                        登入中...
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text className="text-white font-semibold text-center">
-                      登入
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
-          )}
-        </View>
-        {/* ============================================ */}
+            <View className="w-full mb-4">
+              <Text className="text-sm text-gray-600 text-center mb-3">
+                其他登入方式
+              </Text>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={12}
+                style={{ width: "100%", height: 48 }}
+                onPress={handleAppleLogin}
+              />
+            </View>
+          </>
+        )}
 
         {/* Footer */}
         <View className="mt-4">

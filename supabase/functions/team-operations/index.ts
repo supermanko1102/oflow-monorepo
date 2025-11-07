@@ -30,10 +30,11 @@ async function authenticateUser(req: Request, supabaseAdmin: any) {
   }
 
   // 從 public.users 取得完整使用者資訊
+  // 改用 auth_user_id 查詢，支援 LINE 和 Apple 用戶
   const { data: publicUser, error: publicUserError } = await supabaseAdmin
     .from("users")
-    .select("id, line_user_id, line_display_name")
-    .eq("line_user_id", user.user_metadata.line_user_id)
+    .select("id, line_user_id, apple_user_id, line_display_name, auth_provider")
+    .eq("auth_user_id", user.id)
     .single();
 
   if (publicUserError || !publicUser) {
