@@ -11,7 +11,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.oflow.app",
-      buildNumber: "11",
+      buildNumber: "12",
       associatedDomains: ["applinks:oflow-website.vercel.app"],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
