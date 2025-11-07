@@ -1,4 +1,3 @@
-import { Button } from "@/components/native/Button";
 import { queryKeys } from "@/hooks/queries/queryKeys";
 import { prefetchTeams } from "@/hooks/queries/useTeams";
 import { queryClient } from "@/lib/queryClient";
@@ -14,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -27,21 +27,12 @@ export default function LoginScreen() {
   const loginWithApple = useAuthStore((state) => state.loginWithApple);
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
-  /**
-   * 處理 Auth callback（從 deep link 觸發）
-   * 新架構：接收 Supabase session tokens 並設定
-   */
   const handleCallback = useCallback(
     async (url: string) => {
       try {
-        console.log("[Login] 收到 deep link callback:", url);
-
         // 1. 解析 session tokens
         const session = await lineLoginService.handleAuthCallback(url);
-        console.log("[Login] 收到 session:", session);
-
         // 2. 設定 Supabase session
-        console.log("[Login] 設定 Supabase session...");
         const { data: sessionData, error: sessionError } =
           await supabase.auth.setSession({
             access_token: session.access_token,
@@ -52,8 +43,6 @@ export default function LoginScreen() {
           throw new Error(sessionError?.message || "Session 設定失敗");
         }
 
-        console.log("[Login] Supabase session 設定成功");
-
         // 3. 從 user metadata 取得 LINE 資料
         const lineUserId = sessionData.user.user_metadata?.line_user_id || "";
         const displayName =
@@ -61,7 +50,6 @@ export default function LoginScreen() {
         const pictureUrl = sessionData.user.user_metadata?.picture_url || null;
 
         // 4. 更新本地 store
-        console.log("[Login] 更新本地狀態...");
         loginWithLine(
           lineUserId,
           sessionData.user.id,
@@ -71,7 +59,6 @@ export default function LoginScreen() {
         );
 
         // 5. Prefetch teams data (使用 React Query)
-        console.log("[Login] Prefetch 團隊資料...");
         await prefetchTeams(queryClient);
 
         // 6. 從 cache 讀取團隊資料（使用已 prefetch 的真實資料）
@@ -89,20 +76,9 @@ export default function LoginScreen() {
           const incompleteTeam = teams.find((t) => !t.line_channel_id);
 
           if (incompleteTeam) {
-            // 有未完成的團隊，強制完成設定
-            console.log(
-              "[Login] 發現未完成設定的團隊，強制完成:",
-              incompleteTeam.team_name
-            );
             setCurrentTeamId(incompleteTeam.team_id);
             router.replace("/(auth)/team-webhook");
           } else {
-            // 單個或多個團隊且都已完成設定，選擇第一個進入
-            // 用戶可以之後在 settings 切換團隊
-            console.log(
-              "[Login] 團隊已設定，選擇第一個團隊進入主頁:",
-              teams[0].team_name
-            );
             setCurrentTeamId(teams[0].team_id);
             router.replace("/(main)/(tabs)");
           }
@@ -178,18 +154,13 @@ export default function LoginScreen() {
   const handleLineLogin = async () => {
     try {
       setIsLoading(true);
-
-      // 啟動 LINE OAuth 流程（開啟瀏覽器）
-      console.log("[Login] 開始 LINE 登入流程...");
       const redirectUrl = await lineLoginService.initiateLineLogin();
 
       // 處理返回結果
       if (redirectUrl) {
-        console.log("[Login] 收到 redirect URL，開始處理 callback...");
         await handleCallback(redirectUrl);
       } else {
         // 用戶取消授權
-        console.log("[Login] 用戶取消登入");
         setIsLoading(false);
         Alert.alert("登入已取消", "您已取消 LINE 登入", [{ text: "確定" }]);
       }
@@ -215,7 +186,6 @@ export default function LoginScreen() {
       const session = await appleLoginService.initiateAppleLogin();
 
       // 2. 設定 Supabase session
-      console.log("[Login] 設定 Supabase session...");
       const { data: sessionData, error: sessionError } =
         await supabase.auth.setSession({
           access_token: session.access_token,
@@ -346,21 +316,23 @@ export default function LoginScreen() {
 
         {/* LINE 登入（主要） */}
         <View className="w-full mb-6">
-          <Button
+          <Pressable
             onPress={handleLineLogin}
-            variant="primary"
-            fullWidth
-            disabled={isLoading}
+            className="w-full h-14 bg-line-green rounded-md items-center justify-center"
           >
             {isLoading ? (
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator color="white" className="mr-2" />
-                <Text className="text-white font-semibold">登入中...</Text>
+                <Text className="text-white font-semibold text-xl">
+                  登入中...
+                </Text>
               </View>
             ) : (
-              "使用 LINE 登入"
+              <Text className="text-white font-semibold text-xl">
+                使用 LINE 登入
+              </Text>
             )}
-          </Button>
+          </Pressable>
         </View>
 
         {/* 分隔線與其他登入方式（僅 iOS） */}
@@ -373,9 +345,6 @@ export default function LoginScreen() {
             </View>
 
             <View className="w-full mb-4">
-              <Text className="text-sm text-gray-600 text-center mb-3">
-                其他登入方式
-              </Text>
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={
                   AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
@@ -383,8 +352,8 @@ export default function LoginScreen() {
                 buttonStyle={
                   AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
                 }
-                cornerRadius={12}
-                style={{ width: "100%", height: 48 }}
+                cornerRadius={14}
+                style={{ width: "100%", height: 44 }}
                 onPress={handleAppleLogin}
               />
             </View>
