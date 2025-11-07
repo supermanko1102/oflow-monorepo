@@ -39,9 +39,6 @@ module.exports = {
           imageWidth: 200,
           resizeMode: "cover",
           backgroundColor: "#00C300",
-          dark: {
-            backgroundColor: "#00A300",
-          },
         },
       ],
     ],
@@ -61,11 +58,10 @@ module.exports = {
     owner: "alexanderko",
     updates: {
       url: "https://u.expo.dev/0d0c2fcb-f6e8-4a91-8e50-7daff97ee666",
-      checkAutomatically: "ON_LOAD",
-      fallbackToCacheTimeout: 0,
+      fallbackToCacheTimeout: 15000,
     },
     runtimeVersion: {
-      policy: "nativeVersion",
+      policy: "appVersion",
     },
   },
 };
