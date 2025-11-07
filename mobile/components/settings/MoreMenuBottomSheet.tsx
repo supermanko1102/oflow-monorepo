@@ -9,6 +9,7 @@ import { useDeleteTeam, useLeaveTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
+import * as authService from "@/services/authService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { type DeleteTeamConfirmFormData } from "@/types/team";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -88,6 +89,9 @@ export function MoreMenuBottomSheet({
   const setCurrentTeamId = useAuthStore((state) => state.setCurrentTeamId);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountConfirmText, setDeleteAccountConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Mutations
   const leaveTeamMutation = useLeaveTeam();
@@ -222,6 +226,64 @@ export function MoreMenuBottomSheet({
     resetDeleteForm();
   };
 
+  // 處理刪除帳號
+  const handleDeleteAccountPress = () => {
+    onDismiss();
+
+    Alert.alert(
+      "⚠️ 刪除帳號",
+      "此操作無法復原！刪除後將發生：\n\n• 您的個人資料將永久刪除\n• 您將失去所有團隊的存取權限\n• 如果您是某團隊的唯一擁有者，該團隊將被刪除\n\n確定要繼續嗎？",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "繼續",
+          style: "destructive",
+          onPress: () => setShowDeleteAccountModal(true),
+        },
+      ]
+    );
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    // 驗證輸入
+    if (deleteAccountConfirmText.trim() !== "Delete") {
+      toast.error("請正確輸入 Delete");
+      return;
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      // 呼叫刪除 API
+      await authService.deleteAccount();
+
+      // 關閉 Modal
+      setShowDeleteAccountModal(false);
+      setDeleteAccountConfirmText("");
+
+      // 顯示成功訊息
+      toast.success("帳號已刪除");
+
+      // 登出並清除所有資料
+      logout();
+      await supabase.auth.signOut();
+      queryClient.clear();
+
+      // 導向登入頁面
+      router.replace("/(auth)/login");
+    } catch (error: any) {
+      console.error("刪除帳號失敗:", error);
+      toast.error(error.message || "刪除失敗，請稍後再試");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+  const handleDismissDeleteAccountModal = () => {
+    setShowDeleteAccountModal(false);
+    setDeleteAccountConfirmText("");
+  };
+
   return (
     <>
       <BottomSheet visible={visible} onDismiss={onDismiss} title="更多">
@@ -267,6 +329,15 @@ export function MoreMenuBottomSheet({
             label="登出"
             description="登出目前帳號"
             onPress={handleLogout}
+            isDanger
+          />
+
+          {/* 刪除帳號 */}
+          <MenuItem
+            icon="delete-forever"
+            label="刪除帳號"
+            description="永久刪除您的帳號和所有資料"
+            onPress={handleDeleteAccountPress}
             isDanger
           />
         </View>
@@ -334,6 +405,74 @@ export function MoreMenuBottomSheet({
               buttonColor="#EF4444"
               onPress={handleDeleteSubmit(onDeleteSubmit)}
               loading={deleteTeamMutation.isPending}
+              style={{ flex: 1 }}
+            >
+              確認刪除
+            </Button>
+          </View>
+        </Modal>
+
+        {/* Delete Account Confirmation Modal */}
+        <Modal
+          visible={showDeleteAccountModal}
+          onDismiss={handleDismissDeleteAccountModal}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            padding: 20,
+            margin: 20,
+            borderRadius: 12,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              marginBottom: 10,
+              color: "#EF4444",
+            }}
+          >
+            ⚠️ 確認刪除帳號
+          </Text>
+          <Text style={{ color: "#666", marginBottom: 20, lineHeight: 20 }}>
+            此操作無法復原！您的帳號和所有資料將永久刪除。{"\n\n"}
+            請輸入 <Text style={{ fontWeight: "bold" }}>Delete</Text> 以確認刪除
+          </Text>
+
+          <TextInput
+            value={deleteAccountConfirmText}
+            onChangeText={setDeleteAccountConfirmText}
+            placeholder="輸入 Delete"
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              borderWidth: 1,
+              borderColor: "#D1D5DB",
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 8,
+              fontSize: 16,
+            }}
+          />
+
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+            <Button
+              mode="outlined"
+              onPress={handleDismissDeleteAccountModal}
+              style={{ flex: 1 }}
+              disabled={isDeletingAccount}
+            >
+              取消
+            </Button>
+            <Button
+              mode="contained"
+              buttonColor="#EF4444"
+              onPress={handleConfirmDeleteAccount}
+              loading={isDeletingAccount}
+              disabled={
+                isDeletingAccount ||
+                deleteAccountConfirmText.trim() !== "Delete"
+              }
               style={{ flex: 1 }}
             >
               確認刪除
