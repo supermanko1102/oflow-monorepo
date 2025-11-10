@@ -2,6 +2,7 @@
 
 export type OrderSource = "auto" | "semi-auto" | "manual";
 export type OrderStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type PaymentMethod = "cash" | "transfer" | "other";
 
 // 配送/服務方式
 export type DeliveryMethod =
@@ -49,6 +50,7 @@ export interface Order {
 
   status: OrderStatus;
   source: OrderSource;
+  paymentMethod?: PaymentMethod; // 付款方式（完成時記錄）
   notes?: string; // 商家內部備註
   customerNotes?: string; // 顧客備註
   conversationId?: string; // 對話 ID
@@ -81,6 +83,20 @@ export const DELIVERY_METHOD_ICONS: Record<DeliveryMethod, string> = {
   onsite: "map-marker",
 };
 
+// 付款方式標籤對應
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: "現金",
+  transfer: "轉帳",
+  other: "其他",
+};
+
+// 付款方式 icon 對應
+export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
+  cash: "cash",
+  transfer: "bank-transfer",
+  other: "dots-horizontal",
+};
+
 // ==================== API Types ====================
 
 /**
@@ -99,6 +115,7 @@ export interface OrderFilters {
 export interface UpdateOrderStatusParams {
   order_id: string;
   status: "pending" | "completed" | "cancelled";
+  payment_method?: PaymentMethod; // 完成訂單時的付款方式
 }
 
 /**
@@ -117,4 +134,42 @@ export interface DashboardSummary {
   todayPending: Order[];
   todayCompleted: Order[];
   future: Order[];
+}
+
+// ==================== Revenue Stats Types ====================
+
+/**
+ * 時間範圍類型
+ */
+export type TimeRange = "day" | "week" | "month" | "year";
+
+/**
+ * 時間範圍標籤對應
+ */
+export const TIME_RANGE_LABELS: Record<TimeRange, string> = {
+  day: "今日",
+  week: "本週",
+  month: "本月",
+  year: "本年",
+};
+
+/**
+ * 付款方式統計
+ */
+export interface PaymentStats {
+  cash: number;
+  transfer: number;
+  other: number;
+}
+
+/**
+ * 營收統計回應
+ */
+export interface RevenueStats {
+  timeRange: TimeRange;
+  startDate: string;
+  endDate: string;
+  totalRevenue: number;
+  orderCount: number;
+  paymentStats: PaymentStats;
 }

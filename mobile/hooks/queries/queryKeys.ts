@@ -58,6 +58,10 @@ export const queryKeys = {
     // Dashboard 摘要（今日 + 未來訂單）
     summary: (teamId: string) =>
       [...queryKeys.dashboard.all(), "summary", teamId] as const,
+
+    // 營收統計（支援不同時間範圍）
+    revenueStats: (teamId: string, timeRange: string) =>
+      [...queryKeys.dashboard.all(), "revenueStats", teamId, timeRange] as const,
   },
 
   // Products 相關 queries

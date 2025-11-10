@@ -6,6 +6,7 @@
 
 import { queryKeys } from "@/hooks/queries/queryKeys";
 import * as dashboardService from "@/services/dashboardService";
+import type { TimeRange } from "@/types/order";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /**
@@ -66,5 +67,43 @@ export async function prefetchDashboardSummary(
     queryKey: queryKeys.dashboard.summary(teamId),
     queryFn: () => dashboardService.getDashboardSummary(teamId),
     staleTime: 1 * 60 * 1000,
+  });
+}
+
+/**
+ * 查詢營收統計
+ *
+ * @param teamId - 團隊 ID
+ * @param timeRange - 時間範圍（day/week/month/year）
+ * @param enabled - 是否啟用查詢（預設為 true）
+ *
+ * 使用時機：
+ * - 首頁營收統計卡片
+ * - 統計報表頁面
+ *
+ * Cache 策略：
+ * - staleTime: 5 分鐘（營收統計變動頻率較低）
+ * - 支援不同時間範圍的獨立快取
+ *
+ * 回傳資料：
+ * - totalRevenue: 總營收
+ * - orderCount: 訂單數量
+ * - paymentStats: 按付款方式分類的營收統計
+ */
+export function useRevenueStats(
+  teamId: string | null,
+  timeRange: TimeRange,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: queryKeys.dashboard.revenueStats(teamId || "", timeRange),
+    queryFn: () => {
+      if (!teamId) {
+        throw new Error("Team ID is required");
+      }
+      return dashboardService.getRevenueStats(teamId, timeRange);
+    },
+    enabled: enabled && !!teamId,
+    staleTime: 5 * 60 * 1000, // 5 分鐘
   });
 }

@@ -5,7 +5,7 @@
 
 import { ApiClient } from "@/lib/apiClient";
 import { config } from "@/lib/config";
-import type { DashboardSummary } from "@/types/order";
+import type { DashboardSummary, RevenueStats, TimeRange } from "@/types/order";
 
 // 建立 Dashboard API Client 實例
 const dashboardApi = new ApiClient(config.api.orderOperations);
@@ -30,5 +30,36 @@ export async function getDashboardSummary(
     todayPending: response.todayPending,
     todayCompleted: response.todayCompleted,
     future: response.future,
+  };
+}
+
+/**
+ * 查詢營收統計
+ * 支援不同時間範圍的營收統計查詢
+ *
+ * @param teamId - 團隊 ID
+ * @param timeRange - 時間範圍（day/week/month/year）
+ * @returns 營收統計資料
+ */
+export async function getRevenueStats(
+  teamId: string,
+  timeRange: TimeRange
+): Promise<RevenueStats> {
+  const response = await dashboardApi.call<{ success: boolean } & RevenueStats>(
+    "GET",
+    "revenue-stats",
+    {
+      team_id: teamId,
+      time_range: timeRange,
+    }
+  );
+
+  return {
+    timeRange: response.timeRange,
+    startDate: response.startDate,
+    endDate: response.endDate,
+    totalRevenue: response.totalRevenue,
+    orderCount: response.orderCount,
+    paymentStats: response.paymentStats,
   };
 }

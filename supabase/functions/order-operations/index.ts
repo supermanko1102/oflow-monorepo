@@ -94,6 +94,7 @@ function transformOrderToClient(order: any, conversation?: any[]) {
     notes: order.notes,
     customerNotes: order.customer_notes,
     conversationId: order.conversation_id,
+    paymentMethod: order.payment_method || "cash", // 付款方式，預設為現金
     // 如果有對話記錄，使用新格式；否則回退到舊格式
     lineConversation:
       conversation || (order.original_message ? [order.original_message] : []),
@@ -366,6 +367,116 @@ serve(async (req) => {
         );
       }
 
+      // 查詢營收統計
+      if (action === "revenue-stats") {
+        const teamId = url.searchParams.get("team_id");
+        const timeRange = url.searchParams.get("time_range") || "day";
+
+        if (!teamId) {
+          throw new Error("Missing team_id parameter");
+        }
+
+        // 驗證團隊成員身份
+        await verifyTeamMembership(supabaseAdmin, user.id, teamId);
+
+        console.log("[Order Operations] 查詢營收統計:", teamId, timeRange);
+
+        // 計算日期範圍
+        const now = new Date();
+        let startDate: string;
+        let endDate: string;
+
+        switch (timeRange) {
+          case "day":
+            // 今天
+            startDate = now.toISOString().split("T")[0];
+            endDate = startDate;
+            break;
+          case "week":
+            // 本週（週一到週日）
+            const dayOfWeek = now.getDay();
+            const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 週日=0，調整為週一
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diff);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            startDate = monday.toISOString().split("T")[0];
+            endDate = sunday.toISOString().split("T")[0];
+            break;
+          case "month":
+            // 本月
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            startDate = firstDay.toISOString().split("T")[0];
+            endDate = lastDay.toISOString().split("T")[0];
+            break;
+          case "year":
+            // 本年
+            startDate = `${now.getFullYear()}-01-01`;
+            endDate = `${now.getFullYear()}-12-31`;
+            break;
+          default:
+            throw new Error("Invalid time_range parameter");
+        }
+
+        console.log("[Order Operations] 日期範圍:", startDate, "到", endDate);
+
+        // 查詢該時間範圍內已完成的訂單
+        const { data: orders, error } = await supabaseAdmin
+          .from("orders")
+          .select("total_amount, payment_method")
+          .eq("team_id", teamId)
+          .eq("status", "completed")
+          .gte("pickup_date", startDate)
+          .lte("pickup_date", endDate);
+
+        if (error) {
+          throw error;
+        }
+
+        // 統計營收
+        let totalRevenue = 0;
+        const paymentStats = {
+          cash: 0,
+          transfer: 0,
+          other: 0,
+        };
+        let orderCount = 0;
+
+        (orders || []).forEach((order) => {
+          const amount = parseFloat(order.total_amount);
+          totalRevenue += amount;
+          orderCount += 1;
+
+          // 按付款方式分類（NULL 視為 cash）
+          const method = order.payment_method || "cash";
+          if (method in paymentStats) {
+            paymentStats[method as keyof typeof paymentStats] += amount;
+          }
+        });
+
+        console.log("[Order Operations] 營收統計完成:", {
+          totalRevenue,
+          orderCount,
+          paymentStats,
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            timeRange,
+            startDate,
+            endDate,
+            totalRevenue,
+            orderCount,
+            paymentStats,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       throw new Error(`Unknown GET action: ${action}`);
     }
 
@@ -377,13 +488,13 @@ serve(async (req) => {
 
       // 更新訂單狀態
       if (action === "update-status") {
-        const { order_id, status } = body;
+        const { order_id, status, payment_method } = body;
 
         if (!order_id || !status) {
           throw new Error("Missing order_id or status");
         }
 
-        console.log("[Order Operations] 更新訂單狀態:", order_id, status);
+        console.log("[Order Operations] 更新訂單狀態:", order_id, status, payment_method);
 
         // 先取得訂單資訊以驗證權限
         const { data: order, error: fetchError } = await supabaseAdmin
@@ -418,9 +529,11 @@ serve(async (req) => {
           updated_by: user.id,
         };
 
-        // 如果狀態變更為 completed，記錄完成時間
+        // 如果狀態變更為 completed，記錄完成時間和付款方式
         if (status === "completed") {
           updateData.completed_at = new Date().toISOString();
+          // 如果提供了付款方式，則更新；否則預設為 cash
+          updateData.payment_method = payment_method || "cash";
         }
 
         const { error: updateError } = await supabaseAdmin

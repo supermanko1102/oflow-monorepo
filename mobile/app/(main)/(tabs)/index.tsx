@@ -4,19 +4,23 @@ import { LoadingState } from "@/components/LoadingState";
 import { TodaySummaryCard } from "@/components/TodaySummaryCard";
 import { TodayTodoList } from "@/components/TodayTodoList";
 import { SHADOWS } from "@/constants/design";
-import { useDashboardSummary } from "@/hooks/queries/useDashboard";
+import { useDashboardSummary, useRevenueStats } from "@/hooks/queries/useDashboard";
 import { useUpdateOrderStatus } from "@/hooks/queries/useOrders";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import type { TimeRange, PaymentMethod } from "@/types/order";
+import { TIME_RANGE_LABELS } from "@/types/order";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
   TouchableOpacity,
   View,
+  Text,
 } from "react-native";
+import { Menu } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TodayScreen() {
@@ -25,15 +29,25 @@ export default function TodayScreen() {
   const toast = useToast();
   const haptics = useHaptics();
 
-  // 視圖切換狀態
+  // 時間範圍選擇狀態
+  const [timeRange, setTimeRange] = useState<TimeRange>("day");
+  const [menuVisible, setMenuVisible] = useState(false);
 
   // 使用 Dashboard Summary API（後端已完成分類和排序）
   const {
     data: dashboardData,
     isLoading,
-    refetch,
-    isFetching,
+    refetch: refetchDashboard,
+    isFetching: isFetchingDashboard,
   } = useDashboardSummary(currentTeamId, !!currentTeamId);
+
+  // 查詢營收統計
+  const {
+    data: revenueStats,
+    isLoading: isLoadingRevenue,
+    refetch: refetchRevenue,
+    isFetching: isFetchingRevenue,
+  } = useRevenueStats(currentTeamId, timeRange, !!currentTeamId);
 
   // 更新訂單狀態的 mutation
   const updateOrderStatus = useUpdateOrderStatus();
@@ -45,13 +59,13 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(async () => {
     haptics.light();
-    await refetch();
+    await Promise.all([refetchDashboard(), refetchRevenue()]);
     toast.success("資料已更新");
-  }, [haptics, toast, refetch]);
+  }, [haptics, toast, refetchDashboard, refetchRevenue]);
 
-  // 處理訂單完成切換
+  // 處理訂單完成切換（支援付款方式）
   const handleToggleComplete = useCallback(
-    async (orderId: string) => {
+    async (orderId: string, paymentMethod?: PaymentMethod) => {
       const order = [...todayPendingOrders, ...todayCompletedOrders].find(
         (o) => o.id === orderId
       );
@@ -63,6 +77,7 @@ export default function TodayScreen() {
         await updateOrderStatus.mutateAsync({
           order_id: orderId,
           status: newStatus,
+          payment_method: paymentMethod,
         });
 
         haptics.success();
@@ -89,13 +104,15 @@ export default function TodayScreen() {
     toast.info("通知功能即將推出");
   };
 
-  // 計算今日總營收
-  const totalRevenue = [...todayPendingOrders, ...todayCompletedOrders].reduce(
-    (sum, order) => sum + order.totalAmount,
-    0
-  );
+  // 時間範圍選擇處理
+  const handleTimeRangeSelect = (range: TimeRange) => {
+    haptics.light();
+    setTimeRange(range);
+    setMenuVisible(false);
+  };
+
   // Loading state
-  if (isLoading && !dashboardData) {
+  if ((isLoading || isLoadingRevenue) && !dashboardData) {
     return <LoadingState message="載入中..." />;
   }
 
@@ -112,9 +129,47 @@ export default function TodayScreen() {
     <View className="flex-1 bg-gray-50">
       {/* 極簡功能型 Header */}
       <View
-        className="flex-row items-center justify-end px-6 py-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-6 py-4 bg-white border-b border-gray-100"
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
+        {/* 左側：時間範圍選擇器 */}
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <TouchableOpacity
+              onPress={() => {
+                haptics.light();
+                setMenuVisible(true);
+              }}
+              activeOpacity={0.6}
+              className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
+            >
+              <Text className="text-sm font-semibold text-gray-700 mr-1">
+                {TIME_RANGE_LABELS[timeRange]}
+              </Text>
+              <MaterialCommunityIcons
+                name="chevron-down"
+                size={16}
+                color="#374151"
+              />
+            </TouchableOpacity>
+          }
+          contentStyle={{ backgroundColor: "white", marginTop: 8 }}
+        >
+          {(["day", "week", "month", "year"] as TimeRange[]).map((range) => (
+            <Menu.Item
+              key={range}
+              onPress={() => handleTimeRangeSelect(range)}
+              title={TIME_RANGE_LABELS[range]}
+              titleStyle={{
+                color: timeRange === range ? "#00B900" : "#374151",
+                fontWeight: timeRange === range ? "600" : "normal",
+              }}
+            />
+          ))}
+        </Menu>
+
         {/* 右側：功能圖標 */}
         <View className="flex-row gap-4">
           {/* 通知 icon */}
@@ -137,17 +192,19 @@ export default function TodayScreen() {
         className="flex-1"
         refreshControl={
           <RefreshControl
-            refreshing={isFetching}
+            refreshing={isFetchingDashboard || isFetchingRevenue}
             onRefresh={onRefresh}
             tintColor="#00B900"
             colors={["#00B900"]}
           />
         }
       >
-        {/* 今日摘要卡片 */}
+        {/* 營收統計卡片 */}
         <TodaySummaryCard
-          orderCount={todayPendingOrders.length + todayCompletedOrders.length}
-          totalRevenue={totalRevenue}
+          orderCount={revenueStats?.orderCount || 0}
+          totalRevenue={revenueStats?.totalRevenue || 0}
+          timeRange={timeRange}
+          paymentStats={revenueStats?.paymentStats}
         />
         {/* 今日訂單列表（待處理 + 已完成） */}
         <TodayTodoList
