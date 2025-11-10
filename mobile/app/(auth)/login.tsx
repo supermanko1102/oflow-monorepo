@@ -281,7 +281,7 @@ export default function LoginScreen() {
         <View className="mb-8 w-full">
           <View className="bg-gray-50 rounded-xl p-6 mb-4">
             <Text className="text-lg font-semibold text-gray-900 mb-3 text-center">
-              讓 AI 幫你自動處理訂單
+              讓 AI 幫你自動處理訂單(Beta)
             </Text>
             <View className="space-y-3">
               <View className="mb-3">
