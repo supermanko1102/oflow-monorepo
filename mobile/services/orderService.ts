@@ -83,3 +83,21 @@ export async function updateOrderStatus(
 export async function updateOrder(params: UpdateOrderParams): Promise<void> {
   await orderApi.call<{ message: string }>("POST", "update", undefined, params);
 }
+
+/**
+ * 確認收款
+ */
+export async function confirmPayment(
+  orderId: string,
+  paymentMethod: "cash" | "transfer" | "other"
+): Promise<void> {
+  await orderApi.call<{ message: string }>(
+    "POST",
+    "confirm-payment",
+    undefined,
+    {
+      order_id: orderId,
+      payment_method: paymentMethod,
+    }
+  );
+}

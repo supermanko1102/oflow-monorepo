@@ -1,7 +1,12 @@
 // ==================== Order Types ====================
 
 export type OrderSource = "auto" | "semi-auto" | "manual";
-export type OrderStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
 export type PaymentMethod = "cash" | "transfer" | "other";
 
 // 配送/服務方式
@@ -50,7 +55,8 @@ export interface Order {
 
   status: OrderStatus;
   source: OrderSource;
-  paymentMethod?: PaymentMethod; // 付款方式（完成時記錄）
+  paymentMethod?: PaymentMethod; // 付款方式（確認收款時記錄）
+  paidAt?: string; // 付款確認時間
   notes?: string; // 商家內部備註
   customerNotes?: string; // 顧客備註
   conversationId?: string; // 對話 ID
@@ -103,7 +109,7 @@ export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
  * 訂單查詢篩選條件
  */
 export interface OrderFilters {
-  status?: "all" | "pending" | "completed" | "cancelled";
+  status?: "all" | "pending" | "paid" | "completed" | "cancelled";
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string; // YYYY-MM-DD
   search?: string;
@@ -114,7 +120,7 @@ export interface OrderFilters {
  */
 export interface UpdateOrderStatusParams {
   order_id: string;
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "paid" | "completed" | "cancelled";
   payment_method?: PaymentMethod; // 完成訂單時的付款方式
 }
 

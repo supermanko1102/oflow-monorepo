@@ -13,8 +13,14 @@ interface StatusBadgeProps {
   value: OrderStatus | OrderSource;
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string }> = {
-  pending: { label: '待處理' },
+const STATUS_CONFIG: Record<OrderStatus, { label: string; bgColor?: string; textColor?: string; borderColor?: string }> = {
+  pending: { label: '待付款' },
+  paid: { 
+    label: '已付款',
+    bgColor: '#DBEAFE',
+    textColor: '#2563EB',
+    borderColor: '#2563EB20',
+  },
   confirmed: { label: '已確認' },
   completed: { label: '已完成' },
   cancelled: { label: '已取消' },
@@ -47,7 +53,21 @@ export function StatusBadge({ type, value }: StatusBadgeProps) {
     const config = STATUS_CONFIG[value as OrderStatus];
     if (!config) return null;
 
-    // 狀態統一使用灰色風格
+    // paid 狀態使用藍色
+    if (value === 'paid') {
+      return (
+        <View 
+          className="px-3 py-1.5 rounded-lg"
+          style={{ backgroundColor: config.bgColor, borderWidth: 1, borderColor: config.borderColor }}
+        >
+          <Text className="text-xs font-bold" style={{ color: config.textColor }}>
+            {config.label}
+          </Text>
+        </View>
+      );
+    }
+
+    // 其他狀態統一使用灰色風格
     return (
       <View className="px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200">
         <Text className="text-xs font-semibold text-gray-700">

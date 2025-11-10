@@ -94,7 +94,8 @@ function transformOrderToClient(order: any, conversation?: any[]) {
     notes: order.notes,
     customerNotes: order.customer_notes,
     conversationId: order.conversation_id,
-    paymentMethod: order.payment_method || "cash", // 付款方式，預設為現金
+    paymentMethod: order.payment_method, // 付款方式
+    paidAt: order.paid_at, // 付款確認時間
     // 如果有對話記錄，使用新格式；否則回退到舊格式
     lineConversation:
       conversation || (order.original_message ? [order.original_message] : []),
@@ -246,12 +247,12 @@ serve(async (req) => {
           throw error1;
         }
 
-        // 查詢今日已完成訂單
+        // 查詢今日已完成訂單（包含 paid 和 completed）
         const { data: todayCompleted, error: error2 } = await supabaseAdmin
           .from("orders")
           .select("*")
           .eq("team_id", teamId)
-          .eq("status", "completed")
+          .in("status", ["paid", "completed"])
           .eq("pickup_date", today)
           .order("pickup_time", { ascending: true });
 
@@ -421,12 +422,12 @@ serve(async (req) => {
 
         console.log("[Order Operations] 日期範圍:", startDate, "到", endDate);
 
-        // 查詢該時間範圍內已完成的訂單
+        // 查詢該時間範圍內已付款和已完成的訂單（paid 和 completed 都算營收）
         const { data: orders, error } = await supabaseAdmin
           .from("orders")
           .select("total_amount, payment_method")
           .eq("team_id", teamId)
-          .eq("status", "completed")
+          .in("status", ["paid", "completed"])
           .gte("pickup_date", startDate)
           .lte("pickup_date", endDate);
 
@@ -494,7 +495,12 @@ serve(async (req) => {
           throw new Error("Missing order_id or status");
         }
 
-        console.log("[Order Operations] 更新訂單狀態:", order_id, status, payment_method);
+        console.log(
+          "[Order Operations] 更新訂單狀態:",
+          order_id,
+          status,
+          payment_method
+        );
 
         // 先取得訂單資訊以驗證權限
         const { data: order, error: fetchError } = await supabaseAdmin
@@ -549,6 +555,83 @@ serve(async (req) => {
           JSON.stringify({
             success: true,
             message: "Order status updated successfully",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // 確認收款
+      if (action === "confirm-payment") {
+        const { order_id, payment_method } = body;
+
+        if (!order_id || !payment_method) {
+          throw new Error("Missing order_id or payment_method");
+        }
+
+        // 驗證付款方式
+        if (!["cash", "transfer", "other"].includes(payment_method)) {
+          throw new Error(
+            "Invalid payment_method. Must be: cash, transfer, or other"
+          );
+        }
+
+        console.log("[Order Operations] 確認收款:", order_id, payment_method);
+
+        // 先取得訂單資訊以驗證權限
+        const { data: order, error: fetchError } = await supabaseAdmin
+          .from("orders")
+          .select("team_id, status")
+          .eq("id", order_id)
+          .single();
+
+        if (fetchError || !order) {
+          throw new Error("Order not found");
+        }
+
+        // 驗證團隊成員身份和權限
+        const member = await verifyTeamMembership(
+          supabaseAdmin,
+          user.id,
+          order.team_id
+        );
+
+        if (
+          !member.can_manage_orders &&
+          member.role !== "owner" &&
+          member.role !== "admin"
+        ) {
+          throw new Error("You don't have permission to manage orders");
+        }
+
+        // 只有 pending 狀態的訂單可以確認收款
+        if (order.status !== "pending") {
+          throw new Error("Only pending orders can confirm payment");
+        }
+
+        // 更新訂單：狀態改為 paid，記錄付款方式和付款時間
+        const { error: updateError } = await supabaseAdmin
+          .from("orders")
+          .update({
+            status: "paid",
+            payment_method: payment_method,
+            paid_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+          })
+          .eq("id", order_id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        console.log("[Order Operations] ✅ 收款確認成功");
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Payment confirmed successfully",
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
