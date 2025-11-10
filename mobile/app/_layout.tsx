@@ -38,6 +38,7 @@ SplashScreen.preventAutoHideAsync();
  *
  * 此組件負責：
  * - 等待 hydration 和團隊資料加載完成後才隱藏 SplashScreen
+ * - 在 Splash 隱藏後檢查並下載 OTA 更新
  * - 提供基本的 Stack 結構
  */
 function RootNavigator() {
@@ -52,11 +53,63 @@ function RootNavigator() {
   // 計算路由是否準備好：hydrated 且（未登入或團隊資料已加載）
   const isRouteReady = hasHydrated && (!isLoggedIn || !isTeamsLoading);
 
-  // 管理 SplashScreen：路由準備好後才隱藏
+  // 管理 SplashScreen 和 OTA 更新：Splash 隱藏後才檢查更新
   useEffect(() => {
-    if (isRouteReady) {
-      SplashScreen.hideAsync();
+    async function initializeApp() {
+      if (!isRouteReady) return;
+
+      try {
+        // 步驟 1: 隱藏 Splash Screen
+        console.log("[App Init] Hiding splash screen...");
+        await SplashScreen.hideAsync();
+        console.log("[App Init] Splash screen hidden");
+
+        // 步驟 2: 檢查 OTA 更新（只在 production build 執行）
+        if (__DEV__) {
+          console.log("[OTA] Skipped in development mode");
+          return;
+        }
+
+        // 記錄當前狀態
+        console.log("[OTA] Current state:", {
+          channel: Updates.channel,
+          runtimeVersion: Updates.runtimeVersion,
+          updateId: Updates.updateId || "built-in",
+        });
+
+        // 檢查更新
+        console.log("[OTA] Checking for updates...");
+        const update = await Updates.checkForUpdateAsync();
+        console.log("[OTA] Check result:", {
+          isAvailable: update.isAvailable,
+          manifestId: update.manifest?.id,
+        });
+
+        if (update.isAvailable) {
+          // 背景下載更新
+          console.log("[OTA] Downloading update...");
+          const fetchResult = await Updates.fetchUpdateAsync();
+          console.log("[OTA] Update downloaded:", {
+            isNew: fetchResult.isNew,
+          });
+
+          // 更新將在下次啟動時自動套用
+          console.log(
+            "[OTA] ✅ Update ready! Will be applied on next app launch."
+          );
+
+          // 可選：顯示提示（需要引入 Alert 或 Toast）
+          // Alert.alert('更新完成', '新版本將在下次啟動時套用');
+        } else {
+          console.log("[OTA] Already on the latest version");
+        }
+      } catch (error) {
+        console.error("[OTA] Update check failed:", error);
+        // 錯誤不應該阻止 App 正常運行
+      }
     }
+
+    initializeApp();
   }, [isRouteReady]);
 
   return (
@@ -73,38 +126,13 @@ function RootNavigator() {
  * 職責：
  * 1. 提供全局 providers (Theme, Paper, React Query)
  * 2. 渲染基本的 navigator 結構
- * 3. 管理 SplashScreen
- * 4. 檢查並套用 OTA 更新
  *
  * 架構模式：分散式認證守衛
  * - Root Layout 只提供基礎設施，不處理路由守衛
  * - 各 Layout ((auth) 和 (main)) 各自負責守護自己的路由範圍
+ * - SplashScreen 和 OTA 更新由 RootNavigator 管理
  */
 export default function RootLayout() {
-  // OTA 更新檢查
-  useEffect(() => {
-    async function checkForUpdates() {
-      // 開發模式跳過 OTA 檢查
-      if (__DEV__) {
-        return;
-      }
-
-      try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          // 立即套用更新
-          await Updates.reloadAsync();
-        }
-      } catch (error) {
-        // 靜默失敗，不影響用戶體驗
-        console.error("OTA update check failed:", error);
-      }
-    }
-
-    checkForUpdates();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>

@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "OFlow",
     slug: "mobile",
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: "oflow",
@@ -11,7 +11,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.oflow.app",
-      buildNumber: "12",
+      buildNumber: "13",
       associatedDomains: ["applinks:oflow-website.vercel.app"],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -58,7 +58,11 @@ module.exports = {
     owner: "alexanderko",
     updates: {
       url: "https://u.expo.dev/0d0c2fcb-f6e8-4a91-8e50-7daff97ee666",
-      fallbackToCacheTimeout: 15000,
+      // 設為 0：強制等待更新檢查完成，不使用緩存
+      // 這確保 App 總是能獲取最新的更新 manifest
+      fallbackToCacheTimeout: 0,
+      // 啟動時自動檢查更新
+      checkAutomatically: "ON_LOAD",
     },
     runtimeVersion: {
       policy: "appVersion",
