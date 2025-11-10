@@ -545,10 +545,10 @@ serve(async (req) => {
         }
 
         // ═══════════════════════════════════════════════════════
-        // 半自動模式（非關鍵字）：AI 監聽但不回覆
+        // 半自動模式：AI 監聽並累積資訊，資訊完整時標記為待確認
         // ═══════════════════════════════════════════════════════
         if (team.auto_mode === false) {
-          console.log("[LINE Webhook] 半自動模式：儲存訊息但不回覆");
+          console.log("[LINE Webhook] 半自動模式：解析並累積資訊");
 
           // 取得對話歷史供 AI 解析
           const { data: historyData } = await supabaseAdmin.rpc(
@@ -561,7 +561,7 @@ serve(async (req) => {
 
           const conversationHistory = historyData || [];
 
-          // 仍然進行 AI 解析（用於累積對話資訊）
+          // 進行 AI 解析（用於累積對話資訊）
           const aiResult = await parseMessageWithAI(
             messageText,
             {
@@ -573,16 +573,50 @@ serve(async (req) => {
             conversation.collected_data
           );
 
-          // 更新對話的已收集資訊（供下次參考）
-          if (aiResult.is_continuation && aiResult.order) {
+          console.log("[LINE Webhook] 半自動模式 AI 解析結果:", {
+            intent: aiResult.intent,
+            is_complete: aiResult.is_complete,
+            is_continuation: aiResult.is_continuation,
+          });
+
+          // 更新訊息的 AI 解析結果
+          await supabaseAdmin
+            .from("line_messages")
+            .update({
+              ai_parsed: true,
+              ai_result: aiResult,
+              ai_confidence: aiResult.confidence,
+            })
+            .eq("id", savedMessage.id);
+
+          // 更新對話的已收集資訊
+          if (aiResult.intent === "order" && aiResult.order) {
             await supabaseAdmin.rpc("update_conversation_data", {
               p_conversation_id: conversation.id,
               p_collected_data: aiResult.order,
               p_missing_fields: aiResult.missing_fields || [],
             });
+
+            // 如果訂單資訊完整，更新對話狀態為「待商家確認」
+            if (aiResult.is_complete) {
+              console.log(
+                "[LINE Webhook] 半自動模式：訂單資訊完整，標記為待商家確認"
+              );
+
+              await supabaseAdmin
+                .from("conversations")
+                .update({
+                  status: "awaiting_merchant_confirmation",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", conversation.id);
+
+              // 可選：發送通知給商家團隊成員（未來實現）
+              // await notifyTeamMembers(team.id, aiResult.order, conversation.id);
+            }
           }
 
-          // 不回覆訊息
+          // 半自動模式不回覆客人，等待商家在 App 中確認
           continue;
         }
 
@@ -664,6 +698,8 @@ serve(async (req) => {
                   p_appointment_time: order.delivery_time || order.pickup_time,
                   // 可選參數（多行業支援）
                   p_delivery_method: order.delivery_method || "pickup",
+                  p_pickup_type: order.pickup_type || null, // store 或 meetup
+                  p_pickup_location: order.pickup_location || null, // 取貨/面交地點
                   p_requires_frozen: order.requires_frozen || false,
                   p_store_info: order.store_info || null,
                   p_shipping_address: order.shipping_address || null,
@@ -697,7 +733,7 @@ serve(async (req) => {
                 .eq("id", orderId)
                 .single();
 
-              // 建立確認訊息
+              // 建立確認訊息（根據配送方式和取貨類型）
               const itemsList = order.items
                 .map(
                   (item: any) =>
@@ -707,11 +743,56 @@ serve(async (req) => {
                 )
                 .join("\n");
 
+              const deliveryMethod = order.delivery_method || "pickup";
+              const pickupType = order.pickup_type;
+              let deliveryInfo = "";
+
+              if (deliveryMethod === "pickup") {
+                // 取貨（區分店取/面交）
+                const deliveryDate = order.delivery_date || order.pickup_date;
+                const deliveryTime = order.delivery_time || order.pickup_time;
+
+                if (pickupType === "store") {
+                  // 店取：顯示商家地址（如果有設定）
+                  let storeAddress = order.pickup_location;
+
+                  // 如果沒有 pickup_location，嘗試從 team.pickup_settings 取得
+                  if (
+                    !storeAddress &&
+                    team.pickup_settings?.store_pickup?.address
+                  ) {
+                    storeAddress = team.pickup_settings.store_pickup.address;
+                  }
+
+                  deliveryInfo = `取貨方式：到店取貨\n${
+                    storeAddress ? `取貨地點：${storeAddress}\n` : ""
+                  }取貨時間：${deliveryDate} ${deliveryTime}`;
+                } else if (pickupType === "meetup") {
+                  // 面交：顯示約定地點
+                  deliveryInfo = `取貨方式：約定地點面交\n面交地點：${
+                    order.pickup_location || "待約定"
+                  }\n面交時間：${deliveryDate} ${deliveryTime}`;
+                } else {
+                  // 舊版相容（沒有 pickup_type）
+                  deliveryInfo = `取貨時間：${deliveryDate} ${deliveryTime}`;
+                }
+              } else if (deliveryMethod === "convenience_store") {
+                // 超商：顯示店號
+                deliveryInfo = `配送方式：超商取貨\n取貨店號：${
+                  order.store_info || "待確認"
+                }`;
+              } else if (deliveryMethod === "black_cat") {
+                // 宅配：顯示地址（不顯示時間）
+                deliveryInfo = `配送方式：宅配\n配送地址：${
+                  order.shipping_address || "待確認"
+                }`;
+              }
+
               const confirmMessage =
                 `✅ 訂單已確認！\n\n` +
                 `訂單編號：${orderDetail?.order_number || "處理中"}\n\n` +
                 `商品：\n${itemsList}\n\n` +
-                `取貨時間：${order.pickup_date} ${order.pickup_time}\n` +
+                `${deliveryInfo}\n` +
                 (totalAmount > 0 ? `金額：NT$ ${totalAmount}\n\n` : "\n") +
                 `感謝您的訂購！`;
 
@@ -761,15 +842,53 @@ serve(async (req) => {
             // ⏳ 資訊不完整，更新對話狀態並詢問
             console.log("[LINE Webhook] 資訊不完整，請求補充");
 
-            // 更新對話中已收集的資訊
+            // 取得當前對話輪數
+            const currentTurnCount = conversation.turn_count || 0;
+            console.log(`[LINE Webhook] 當前對話輪數：${currentTurnCount} / 3`);
+
+            // 更新對話中已收集的資訊和輪數
             await supabaseAdmin.rpc("update_conversation_data", {
               p_conversation_id: conversation.id,
               p_collected_data: aiResult.order || {},
               p_missing_fields: aiResult.missing_fields || [],
             });
 
-            const replyMessage =
-              aiResult.suggested_reply || "收到您的訊息！請補充訂單資訊。";
+            // 增加對話輪數
+            const newTurnCount = currentTurnCount + 1;
+            await supabaseAdmin
+              .from("conversations")
+              .update({
+                turn_count: newTurnCount,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", conversation.id);
+
+            let replyMessage: string;
+
+            // 檢查是否超過 3 輪對話
+            if (newTurnCount >= 3) {
+              console.log("[LINE Webhook] 對話超過 3 輪，建議客人提供完整資訊");
+
+              replyMessage =
+                "為了更快為您服務，請您一次提供完整的訂單資訊：\n" +
+                "1. 商品名稱和數量\n" +
+                "2. 配送方式（自取/宅配/超商）\n" +
+                "3. 如果自取，請提供日期和時間\n" +
+                "4. 如果宅配，請提供地址\n\n" +
+                "或者您也可以直接撥打電話聯絡我們！";
+
+              // 標記對話為需要人工處理
+              await supabaseAdmin
+                .from("conversations")
+                .update({
+                  status: "requires_manual_handling",
+                })
+                .eq("id", conversation.id);
+            } else {
+              // 使用 AI 建議的回覆
+              replyMessage =
+                aiResult.suggested_reply || "收到您的訊息！請補充訂單資訊。";
+            }
 
             // 儲存 AI 回覆
             await supabaseAdmin.from("line_messages").insert({

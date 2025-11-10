@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import * as NotificationService from "@/utils/notificationService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { Card, Divider, IconButton, List } from "react-native-paper";
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const toast = useToast();
 
   // Auth store (client state) - 統一使用 AuthStore
@@ -326,6 +328,22 @@ export default function SettingsScreen() {
           </View>
         </List.Section>
       </View>
+
+      {/* Delivery Settings Section */}
+      {canManageTeam && (
+        <View className="bg-white mt-4">
+          <List.Section>
+            <List.Subheader>配送設定</List.Subheader>
+            <List.Item
+              title="配送方式管理"
+              description="設定店取、面交、超商、宅配等選項"
+              left={(props) => <List.Icon {...props} icon="truck-delivery" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => router.push("/(main)/delivery-settings")}
+            />
+          </List.Section>
+        </View>
+      )}
 
       {/* Notification Section */}
       <View className="bg-white mt-4">

@@ -81,4 +81,14 @@ export const queryKeys = {
     categories: (teamId: string) =>
       [...queryKeys.products.all(), "categories", teamId] as const,
   },
+
+  // Delivery Settings 相關 queries
+  deliverySettings: {
+    // 所有 delivery settings 相關的 queries
+    all: () => ["delivery-settings"] as const,
+
+    // 團隊配送設定
+    detail: (teamId: string) =>
+      [...queryKeys.deliverySettings.all(), "detail", teamId] as const,
+  },
 } as const;

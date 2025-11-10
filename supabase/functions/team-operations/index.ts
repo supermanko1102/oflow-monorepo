@@ -168,6 +168,56 @@ serve(async (req) => {
         );
       }
 
+      // 查詢配送設定
+      if (action === "delivery-settings") {
+        const teamId = url.searchParams.get("team_id");
+        if (!teamId) {
+          throw new Error("Missing team_id parameter");
+        }
+
+        console.log("[Team Operations] 查詢配送設定:", teamId);
+
+        // 驗證用戶是否為該團隊成員
+        const { data: member, error: memberError } = await supabaseAdmin
+          .from("team_members")
+          .select("role")
+          .eq("team_id", teamId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (memberError || !member) {
+          throw new Error("You are not a member of this team");
+        }
+
+        // 查詢配送設定
+        const { data: settings, error } = await supabaseAdmin
+          .from("team_settings")
+          .select("pickup_settings, enable_convenience_store, enable_black_cat")
+          .eq("team_id", teamId)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            settings: settings || {
+              pickup_settings: {
+                store_pickup: { enabled: false, address: null, business_hours: null },
+                meetup: { enabled: false, available_areas: [], note: null },
+              },
+              enable_convenience_store: true,
+              enable_black_cat: true,
+            },
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       throw new Error(`Unknown GET action: ${action}`);
     }
 
@@ -641,6 +691,60 @@ serve(async (req) => {
             success: true,
             message: "Auto mode updated successfully",
             auto_mode: auto_mode,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // 更新配送設定
+      if (action === "delivery-settings/update") {
+        const { team_id, ...settings } = body;
+
+        if (!team_id) {
+          throw new Error("Missing team_id");
+        }
+
+        console.log("[Team Operations] 更新配送設定:", team_id);
+
+        // 檢查用戶是否為該團隊的 owner 或 admin
+        const { data: member, error: memberError } = await supabaseAdmin
+          .from("team_members")
+          .select("role, can_manage_settings")
+          .eq("team_id", team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (memberError || !member) {
+          throw new Error("You are not a member of this team");
+        }
+
+        if (
+          member.role !== "owner" &&
+          member.role !== "admin" &&
+          !member.can_manage_settings
+        ) {
+          throw new Error("You don't have permission to update team settings");
+        }
+
+        // 更新配送設定
+        const { error: updateError } = await supabaseAdmin
+          .from("team_settings")
+          .update(settings)
+          .eq("team_id", team_id);
+
+        if (updateError) {
+          console.error("[Team Operations] 更新配送設定失敗:", updateError);
+          throw updateError;
+        }
+
+        console.log("[Team Operations] ✅ 配送設定更新成功");
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Delivery settings updated successfully",
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

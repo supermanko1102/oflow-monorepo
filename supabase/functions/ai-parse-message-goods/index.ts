@@ -16,6 +16,10 @@ import {
   generateProductCatalog,
 } from "../_shared/product-fetcher.ts";
 import {
+  fetchTeamDeliverySettings,
+  generateDeliveryMethodsPrompt,
+} from "../_shared/delivery-settings-fetcher.ts";
+import {
   getCurrentDateContext,
   buildConversationContext,
   buildCollectedDataContext,
@@ -36,7 +40,8 @@ function generateGoodsPrompt(
   businessLabel: string,
   conversationContext: string,
   collectedDataContext: string,
-  productCatalog: string
+  productCatalog: string,
+  deliveryMethodsPrompt: string
 ): string {
   return `你是專業的訂單解析助手，專門處理 ${
     teamContext?.name || "商家"
@@ -45,51 +50,60 @@ function generateGoodsPrompt(
 當前日期：${dateContext}
 ${productCatalog}
 ${conversationContext}${collectedDataContext}
+${deliveryMethodsPrompt}
 
 你的任務：
-1. 判斷訊息的意圖（order/inquiry/other）
-2. **智能商品推薦**：當客人詢問「有什麼商品」「有哪些蛋糕」「菜單」「價目表」時，從上方商品目錄中推薦 2-5 個熱門商品，並在 suggested_reply 中列出商品名稱、規格和價格
-3. **商品匹配與價格填入**：當客人提到商品名稱時，從商品目錄中找到匹配的商品（支援模糊匹配，如「巴斯克」匹配「巴斯克蛋糕」），並自動填入 price 欄位
-4. 判斷是否為延續之前的對話（is_continuation）
-5. 如果有對話歷史或已收集資訊，將新訊息與之前的資訊合併
-6. 提取完整的訂單資訊：
-   - 顧客姓名（如果有提到「我是XXX」或稱呼）
-   - 聯絡電話（如果有提到）
-   - 商品列表（名稱、數量、價格、備註）
-   - 交付日期（YYYY-MM-DD 格式，若只說「明天」請計算實際日期）
-   - 交付時間（HH:MM 格式，24小時制）
-   - 配送方式（自取/超商/黑貓）
-   - 是否需要冷凍配送（針對需冷藏商品）
-   - 總金額（根據商品價格自動計算）
-7. 循序漸進引導：商品 → 時間 → 配送方式 → 細節
+1. **判斷客人意圖和對話階段**：
+   - greeting（打招呼）：「你好」「在嗎」「想問一下」
+   - inquiry（詢問商品）：「有什麼」「菜單」「價目表」
+   - ordering（明確訂購）：「我要XX」「訂XX」
+   - supplementing（補充資訊）：延續之前的對話，補充細節
 
-配送方式自然語言對應：
-- "自己來拿"/"到店取"/"門市取貨"/"自取" → pickup
-- "超商"/"7-11"/"全家"/"超商取貨" → convenience_store
-- "宅配"/"黑貓"/"寄送"/"配送" → black_cat
+2. **循序漸進回覆策略**：
+   - **打招呼階段**：簡短友善回應，例如「您好！請問需要什麼商品呢？」
+   - **詢問商品階段**：列出商品（如果有目錄）或友善引導描述需求
+   - **明確訂購階段**：確認商品並合併詢問所有缺失資訊
+   - **補充資訊階段**：只詢問還缺的資訊，不重複問已有的資訊
+
+3. **智能商品推薦與匹配**：
+   - 有商品目錄時：從目錄推薦 2-5 個熱門商品，自動匹配價格
+   - 無商品目錄時：引導客人描述需求，不推薦假商品
+
+4. **配送方式理解**（區分店取/面交）：
+   - **店取（store）**：「自取」「到店」「店取」→ 到商家固定地點取貨
+   - **面交（meetup）**：「面交」「當面交」「約面交」→ 約定地點面交
+   - **超商（convenience_store）**：「超商」「7-11」「全家」「萊爾富」
+   - **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」
+   
+   注意：pickup_type 只有在 delivery_method=pickup 時才填入（store 或 meetup）
+
+5. **提取完整訂單資訊**：
+   - 顧客姓名（如果有）
+   - 聯絡電話（如果有）
+   - 商品列表（名稱、數量、價格、備註）
+   - 配送方式和對應資訊：
+     * 店取：pickup_type=store, delivery_date, delivery_time
+     * 面交：pickup_type=meetup, pickup_location, delivery_date, delivery_time
+     * 超商：store_info（不需要時間）
+     * 宅配：shipping_address（不需要時間）
+   - 總金額（自動計算）
 
 完整度判斷（is_complete）：
-- 必填：items（商品）, delivery_date（交付日期）, delivery_time（交付時間）, delivery_method（配送方式）
-- 超商取貨需要：store_info（店號/店名）
-- 黑貓宅配需要：shipping_address（寄送地址）
-- 如果商品需冷藏，需詢問：requires_frozen（是否冷凍配送）
+- 店取：items + delivery_method=pickup + pickup_type=store + delivery_date + delivery_time
+- 面交：items + delivery_method=pickup + pickup_type=meetup + pickup_location + delivery_date + delivery_time
+- 超商：items + delivery_method=convenience_store + store_info
+- 宅配：items + delivery_method=black_cat + shipping_address
 
 注意事項：
-- **商品匹配**：客人提到的商品名稱要與商品目錄比對（支援模糊匹配，如「巴斯克」匹配「巴斯克蛋糕」、「6吋」匹配「6吋巴斯克蛋糕」）
-- **規格識別**：注意尺寸（6吋、8吋）、顏色、口味等規格，確保匹配正確的商品
-- **價格自動填入**：找到匹配商品後，自動填入 price 欄位（數字）
-- **商品詢問**：當客人問「有什麼」「菜單」「價目表」時，在 suggested_reply 中列出 2-5 個熱門商品，格式友善易讀
-- **金額計算**：total_amount = sum(items.price * items.quantity)
-- **日期解析**：「明天」= 今天+1天，「下週一」= 計算下週一的日期，「這週六」= 計算本週六的日期
-- **時間格式**：「下午2點」= 14:00，「早上10點」= 10:00，「中午」= 12:00
-- **數量**：如果沒說，預設為 1
-- **商品名稱**：保持原文，包含尺寸和規格（如「巴斯克蛋糕 6吋」）
-- **合併資訊**：新訊息的資訊覆蓋舊的，但不刪除未提到的欄位
-- **延續對話**：如果是延續對話且補充了資訊，is_continuation = true
-- **配送細節**：
-  - 超商取貨必須要有店號或店名
-  - 宅配必須要有完整地址
-  - 冷凍商品要主動詢問是否需要冷凍配送
+- **智能預設值**：數量預設 1
+- **不要重複詢問**：如果客人已經說了配送方式或地點，不要再問
+- **合併詢問**：只在明確訂購階段才合併問多個問題
+- **上下文理解**：
+  * 客人說「桃園區面交」→ pickup_type=meetup, pickup_location="桃園區"
+  * 客人說「我要自取」→ pickup_type=store（不是 meetup）
+- **價格處理**：有目錄就自動填入，沒目錄就不填或填 null
+- **日期時間解析**：「明天下午2點」→ 計算實際日期 + 14:00
+- **延續對話**：補充資訊時設 is_continuation = true
 
 回傳格式：嚴格遵守 JSON 格式，不要有其他文字。`;
 }
@@ -120,22 +134,28 @@ function generateGoodsUserPrompt(message: string): string {
     "delivery_date": "YYYY-MM-DD（如果有）",
     "delivery_time": "HH:MM（如果有）",
     "delivery_method": "pickup|convenience_store|black_cat（如果有）",
+    "pickup_type": "store|meetup（僅當 delivery_method=pickup 時）",
+    "pickup_location": "取貨/面交地點（如果有）",
     "requires_frozen": true/false（如果有提到冷凍需求）,
     "store_info": "超商店號/店名（如果超商取貨）",
     "shipping_address": "寄送地址（如果宅配）",
     "total_amount": 金額（如果有）
   },
-  "missing_fields": ["items", "delivery_date", "delivery_time", "delivery_method", "store_info", "shipping_address"] 中缺少的,
+  "missing_fields": ["items", "delivery_date", "delivery_time", "delivery_method", "pickup_type", "pickup_location", "store_info", "shipping_address"] 中缺少的,
   "suggested_reply": "給客人的回覆訊息"
 }
 
 說明：
-- is_complete = true：有商品、日期、時間、配送方式（且超商有店號或宅配有地址）
-- is_complete = false：缺少必要資訊
-- suggested_reply：根據情況回覆，例如：
-  - 詢問商品：「我們有以下商品：\\n• 巴斯克蛋糕 6吋 $450\\n• 檸檬塔 $120\\n...」
-  - 缺資訊：「收到！您要訂 XX。請問交付日期、時間和配送方式？」
-  - 完整：「✅ 訂單已確認！...」`;
+- is_complete 根據配送方式動態判斷：
+  * 店取：items + delivery_method=pickup + pickup_type=store + delivery_date + delivery_time
+  * 面交：items + delivery_method=pickup + pickup_type=meetup + pickup_location + delivery_date + delivery_time
+  * 超商：items + delivery_method=convenience_store + store_info
+  * 宅配：items + delivery_method=black_cat + shipping_address
+- suggested_reply 根據對話階段調整：
+  * 打招呼：「您好！請問需要什麼商品呢？」（不要一次問太多）
+  * 詢問商品：列出商品或引導描述
+  * 明確訂購：確認商品並合併詢問缺失資訊
+  * 補充資訊：只問還缺的，不重複問`;
 }
 
 // OpenAI API 請求
@@ -158,6 +178,14 @@ async function callOpenAI(
     console.log("[AI Parse Goods] 找到商品數量:", products.length);
   }
 
+  // 查詢配送設定
+  let deliverySettings = null;
+  if (teamContext?.team_id) {
+    console.log("[AI Parse Goods] 查詢配送設定:", teamContext.team_id);
+    deliverySettings = await fetchTeamDeliverySettings(teamContext.team_id);
+    console.log("[AI Parse Goods] 配送設定:", deliverySettings);
+  }
+
   // 取得日期上下文
   const dateContext = getCurrentDateContext();
 
@@ -176,6 +204,7 @@ async function callOpenAI(
   const conversationContext = buildConversationContext(conversationHistory);
   const collectedDataContext = buildCollectedDataContext(collectedData);
   const productCatalog = generateProductCatalog(products);
+  const deliveryMethodsPrompt = generateDeliveryMethodsPrompt(deliverySettings);
 
   // 生成 Prompts
   const systemPrompt = generateGoodsPrompt(
@@ -184,7 +213,8 @@ async function callOpenAI(
     businessLabel,
     conversationContext,
     collectedDataContext,
-    productCatalog
+    productCatalog,
+    deliveryMethodsPrompt
   );
 
   const userPrompt = generateGoodsUserPrompt(message);
