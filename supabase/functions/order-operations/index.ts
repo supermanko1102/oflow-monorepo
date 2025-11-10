@@ -422,14 +422,17 @@ serve(async (req) => {
 
         console.log("[Order Operations] 日期範圍:", startDate, "到", endDate);
 
-        // 查詢該時間範圍內已付款和已完成的訂單（paid 和 completed 都算營收）
+        // 查詢該時間範圍內已付款和已完成的訂單
+        // 使用 paid_at（收款日期）而非 pickup_date（取貨日期）
+        // 符合現金收付制：今天收到的錢算今天的營收
         const { data: orders, error } = await supabaseAdmin
           .from("orders")
-          .select("total_amount, payment_method")
+          .select("total_amount, payment_method, paid_at")
           .eq("team_id", teamId)
           .in("status", ["paid", "completed"])
-          .gte("pickup_date", startDate)
-          .lte("pickup_date", endDate);
+          .not("paid_at", "is", null)
+          .gte("paid_at", `${startDate}T00:00:00`)
+          .lte("paid_at", `${endDate}T23:59:59`);
 
         if (error) {
           throw error;
