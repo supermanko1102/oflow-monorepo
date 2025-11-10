@@ -1,0 +1,415 @@
+# OFlow Mobile - Development Rules
+
+## Code Style & Conventions
+
+### TypeScript
+
+- Use TypeScript strict mode
+- Explicitly type all function parameters and return types
+- Use interfaces for object shapes, types for unions/intersections
+- Avoid `any` type - use `unknown` if type is truly unknown
+- Use optional chaining (`?.`) and nullish coalescing (`??`) operators
+
+### React Native & React Patterns
+
+- Use functional components exclusively (no class components)
+- Use React hooks for state and side effects
+- Custom hooks should start with `use` prefix
+- Keep components small and focused (single responsibility)
+- Extract complex logic into custom hooks
+- Use `memo()` for expensive component renders only when necessary
+
+### Component Structure
+
+```typescript
+// 1. Imports (grouped and ordered)
+import { useState } from 'react';
+import { View, Text } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+
+// 2. Type definitions
+interface ComponentProps {
+  id: string;
+  onPress?: () => void;
+}
+
+// 3. Component implementation
+export function ComponentName({ id, onPress }: ComponentProps) {
+  // 4. Hooks (in order: state, effects, queries/mutations, custom hooks)
+  const [isLoading, setIsLoading] = useState(false);
+  const { data } = useQuery(...);
+
+  // 5. Event handlers
+  const handlePress = () => {
+    onPress?.();
+  };
+
+  // 6. Render
+  return (
+    <View>
+      <Text>{data}</Text>
+    </View>
+  );
+}
+```
+
+## Naming Conventions
+
+### Files & Directories
+
+- Components: `PascalCase.tsx` (e.g., `OrderCard.tsx`)
+- Services: `camelCase.ts` (e.g., `orderService.ts`)
+- Hooks: `useCamelCase.ts` (e.g., `useOrders.ts`)
+- Types: `camelCase.ts` (e.g., `order.ts`, `api.ts`)
+- Utilities: `camelCase.ts` (e.g., `timeHelpers.ts`)
+- Route files: lowercase with special Expo Router conventions
+
+### Variables & Functions
+
+- Components: `PascalCase` (e.g., `OrderCard`, `StatusBadge`)
+- Functions: `camelCase` (e.g., `getUserTeams`, `handlePress`)
+- Constants: `UPPER_SNAKE_CASE` (e.g., `API_TIMEOUT`, `MAX_RETRIES`)
+- Private class members: `camelCase` with underscore prefix (e.g., `_hasHydrated`)
+- Boolean variables: use `is`, `has`, `should` prefix (e.g., `isLoading`, `hasError`)
+
+## File Organization
+
+### Directory Structure
+
+```
+mobile/
+├── app/                    # Expo Router pages (file-based routing)
+│   ├── (auth)/            # Auth-protected routes
+│   ├── (main)/            # Main app routes
+│   └── _layout.tsx        # Root layout
+├── services/              # API service layer (Edge Function wrappers)
+│   ├── orderService.ts
+│   ├── teamService.ts
+│   └── authService.ts
+├── hooks/
+│   └── queries/           # React Query hooks (server state)
+│       ├── useOrders.ts
+│       ├── useTeams.ts
+│       └── queryKeys.ts   # Centralized query keys
+├── stores/                # Zustand stores (client state)
+│   ├── useAuthStore.ts
+│   └── useSettingsStore.ts
+├── components/            # Reusable UI components
+│   ├── OrderCard.tsx
+│   └── ui/                # Generic UI components
+├── types/                 # TypeScript type definitions
+│   ├── order.ts
+│   ├── team.ts
+│   └── api.ts
+├── utils/                 # Utility functions
+│   └── timeHelpers.ts
+└── lib/                   # Core configuration
+    ├── supabase.ts        # Supabase client
+    ├── apiClient.ts       # API client class
+    ├── queryClient.ts     # React Query config
+    └── config.ts          # App configuration
+```
+
+### Import Organization
+
+1. React & React Native core
+2. Third-party libraries (expo, navigation, etc.)
+3. Internal modules using `@/` alias
+4. Types (import type syntax)
+5. Styles (CSS imports)
+
+```typescript
+// Example
+import { useEffect, useState } from "react";
+import { View, Text } from "react-native";
+import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+
+import { useAuthStore } from "@/stores/useAuthStore";
+import { getOrders } from "@/services/orderService";
+import type { Order } from "@/types/order";
+
+import "../global.css";
+```
+
+## State Management
+
+### Client State (Zustand)
+
+- Use for: Auth state, UI preferences, app settings
+- Pattern: Create store with persist middleware for AsyncStorage
+- One store per domain (auth, settings)
+- Keep stores simple and focused
+
+```typescript
+// Example: useAuthStore.ts
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      isLoggedIn: false,
+      login: (userId) => set({ isLoggedIn: true, userId }),
+      logout: () => set({ isLoggedIn: false, userId: null }),
+    }),
+    {
+      name: "auth-storage",
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);
+```
+
+### Server State (React Query)
+
+- Use for: All API data (orders, teams, products, etc.)
+- Pattern: Create custom hooks in `hooks/queries/`
+- Always use queryKeys from centralized file
+- Handle loading, error, and success states
+- Use mutations for write operations with optimistic updates
+
+```typescript
+// Example: useOrders.ts
+export function useOrders(teamId: string) {
+  return useQuery({
+    queryKey: queryKeys.orders.list(teamId),
+    queryFn: () => orderService.getOrders(teamId),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+```
+
+## API Communication
+
+### Service Layer Pattern
+
+- Create one service file per domain (orderService, teamService, etc.)
+- Use `ApiClient` class for all HTTP requests
+- Services should be pure functions (no state)
+- Handle business logic in services, not in components
+
+```typescript
+// Example: orderService.ts
+const orderApi = new ApiClient(
+  config.supabase.url + "/functions/v1/order-operations"
+);
+
+export async function getOrders(teamId: string): Promise<Order[]> {
+  const response = await orderApi.call<{ data: Order[] }>("GET", "list", {
+    team_id: teamId,
+  });
+  return response.data;
+}
+```
+
+### Error Handling
+
+- Use `ApiError` type for all API errors
+- Catch and display user-friendly error messages
+- Log errors for debugging
+- Use try-catch in mutation handlers, not in components
+
+```typescript
+// Example
+const createOrder = useCreateOrder();
+
+const handleCreate = async () => {
+  try {
+    await createOrder.mutateAsync(orderData);
+    // Success handling
+  } catch (error) {
+    if (error instanceof ApiError) {
+      showToast(error.message);
+    }
+  }
+};
+```
+
+## Styling
+
+### NativeWind (Tailwind CSS)
+
+- Use NativeWind for all styling (avoid StyleSheet.create)
+- Follow mobile-first approach
+- Use design tokens from `constants/design.ts`
+- Support dark mode with `dark:` prefix
+- Use consistent spacing scale (4, 8, 12, 16, 24, 32)
+
+```typescript
+// Example
+<View className="flex-1 bg-gray-50 dark:bg-gray-900 p-4">
+  <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+    Title
+  </Text>
+</View>
+```
+
+### React Native Paper
+
+- Use Paper components for Material Design elements
+- Buttons, Modals, Dialogs, FAB, TextInput
+- Configure theme in `_layout.tsx`
+- Paper components automatically support theming
+
+```typescript
+// Example
+import { Button, Portal, Modal } from "react-native-paper";
+
+<Button mode="contained" onPress={handlePress}>
+  Submit
+</Button>;
+```
+
+## Authentication & Authorization
+
+### Authentication Flow
+
+- Support multiple providers: LINE, Apple
+- Store auth state in Zustand with AsyncStorage persistence
+- Validate Supabase session on app hydration
+- Use distributed auth guards (each layout handles its own routing)
+
+### Route Protection
+
+- Don't use centralized auth guards
+- Each route group handles its own auth logic in `_layout.tsx`
+- Use `useAuthStore` to check login state
+- Redirect using `router.replace()` not `router.push()`
+
+## Best Practices
+
+### Performance
+
+- Use `React.memo()` sparingly (measure first)
+- Memoize expensive calculations with `useMemo()`
+- Memoize callbacks passed as props with `useCallback()`
+- Use `FlatList` for long lists, not `ScrollView` with map
+- Implement pagination for large datasets
+
+### Type Safety
+
+- Export types from where they're used most
+- Use discriminated unions for complex state
+- Avoid type assertions (`as`) unless absolutely necessary
+- Use `unknown` over `any` when type is unclear
+
+### Error Boundaries
+
+- Wrap critical sections with error boundaries
+- Log errors to monitoring service in production
+- Show user-friendly fallback UI
+- Allow users to recover (retry button)
+
+### Testing (Future)
+
+- Unit tests for utilities and services
+- Integration tests for hooks
+- E2E tests for critical user flows
+- Test error states and edge cases
+
+## Documentation
+
+### JSDoc Comments
+
+- Add JSDoc comments for:
+  - All exported functions and classes
+  - Complex business logic
+  - Non-obvious code patterns
+  - Public APIs
+
+```typescript
+/**
+ * Fetches all orders for a team within a date range
+ *
+ * @param teamId - Team ID
+ * @param startDate - Start date (ISO string)
+ * @param endDate - End date (ISO string)
+ * @returns Array of orders sorted by created_at desc
+ * @throws {ApiError} When API call fails
+ */
+export async function getOrders(
+  teamId: string,
+  startDate: string,
+  endDate: string
+): Promise<Order[]> {
+  // Implementation
+}
+```
+
+### Code Comments
+
+- Comment "why" not "what"
+- Explain business logic and non-obvious decisions
+- Use TODO/FIXME/NOTE prefixes for action items
+- Keep comments up to date with code changes
+
+## Git & Version Control
+
+### Commit Messages
+
+- Use conventional commits format
+- Types: feat, fix, docs, style, refactor, test, chore
+- Keep subject line under 50 characters
+- Add body for complex changes
+
+### Branch Strategy
+
+- `main` - production-ready code
+- Feature branches: `feature/description`
+- Bug fixes: `fix/description`
+- Hotfixes: `hotfix/description`
+
+## Common Patterns to Follow
+
+### Loading States
+
+```typescript
+const { data, isLoading, error } = useQuery(...);
+
+if (isLoading) return <LoadingState />;
+if (error) return <ErrorState error={error} />;
+if (!data) return <EmptyState />;
+
+return <Content data={data} />;
+```
+
+### Form Handling
+
+```typescript
+// Use react-hook-form for complex forms
+const { control, handleSubmit } = useForm<FormData>();
+
+const onSubmit = handleSubmit(async (data) => {
+  await mutation.mutateAsync(data);
+});
+```
+
+### Navigation
+
+```typescript
+// Use Expo Router hooks
+import { useRouter, useLocalSearchParams } from "expo-router";
+
+const router = useRouter();
+const { id } = useLocalSearchParams();
+
+// Navigate
+router.push(`/order/${orderId}`);
+router.replace("/(main)/(tabs)");
+router.back();
+```
+
+## Things to Avoid
+
+- ❌ Don't use class components
+- ❌ Don't use `var` (use `const` or `let`)
+- ❌ Don't mutate state directly
+- ❌ Don't use inline styles (use NativeWind)
+- ❌ Don't create StyleSheet.create() (use NativeWind)
+- ❌ Don't use `any` type
+- ❌ Don't ignore TypeScript errors
+- ❌ Don't mix state management approaches
+- ❌ Don't fetch data in components (use React Query)
+- ❌ Don't store server data in Zustand
+- ❌ Don't use console.log in production code
+- ❌ Don't hardcode strings (use constants or i18n)
+- ❌ Don't skip error handling
+- ❌ Don't create god components (keep them small)
