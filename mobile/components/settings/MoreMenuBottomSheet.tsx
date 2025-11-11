@@ -4,6 +4,7 @@
  */
 
 import { BottomSheet } from "@/components/BottomSheet";
+import { Modal } from "@/components/Modal";
 import { queryKeys } from "@/hooks/queries/queryKeys";
 import { useDeleteTeam, useLeaveTeam } from "@/hooks/queries/useTeams";
 import { useToast } from "@/hooks/useToast";
@@ -17,7 +18,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Button, Modal, Portal } from "react-native-paper";
+import { Button } from "react-native-paper";
 
 interface MoreMenuBottomSheetProps {
   visible: boolean;
@@ -344,21 +345,15 @@ export function MoreMenuBottomSheet({
       </BottomSheet>
 
       {/* 刪除確認 Modal */}
-      <Portal>
-        <Modal
-          visible={showDeleteModal}
-          onDismiss={handleDismissDeleteModal}
-          contentContainerStyle={{
-            backgroundColor: "white",
-            padding: 20,
-            margin: 20,
-            borderRadius: 12,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
-            ⚠️ 確認刪除團隊
-          </Text>
-          <Text style={{ color: "#666", marginBottom: 20 }}>
+      <Modal
+        visible={showDeleteModal}
+        onDismiss={handleDismissDeleteModal}
+        mode="dialog"
+        title="⚠️ 確認刪除團隊"
+        showCloseButton={true}
+      >
+        <View>
+          <Text className="text-gray-600 mb-5">
             此操作無法復原！請輸入團隊名稱「{currentTeamName}」以確認刪除
           </Text>
 
@@ -375,24 +370,17 @@ export function MoreMenuBottomSheet({
                 onChangeText={onChange}
                 placeholder="輸入團隊名稱"
                 autoFocus
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#D1D5DB",
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 8,
-                  fontSize: 16,
-                }}
+                className="border border-gray-300 rounded-lg px-3 py-3 mb-2 text-base"
               />
             )}
           />
           {deleteErrors.teamName && (
-            <Text style={{ color: "#EF4444", fontSize: 12, marginBottom: 12 }}>
+            <Text className="text-red-500 text-xs mb-3">
               {deleteErrors.teamName.message}
             </Text>
           )}
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <View className="flex-row gap-3 mt-3">
             <Button
               mode="outlined"
               onPress={handleDismissDeleteModal}
@@ -410,32 +398,21 @@ export function MoreMenuBottomSheet({
               確認刪除
             </Button>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* Delete Account Confirmation Modal */}
-        <Modal
-          visible={showDeleteAccountModal}
-          onDismiss={handleDismissDeleteAccountModal}
-          contentContainerStyle={{
-            backgroundColor: "white",
-            padding: 20,
-            margin: 20,
-            borderRadius: 12,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              marginBottom: 10,
-              color: "#EF4444",
-            }}
-          >
-            ⚠️ 確認刪除帳號
-          </Text>
-          <Text style={{ color: "#666", marginBottom: 20, lineHeight: 20 }}>
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteAccountModal}
+        onDismiss={handleDismissDeleteAccountModal}
+        mode="dialog"
+        title="⚠️ 確認刪除帳號"
+        showCloseButton={!isDeletingAccount}
+      >
+        <View>
+          <Text className="text-gray-600 mb-5 leading-5">
             此操作無法復原！您的帳號和所有資料將永久刪除。{"\n\n"}
-            請輸入 <Text style={{ fontWeight: "bold" }}>Delete</Text> 以確認刪除
+            請輸入 <Text className="font-bold">Delete</Text> 以確認刪除
           </Text>
 
           <TextInput
@@ -445,17 +422,10 @@ export function MoreMenuBottomSheet({
             autoFocus
             autoCapitalize="none"
             autoCorrect={false}
-            style={{
-              borderWidth: 1,
-              borderColor: "#D1D5DB",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 8,
-              fontSize: 16,
-            }}
+            className="border border-gray-300 rounded-lg px-3 py-3 mb-2 text-base"
           />
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <View className="flex-row gap-3 mt-3">
             <Button
               mode="outlined"
               onPress={handleDismissDeleteAccountModal}
@@ -478,8 +448,8 @@ export function MoreMenuBottomSheet({
               確認刪除
             </Button>
           </View>
-        </Modal>
-      </Portal>
+        </View>
+      </Modal>
     </>
   );
 }

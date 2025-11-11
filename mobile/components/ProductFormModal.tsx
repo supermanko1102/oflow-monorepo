@@ -1,15 +1,9 @@
+import { Modal } from "@/components/Modal";
 import type { Product } from "@/types/product";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Button } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -92,27 +86,18 @@ export function ProductFormModal({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onDismiss}
+      onDismiss={onDismiss}
+      mode="full"
+      title={isEditMode ? "編輯商品" : "新增商品"}
+      showCloseButton={!isLoading}
+      contentStyle={{ paddingHorizontal: 0, paddingTop: 0 }}
     >
-      <View className="flex-1 bg-white">
-        {/* Header - 固定在頂部 */}
-        <View className="px-6 py-4 border-b border-gray-100">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-2xl font-bold text-gray-900">
-              {isEditMode ? "編輯商品" : "新增商品"}
-            </Text>
-            <TouchableOpacity onPress={onDismiss} disabled={isLoading}>
-              <MaterialCommunityIcons name="close" size={28} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
+      <View>
         {/* Content - 可滾動區域 */}
         <ScrollView
-          className="flex-1 px-6 py-4"
+          className="px-6 py-4"
           keyboardShouldPersistTaps="handled"
+          style={{ maxHeight: 500 }}
         >
           {/* 必填欄位區域 */}
           {/* 商品名稱 */}
@@ -286,10 +271,7 @@ export function ProductFormModal({
         </ScrollView>
 
         {/* Footer - 固定在底部 */}
-        <View
-          className="px-6 py-4 border-t border-gray-100"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-        >
+        <View className="px-6 pt-4 border-t border-gray-100">
           <View className="flex-row gap-3">
             <Button
               mode="outlined"
