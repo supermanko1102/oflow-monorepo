@@ -7,7 +7,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { MD3LightTheme, PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
@@ -17,17 +16,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <PaperProvider theme={MD3LightTheme}>
-            <ThemeProvider value={DefaultTheme}>
-              <BottomSheetModalProvider>
-                <AnimatedSplash>
-                  <Roots />
-                </AnimatedSplash>
-                <StatusBar style="auto" />
-                <ToastContainer />
-              </BottomSheetModalProvider>
-            </ThemeProvider>
-          </PaperProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <BottomSheetModalProvider>
+              <AnimatedSplash>
+                <Roots />
+              </AnimatedSplash>
+              <StatusBar style="auto" />
+              <ToastContainer />
+            </BottomSheetModalProvider>
+          </ThemeProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

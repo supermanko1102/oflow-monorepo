@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Card, Checkbox } from 'react-native-paper';
+import { Card } from "@/components/native/Card";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Order, PaymentMethod } from '@/types/order';
@@ -60,11 +60,18 @@ export function TodoOrderItem({
       >
         <View className="flex-row items-center p-4">
           {/* 勾選框 */}
-          <Checkbox
-            status={isCompleted ? 'checked' : 'unchecked'}
+          <TouchableOpacity
             onPress={handleCheckboxPress}
-            color="#00B900"
-          />
+            className="w-6 h-6 rounded border-2 items-center justify-center mr-3"
+            style={{
+              borderColor: isCompleted ? '#00B900' : '#D1D5DB',
+              backgroundColor: isCompleted ? '#00B900' : 'transparent',
+            }}
+          >
+            {isCompleted && (
+              <MaterialCommunityIcons name="check" size={16} color="white" />
+            )}
+          </TouchableOpacity>
 
           {/* 訂單內容 */}
           <TouchableOpacity 

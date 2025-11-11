@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { Button } from 'react-native-paper';
+import { View, Text, TouchableOpacity } from 'react-native';
 
 interface EmptyStateProps {
   title: string;
@@ -36,15 +35,15 @@ export function EmptyState({
 
       {/* Action Button */}
       {actionLabel && onAction && (
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={onAction}
-          buttonColor="#00B900"
-          contentStyle={{ paddingVertical: 8, paddingHorizontal: 24 }}
-          style={{ borderRadius: 12 }}
+          className="bg-line-green rounded-xl py-3 px-6"
+          activeOpacity={0.7}
         >
-          {actionLabel}
-        </Button>
+          <Text className="text-white font-semibold text-base">
+            {actionLabel}
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );

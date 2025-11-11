@@ -1,3 +1,4 @@
+import { Card } from "@/components/native/Card";
 import {
   useDeliverySettings,
   useUpdateDeliverySettings,
@@ -7,8 +8,16 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { DeliverySettings } from "@/types/delivery-settings";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, Switch, Text, TextInput, View } from "react-native";
-import { Button, Card } from "react-native-paper";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
@@ -128,110 +137,103 @@ export default function DeliverySettingsScreen() {
 
       {/* 店取設定 */}
       <Card className="mx-4 mt-4">
-        <Card.Content>
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-lg font-semibold">到店取貨</Text>
-            <Switch
-              value={storePickupEnabled}
-              onValueChange={setStorePickupEnabled}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-lg font-semibold">到店取貨</Text>
+          <Switch
+            value={storePickupEnabled}
+            onValueChange={setStorePickupEnabled}
+          />
+        </View>
+
+        {storePickupEnabled && (
+          <View className="mt-4">
+            <Text className="text-sm text-gray-600 mb-2">店面地址 *</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="例：台北市大安區XX路123號"
+              value={storeAddress}
+              onChangeText={setStoreAddress}
+            />
+
+            <Text className="text-sm text-gray-600 mb-2 mt-4">
+              營業時間（可選）
+            </Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="例：週一至週六 10:00-20:00"
+              value={businessHours}
+              onChangeText={setBusinessHours}
             />
           </View>
-
-          {storePickupEnabled && (
-            <View className="mt-4">
-              <Text className="text-sm text-gray-600 mb-2">店面地址 *</Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 bg-white"
-                placeholder="例：台北市大安區XX路123號"
-                value={storeAddress}
-                onChangeText={setStoreAddress}
-              />
-
-              <Text className="text-sm text-gray-600 mb-2 mt-4">
-                營業時間（可選）
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 bg-white"
-                placeholder="例：週一至週六 10:00-20:00"
-                value={businessHours}
-                onChangeText={setBusinessHours}
-              />
-            </View>
-          )}
-        </Card.Content>
+        )}
       </Card>
 
       {/* 面交設定 */}
       <Card className="mx-4 mt-4">
-        <Card.Content>
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-lg font-semibold">約定地點面交</Text>
-            <Switch value={meetupEnabled} onValueChange={setMeetupEnabled} />
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-lg font-semibold">約定地點面交</Text>
+          <Switch value={meetupEnabled} onValueChange={setMeetupEnabled} />
+        </View>
+
+        {meetupEnabled && (
+          <View className="mt-4">
+            <Text className="text-sm text-gray-600 mb-2">
+              可面交區域（可選）
+            </Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="例：台北市、新北市"
+              value={availableAreas}
+              onChangeText={setAvailableAreas}
+            />
+
+            <Text className="text-sm text-gray-600 mb-2 mt-4">
+              備註（可選）
+            </Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="例：請提前一天約定"
+              value={meetupNote}
+              onChangeText={setMeetupNote}
+            />
           </View>
-
-          {meetupEnabled && (
-            <View className="mt-4">
-              <Text className="text-sm text-gray-600 mb-2">
-                可面交區域（可選）
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 bg-white"
-                placeholder="例：台北市、新北市"
-                value={availableAreas}
-                onChangeText={setAvailableAreas}
-              />
-
-              <Text className="text-sm text-gray-600 mb-2 mt-4">
-                備註（可選）
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 bg-white"
-                placeholder="例：請提前一天約定"
-                value={meetupNote}
-                onChangeText={setMeetupNote}
-              />
-            </View>
-          )}
-        </Card.Content>
+        )}
       </Card>
 
       {/* 超商取貨 */}
       <Card className="mx-4 mt-4">
-        <Card.Content>
-          <View className="flex-row justify-between items-center">
-            <Text className="text-lg font-semibold">超商取貨</Text>
-            <Switch
-              value={convenienceStoreEnabled}
-              onValueChange={setConvenienceStoreEnabled}
-            />
-          </View>
-        </Card.Content>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">超商取貨</Text>
+          <Switch
+            value={convenienceStoreEnabled}
+            onValueChange={setConvenienceStoreEnabled}
+          />
+        </View>
       </Card>
 
       {/* 宅配 */}
       <Card className="mx-4 mt-4">
-        <Card.Content>
-          <View className="flex-row justify-between items-center">
-            <Text className="text-lg font-semibold">宅配（黑貓）</Text>
-            <Switch
-              value={blackCatEnabled}
-              onValueChange={setBlackCatEnabled}
-            />
-          </View>
-        </Card.Content>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">宅配（黑貓）</Text>
+          <Switch value={blackCatEnabled} onValueChange={setBlackCatEnabled} />
+        </View>
       </Card>
 
       {/* 儲存按鈕 */}
       <View className="p-4">
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={handleSave}
-          loading={updateSettingsMutation.isPending}
           disabled={updateSettingsMutation.isPending}
-          className="py-2"
+          className="bg-line-green py-4 rounded-lg items-center"
+          activeOpacity={0.7}
+          style={{ opacity: updateSettingsMutation.isPending ? 0.6 : 1 }}
         >
-          儲存設定
-        </Button>
+          {updateSettingsMutation.isPending ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text className="text-white font-semibold text-base">儲存設定</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* 底部空白 */}

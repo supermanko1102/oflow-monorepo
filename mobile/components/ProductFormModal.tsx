@@ -3,9 +3,14 @@ import type { Product } from "@/types/product";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Button } from "react-native-paper";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface ProductFormModalProps {
   visible: boolean;
@@ -31,7 +36,6 @@ export function ProductFormModal({
   isLoading = false,
 }: ProductFormModalProps) {
   const isEditMode = !!product;
-  const insets = useSafeAreaInsets();
   // React Hook Form
   const {
     control,
@@ -273,24 +277,30 @@ export function ProductFormModal({
         {/* Footer - 固定在底部 */}
         <View className="px-6 pt-4 border-t border-gray-100">
           <View className="flex-row gap-3">
-            <Button
-              mode="outlined"
+            <TouchableOpacity
               onPress={onDismiss}
-              style={{ flex: 1 }}
               disabled={isLoading}
+              className="flex-1 border border-gray-300 rounded-lg py-3 items-center"
+              activeOpacity={0.7}
+              style={{ opacity: isLoading ? 0.5 : 1 }}
             >
-              取消
-            </Button>
-            <Button
-              mode="contained"
+              <Text className="text-gray-700 font-semibold">取消</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleSubmit(onFormSubmit)}
-              style={{ flex: 1 }}
-              buttonColor="#00B900"
-              loading={isLoading}
               disabled={isLoading}
+              className="flex-1 bg-line-green rounded-lg py-3 items-center"
+              activeOpacity={0.7}
+              style={{ opacity: isLoading ? 0.5 : 1 }}
             >
-              {isEditMode ? "儲存" : "新增"}
-            </Button>
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-semibold">
+                  {isEditMode ? "儲存" : "新增"}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </View>

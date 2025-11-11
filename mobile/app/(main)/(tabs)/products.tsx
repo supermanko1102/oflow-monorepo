@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
+import { Card } from "@/components/native/Card";
 import { Chip } from "@/components/native/Chip";
 import {
   ProductFormModal,
@@ -29,7 +30,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Card, FAB } from "react-native-paper";
+// FAB 會在下一步替換為 TouchableOpacity
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProductsScreen() {
@@ -194,97 +195,91 @@ export default function ProductsScreen() {
 
   // 渲染商品卡片
   const renderProduct = ({ item: product }: { item: Product }) => (
-    <Card className="mx-4 mb-4 bg-white" style={SHADOWS.card}>
-      <Card.Content className="p-4">
-        <View className="flex-row justify-between items-start mb-3">
-          <View className="flex-1 mr-3">
-            <View className="flex-row items-center mb-2">
-              <Text className="text-lg font-bold text-gray-900">
-                {product.name}
-              </Text>
-              {!product.is_available && (
-                <View className="ml-2 px-2 py-1 bg-gray-200 rounded">
-                  <Text className="text-xs text-gray-600">已下架</Text>
-                </View>
-              )}
-            </View>
-
-            {product.description && (
-              <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-                {product.description}
-              </Text>
+    <Card className="mx-4 mb-4 bg-white">
+      <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-1 mr-3">
+          <View className="flex-row items-center mb-2">
+            <Text className="text-lg font-bold text-gray-900">
+              {product.name}
+            </Text>
+            {!product.is_available && (
+              <View className="ml-2 px-2 py-1 bg-gray-200 rounded">
+                <Text className="text-xs text-gray-600">已下架</Text>
+              </View>
             )}
-
-            <View className="flex-row items-center gap-3">
-              {product.category && (
-                <View className="flex-row items-center">
-                  <MaterialCommunityIcons
-                    name="tag"
-                    size={14}
-                    color="#6B7280"
-                  />
-                  <Text className="text-sm text-gray-600 ml-1">
-                    {product.category}
-                  </Text>
-                </View>
-              )}
-              {product.stock !== undefined && (
-                <View className="flex-row items-center">
-                  <MaterialCommunityIcons
-                    name="package-variant"
-                    size={14}
-                    color="#6B7280"
-                  />
-                  <Text className="text-sm text-gray-600 ml-1">
-                    庫存 {product.stock}
-                  </Text>
-                </View>
-              )}
-            </View>
           </View>
 
-          <View className="items-end">
-            <Text className="text-2xl font-bold text-line-green">
-              ${product.price}
+          {product.description && (
+            <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+              {product.description}
             </Text>
-            {product.unit && (
-              <Text className="text-sm text-gray-500">/ {product.unit}</Text>
+          )}
+
+          <View className="flex-row items-center gap-3">
+            {product.category && (
+              <View className="flex-row items-center">
+                <MaterialCommunityIcons name="tag" size={14} color="#6B7280" />
+                <Text className="text-sm text-gray-600 ml-1">
+                  {product.category}
+                </Text>
+              </View>
+            )}
+            {product.stock !== undefined && (
+              <View className="flex-row items-center">
+                <MaterialCommunityIcons
+                  name="package-variant"
+                  size={14}
+                  color="#6B7280"
+                />
+                <Text className="text-sm text-gray-600 ml-1">
+                  庫存 {product.stock}
+                </Text>
+              </View>
             )}
           </View>
         </View>
 
-        {/* Actions */}
-        <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
-          <View className="flex-row items-center">
-            <Text className="text-sm text-gray-700 mr-2">
-              {product.is_available ? "上架中" : "已下架"}
-            </Text>
-            <Switch
-              value={product.is_available}
-              onValueChange={() => handleToggleAvailability(product)}
-              trackColor={{ true: "#00B900" }}
-              disabled={toggleAvailabilityMutation.isPending}
-            />
-          </View>
-
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              onPress={() => handleEditProduct(product)}
-              className="px-4 py-2 bg-gray-100 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="pencil" size={18} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDeleteProduct(product)}
-              className="px-4 py-2 bg-red-50 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="delete" size={18} color="#EF4444" />
-            </TouchableOpacity>
-          </View>
+        <View className="items-end">
+          <Text className="text-2xl font-bold text-line-green">
+            ${product.price}
+          </Text>
+          {product.unit && (
+            <Text className="text-sm text-gray-500">/ {product.unit}</Text>
+          )}
         </View>
-      </Card.Content>
+      </View>
+
+      {/* Actions */}
+      <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
+        <View className="flex-row items-center">
+          <Text className="text-sm text-gray-700 mr-2">
+            {product.is_available ? "上架中" : "已下架"}
+          </Text>
+          <Switch
+            value={product.is_available}
+            onValueChange={() => handleToggleAvailability(product)}
+            trackColor={{ true: "#00B900" }}
+            disabled={toggleAvailabilityMutation.isPending}
+          />
+        </View>
+
+        <View className="flex-row gap-2">
+          <TouchableOpacity
+            onPress={() => handleEditProduct(product)}
+            className="px-4 py-2 bg-gray-100 rounded-lg"
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="pencil" size={18} color="#6B7280" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDeleteProduct(product)}
+            className="px-4 py-2 bg-red-50 rounded-lg"
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="delete" size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
     </Card>
   );
 
@@ -374,18 +369,18 @@ export default function ProductsScreen() {
         />
       )}
 
-      {/* Add Product FAB */}
-      <FAB
-        icon="plus"
+      {/* Add Product Button */}
+      <TouchableOpacity
+        onPress={handleAddProduct}
+        className="absolute bg-line-green rounded-full w-14 h-14 items-center justify-center shadow-lg"
         style={{
-          position: "absolute",
           right: 16,
           bottom: 16 + insets.bottom,
-          backgroundColor: "#00B900",
         }}
-        color="white"
-        onPress={handleAddProduct}
-      />
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={28} color="white" />
+      </TouchableOpacity>
 
       {/* Product Form Modal */}
       <ProductFormModal
@@ -396,7 +391,6 @@ export default function ProductsScreen() {
         }}
         onSubmit={handleSubmitForm}
         product={editingProduct}
-        teamId={currentTeamId || ""}
         isLoading={
           createProductMutation.isPending || updateProductMutation.isPending
         }

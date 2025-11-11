@@ -1,3 +1,4 @@
+import { Card } from "@/components/native/Card";
 import { LineSettingsBottomSheet } from "@/components/settings/LineSettingsBottomSheet";
 import { MembersBottomSheet } from "@/components/settings/MembersBottomSheet";
 import { MoreMenuBottomSheet } from "@/components/settings/MoreMenuBottomSheet";
@@ -9,8 +10,14 @@ import * as NotificationService from "@/utils/notificationService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, Switch, Text, View } from "react-native";
-import { Card, Divider, IconButton, List } from "react-native-paper";
+import {
+  Alert,
+  ScrollView,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
@@ -178,31 +185,51 @@ export default function SettingsScreen() {
           <View className="flex-row items-center gap-1">
             {canManageTeam && (
               <>
-                <IconButton
-                  icon="account-group"
-                  size={24}
+                <TouchableOpacity
                   onPress={() => setMembersSheetVisible(true)}
-                />
-                <IconButton
-                  icon="message-text"
-                  size={24}
+                  className="w-10 h-10 items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={24}
+                    color="#374151"
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => setLineSheetVisible(true)}
-                />
+                  className="w-10 h-10 items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name="message-text"
+                    size={24}
+                    color="#374151"
+                  />
+                </TouchableOpacity>
               </>
             )}
-            <IconButton
-              icon="dots-vertical"
-              size={24}
+            <TouchableOpacity
               onPress={() => setMoreSheetVisible(true)}
-            />
+              className="w-10 h-10 items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="dots-vertical"
+                size={24}
+                color="#374151"
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
 
       {/* Order Mode Section */}
       <View className="bg-white mt-4">
-        <List.Section>
-          <List.Subheader>接單模式</List.Subheader>
+        <View>
+          <Text className="px-4 py-3 text-sm font-semibold text-gray-600">
+            接單模式
+          </Text>
 
           {/* 全自動模式卡片 */}
           <View className="px-4 pb-4">
@@ -213,40 +240,36 @@ export default function SettingsScreen() {
                   : "border-gray-200 bg-white"
               }`}
             >
-              <Card.Content className="p-4">
-                <View className="flex-row items-start justify-between mb-3">
-                  <View className="flex-1">
-                    <View className="flex-row items-center mb-2">
-                      <MaterialCommunityIcons
-                        name="robot"
-                        size={24}
-                        color={
-                          currentTeam?.auto_mode ?? false
-                            ? "#00B900"
-                            : "#6B7280"
-                        }
-                      />
-                      <Text
-                        className={`text-lg font-bold ml-2 ${
-                          currentTeam?.auto_mode ?? false
-                            ? "text-line-green"
-                            : "text-gray-900"
-                        }`}
-                      >
-                        全自動模式
-                      </Text>
-                    </View>
-                    <Text className="text-sm text-gray-600 mb-2">
-                      AI 自動回覆顧客並建立訂單
+              <View className="flex-row items-start justify-between mb-3">
+                <View className="flex-1">
+                  <View className="flex-row items-center mb-2">
+                    <MaterialCommunityIcons
+                      name="robot"
+                      size={24}
+                      color={
+                        currentTeam?.auto_mode ?? false ? "#00B900" : "#6B7280"
+                      }
+                    />
+                    <Text
+                      className={`text-lg font-bold ml-2 ${
+                        currentTeam?.auto_mode ?? false
+                          ? "text-line-green"
+                          : "text-gray-900"
+                      }`}
+                    >
+                      全自動模式
                     </Text>
                   </View>
-                  <Switch
-                    value={currentTeam?.auto_mode ?? false}
-                    onValueChange={(value) => handleToggleAutoMode(!value)}
-                    trackColor={{ true: "#00B900" }}
-                  />
+                  <Text className="text-sm text-gray-600 mb-2">
+                    AI 自動回覆顧客並建立訂單
+                  </Text>
                 </View>
-              </Card.Content>
+                <Switch
+                  value={currentTeam?.auto_mode ?? false}
+                  onValueChange={(value) => handleToggleAutoMode(!value)}
+                  trackColor={{ true: "#00B900" }}
+                />
+              </View>
             </Card>
           </View>
 
@@ -259,131 +282,195 @@ export default function SettingsScreen() {
                   : "border-gray-200 bg-white"
               }`}
             >
-              <Card.Content className="p-4">
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1">
-                    <View className="flex-row items-center mb-2">
-                      <MaterialCommunityIcons
-                        name="account-check"
-                        size={24}
-                        color={
-                          !(currentTeam?.auto_mode ?? false)
-                            ? "#00B900"
-                            : "#6B7280"
-                        }
-                      />
-                      <Text
-                        className={`text-lg font-bold ml-2 ${
-                          !(currentTeam?.auto_mode ?? false)
-                            ? "text-line-green"
-                            : "text-gray-900"
-                        }`}
-                      >
-                        半自動模式
-                      </Text>
-                    </View>
-                    <Text className="text-sm text-gray-600 mb-2">
-                      你手動確認後，AI 才會建立訂單
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1">
+                  <View className="flex-row items-center mb-2">
+                    <MaterialCommunityIcons
+                      name="account-check"
+                      size={24}
+                      color={
+                        !(currentTeam?.auto_mode ?? false)
+                          ? "#00B900"
+                          : "#6B7280"
+                      }
+                    />
+                    <Text
+                      className={`text-lg font-bold ml-2 ${
+                        !(currentTeam?.auto_mode ?? false)
+                          ? "text-line-green"
+                          : "text-gray-900"
+                      }`}
+                    >
+                      半自動模式
                     </Text>
                   </View>
-                  <Switch
-                    value={!(currentTeam?.auto_mode ?? false)}
-                    onValueChange={handleToggleAutoMode}
-                    trackColor={{ true: "#00B900" }}
-                  />
+                  <Text className="text-sm text-gray-600 mb-2">
+                    你手動確認後，AI 才會建立訂單
+                  </Text>
                 </View>
-              </Card.Content>
+                <Switch
+                  value={!(currentTeam?.auto_mode ?? false)}
+                  onValueChange={handleToggleAutoMode}
+                  trackColor={{ true: "#00B900" }}
+                />
+              </View>
             </Card>
 
             {/* 新增：使用說明（只在半自動模式顯示）*/}
             {!(currentTeam?.auto_mode ?? false) && (
               <Card className="mt-3 bg-blue-50 border border-blue-200">
-                <Card.Content className="p-3">
-                  <View className="flex-row items-start">
-                    <MaterialCommunityIcons
-                      name="information"
-                      size={20}
-                      color="#0066CC"
-                    />
-                    <View className="flex-1 ml-2">
-                      <Text className="font-bold text-blue-900 mb-1">
-                        💡 使用方式
+                <View className="flex-row items-start">
+                  <MaterialCommunityIcons
+                    name="information"
+                    size={20}
+                    color="#0066CC"
+                  />
+                  <View className="flex-1 ml-2">
+                    <Text className="font-bold text-blue-900 mb-1">
+                      💡 使用方式
+                    </Text>
+                    <Text className="text-sm text-blue-800 leading-5">
+                      在 LINE 與客人對話完成後，發送以下指令即可自動建立訂單：
+                      {"\n\n"}
+                      <Text className="font-mono font-bold text-base">
+                        /訂單確認
                       </Text>
-                      <Text className="text-sm text-blue-800 leading-5">
-                        在 LINE 與客人對話完成後，發送以下指令即可自動建立訂單：
-                        {"\n\n"}
-                        <Text className="font-mono font-bold text-base">
-                          /訂單確認
-                        </Text>
-                        {"\n\n"}
-                        系統會自動解析對話內容並建立訂單，客人會立即收到確認通知。
-                        {"\n\n"}
-                        如發現訂單資訊有誤，可在訂單列表中編輯或刪除。
-                      </Text>
-                    </View>
+                      {"\n\n"}
+                      系統會自動解析對話內容並建立訂單，客人會立即收到確認通知。
+                      {"\n\n"}
+                      如發現訂單資訊有誤，可在訂單列表中編輯或刪除。
+                    </Text>
                   </View>
-                </Card.Content>
+                </View>
               </Card>
             )}
           </View>
-        </List.Section>
+        </View>
       </View>
 
       {/* Delivery Settings Section */}
       {canManageTeam && (
         <View className="bg-white mt-4">
-          <List.Section>
-            <List.Subheader>配送設定</List.Subheader>
-            <List.Item
-              title="配送方式管理"
-              description="設定店取、面交、超商、宅配等選項"
-              left={(props) => <List.Icon {...props} icon="truck-delivery" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          <View>
+            <Text className="px-4 py-3 text-sm font-semibold text-gray-600">
+              配送設定
+            </Text>
+            <TouchableOpacity
               onPress={() => router.push("/(main)/delivery-settings")}
-            />
-          </List.Section>
+              className="px-4 py-3 flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="truck-delivery"
+                size={24}
+                color="#6B7280"
+              />
+              <View className="flex-1 ml-3">
+                <Text className="text-base font-medium text-gray-900">
+                  配送方式管理
+                </Text>
+                <Text className="text-sm text-gray-600">
+                  設定店取、面交、超商、宅配等選項
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color="#9CA3AF"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       {/* Notification Section */}
       <View className="bg-white mt-4">
-        <List.Section>
-          <List.Subheader>通知設定</List.Subheader>
-          <List.Item
-            title="啟用每日通知"
-            description="每天早上接收今日訂單摘要"
-            left={(props) => <List.Icon {...props} icon="bell" />}
-            right={() => (
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={handleToggleNotifications}
-                trackColor={{ true: "#00B900" }}
-              />
-            )}
-          />
-          <Divider />
-          <List.Item
-            title="通知時間"
-            description={`每天 ${notificationSettings.hour
-              .toString()
-              .padStart(2, "0")}:${notificationSettings.minute
-              .toString()
-              .padStart(2, "0")}`}
-            left={(props) => <List.Icon {...props} icon="clock-outline" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+        <View>
+          <Text className="px-4 py-3 text-sm font-semibold text-gray-600">
+            通知設定
+          </Text>
+
+          {/* 啟用每日通知 */}
+          <View className="px-4 py-3 flex-row items-center">
+            <MaterialCommunityIcons name="bell" size={24} color="#6B7280" />
+            <View className="flex-1 ml-3">
+              <Text className="text-base font-medium text-gray-900">
+                啟用每日通知
+              </Text>
+              <Text className="text-sm text-gray-600">
+                每天早上接收今日訂單摘要
+              </Text>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+              trackColor={{ true: "#00B900" }}
+            />
+          </View>
+
+          {/* Divider */}
+          <View className="h-px bg-gray-200 mx-4" />
+
+          {/* 通知時間 */}
+          <TouchableOpacity
             onPress={handleSetNotificationTime}
             disabled={!notificationsEnabled}
-          />
-          <Divider />
-          <List.Item
-            title="測試通知"
-            description="發送測試通知確認是否正常"
-            left={(props) => <List.Icon {...props} icon="bell-ring" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            className="px-4 py-3 flex-row items-center"
+            activeOpacity={0.7}
+            style={{ opacity: notificationsEnabled ? 1 : 0.5 }}
+          >
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={24}
+              color="#6B7280"
+            />
+            <View className="flex-1 ml-3">
+              <Text className="text-base font-medium text-gray-900">
+                通知時間
+              </Text>
+              <Text className="text-sm text-gray-600">
+                每天 {notificationSettings.hour.toString().padStart(2, "0")}:
+                {notificationSettings.minute.toString().padStart(2, "0")}
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View className="h-px bg-gray-200 mx-4" />
+
+          {/* 測試通知 */}
+          <TouchableOpacity
             onPress={handleTestNotification}
             disabled={!notificationsEnabled}
-          />
-        </List.Section>
+            className="px-4 py-3 flex-row items-center"
+            activeOpacity={0.7}
+            style={{ opacity: notificationsEnabled ? 1 : 0.5 }}
+          >
+            <MaterialCommunityIcons
+              name="bell-ring"
+              size={24}
+              color="#6B7280"
+            />
+            <View className="flex-1 ml-3">
+              <Text className="text-base font-medium text-gray-900">
+                測試通知
+              </Text>
+              <Text className="text-sm text-gray-600">
+                發送測試通知確認是否正常
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View className="h-8" />

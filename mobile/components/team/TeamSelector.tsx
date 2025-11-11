@@ -1,7 +1,8 @@
 import { UserTeam } from "@/types/team";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Dialog, Portal, RadioButton } from "react-native-paper";
+import { Modal } from "@/components/Modal";
+// TODO: RadioButton 需要自製或用原生替換
 
 interface TeamSelectorProps {
   visible: boolean;

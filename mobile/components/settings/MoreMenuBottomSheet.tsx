@@ -17,8 +17,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Button } from "react-native-paper";
+import {
+  ActivityIndicator,
+  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface MoreMenuBottomSheetProps {
   visible: boolean;
@@ -381,22 +387,26 @@ export function MoreMenuBottomSheet({
           )}
 
           <View className="flex-row gap-3 mt-3">
-            <Button
-              mode="outlined"
+            <TouchableOpacity
               onPress={handleDismissDeleteModal}
-              style={{ flex: 1 }}
+              className="flex-1 border border-gray-300 rounded-lg py-3 items-center"
+              activeOpacity={0.7}
             >
-              取消
-            </Button>
-            <Button
-              mode="contained"
-              buttonColor="#EF4444"
+              <Text className="text-gray-700 font-semibold">取消</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleDeleteSubmit(onDeleteSubmit)}
-              loading={deleteTeamMutation.isPending}
-              style={{ flex: 1 }}
+              disabled={deleteTeamMutation.isPending}
+              className="flex-1 bg-red-500 rounded-lg py-3 items-center"
+              activeOpacity={0.7}
+              style={{ opacity: deleteTeamMutation.isPending ? 0.5 : 1 }}
             >
-              確認刪除
-            </Button>
+              {deleteTeamMutation.isPending ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-semibold">確認刪除</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -426,27 +436,37 @@ export function MoreMenuBottomSheet({
           />
 
           <View className="flex-row gap-3 mt-3">
-            <Button
-              mode="outlined"
+            <TouchableOpacity
               onPress={handleDismissDeleteAccountModal}
-              style={{ flex: 1 }}
               disabled={isDeletingAccount}
+              className="flex-1 border border-gray-300 rounded-lg py-3 items-center"
+              activeOpacity={0.7}
+              style={{ opacity: isDeletingAccount ? 0.5 : 1 }}
             >
-              取消
-            </Button>
-            <Button
-              mode="contained"
-              buttonColor="#EF4444"
+              <Text className="text-gray-700 font-semibold">取消</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleConfirmDeleteAccount}
-              loading={isDeletingAccount}
               disabled={
                 isDeletingAccount ||
                 deleteAccountConfirmText.trim() !== "Delete"
               }
-              style={{ flex: 1 }}
+              className="flex-1 bg-red-500 rounded-lg py-3 items-center"
+              activeOpacity={0.7}
+              style={{
+                opacity:
+                  isDeletingAccount ||
+                  deleteAccountConfirmText.trim() !== "Delete"
+                    ? 0.5
+                    : 1,
+              }}
             >
-              確認刪除
-            </Button>
+              {isDeletingAccount ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-semibold">確認刪除</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

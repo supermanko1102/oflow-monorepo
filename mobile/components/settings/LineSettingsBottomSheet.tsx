@@ -12,6 +12,7 @@ import { type LineSettingsFormData } from "@/types/team";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   Text,
@@ -19,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button } from "react-native-paper";
 
 interface LineSettingsBottomSheetProps {
   visible: boolean;
@@ -185,16 +185,19 @@ export function LineSettingsBottomSheet({
         )}
 
         {/* 更新按鈕 */}
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={handleSubmit(onSubmit)}
-          loading={isUpdatingLine}
           disabled={isUpdatingLine}
-          buttonColor="#00B900"
-          className="mt-3"
+          className="bg-line-green rounded-lg py-3 items-center mt-3"
+          activeOpacity={0.7}
+          style={{ opacity: isUpdatingLine ? 0.5 : 1 }}
         >
-          更新設定
-        </Button>
+          {isUpdatingLine ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-semibold">更新設定</Text>
+          )}
+        </TouchableOpacity>
 
         {/* Webhook URL 顯示 */}
         {webhookUrl && (

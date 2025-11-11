@@ -4,23 +4,26 @@ import { LoadingState } from "@/components/LoadingState";
 import { TodaySummaryCard } from "@/components/TodaySummaryCard";
 import { TodayTodoList } from "@/components/TodayTodoList";
 import { SHADOWS } from "@/constants/design";
-import { useDashboardSummary, useRevenueStats } from "@/hooks/queries/useDashboard";
+import {
+  useDashboardSummary,
+  useRevenueStats,
+} from "@/hooks/queries/useDashboard";
 import { useUpdateOrderStatus } from "@/hooks/queries/useOrders";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/useAuthStore";
-import type { TimeRange, PaymentMethod } from "@/types/order";
+import type { PaymentMethod, TimeRange } from "@/types/order";
 import { TIME_RANGE_LABELS } from "@/types/order";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
+  Text,
   TouchableOpacity,
   View,
-  Text,
 } from "react-native";
-import { Menu } from "react-native-paper";
+// TODO: Menu 需要用 BottomSheet 替換
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TodayScreen() {
@@ -133,42 +136,51 @@ export default function TodayScreen() {
         style={[SHADOWS.soft, { paddingTop: insets.top + 16 }]}
       >
         {/* 左側：時間範圍選擇器 */}
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          anchor={
-            <TouchableOpacity
-              onPress={() => {
-                haptics.light();
-                setMenuVisible(true);
-              }}
-              activeOpacity={0.6}
-              className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
-            >
-              <Text className="text-sm font-semibold text-gray-700 mr-1">
-                {TIME_RANGE_LABELS[timeRange]}
-              </Text>
-              <MaterialCommunityIcons
-                name="chevron-down"
-                size={16}
-                color="#374151"
-              />
-            </TouchableOpacity>
-          }
-          contentStyle={{ backgroundColor: "white", marginTop: 8 }}
-        >
-          {(["day", "week", "month", "year"] as TimeRange[]).map((range) => (
-            <Menu.Item
-              key={range}
-              onPress={() => handleTimeRangeSelect(range)}
-              title={TIME_RANGE_LABELS[range]}
-              titleStyle={{
-                color: timeRange === range ? "#00B900" : "#374151",
-                fontWeight: timeRange === range ? "600" : "normal",
-              }}
+        <View>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.light();
+              setMenuVisible(!menuVisible);
+            }}
+            activeOpacity={0.6}
+            className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
+          >
+            <Text className="text-sm font-semibold text-gray-700 mr-1">
+              {TIME_RANGE_LABELS[timeRange]}
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-down"
+              size={16}
+              color="#374151"
             />
-          ))}
-        </Menu>
+          </TouchableOpacity>
+
+          {/* 下拉選單 */}
+          {menuVisible && (
+            <View className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              {(["day", "week", "month", "year"] as TimeRange[]).map(
+                (range) => (
+                  <TouchableOpacity
+                    key={range}
+                    onPress={() => handleTimeRangeSelect(range)}
+                    className="px-4 py-3 border-b border-gray-100"
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      className="text-sm"
+                      style={{
+                        color: timeRange === range ? "#00B900" : "#374151",
+                        fontWeight: timeRange === range ? "600" : "normal",
+                      }}
+                    >
+                      {TIME_RANGE_LABELS[range]}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )}
+            </View>
+          )}
+        </View>
 
         {/* 右側：功能圖標 */}
         <View className="flex-row gap-4">
