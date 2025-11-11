@@ -38,13 +38,8 @@ export function PaymentMethodSelector({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} onDismiss={onClose} title={title}>
       <View style={styles.container}>
-        {/* 標題 */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-        </View>
-
         {/* 付款方式選項 */}
         <View style={styles.options}>
           {paymentMethods.map((method) => (
@@ -89,18 +84,6 @@ export function PaymentMethodSelector({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 20,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    textAlign: "center",
   },
   options: {
     paddingVertical: 8,
