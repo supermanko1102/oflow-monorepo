@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/EmptyState";
 import { FutureOrdersSection } from "@/components/FutureOrdersSection";
-import { LoadingState } from "@/components/LoadingState";
+import { HomeSkeleton } from "@/components/skeletons/HomeSkeleton";
 import { TodaySummaryCard } from "@/components/TodaySummaryCard";
 import { TodayTodoList } from "@/components/TodayTodoList";
 import { SHADOWS } from "@/constants/design";
@@ -116,7 +116,7 @@ export default function TodayScreen() {
 
   // Loading state
   if ((isLoading || isLoadingRevenue) && !dashboardData) {
-    return <LoadingState message="載入中..." />;
+    return <HomeSkeleton />;
   }
 
   // 沒有選擇團隊

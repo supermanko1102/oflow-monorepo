@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/EmptyState";
-import { LoadingState } from "@/components/LoadingState";
+import { OrdersSkeleton } from "@/components/skeletons/OrdersSkeleton";
 import { Chip } from "@/components/native/Chip";
 import { OrderCard } from "@/components/OrderCard";
 import { SHADOWS } from "@/constants/design";
@@ -119,7 +119,7 @@ export default function OrdersScreen() {
 
   // Loading state
   if (isLoading && !allOrders.length) {
-    return <LoadingState message="載入訂單中..." />;
+    return <OrdersSkeleton />;
   }
 
   // 沒有選擇團隊

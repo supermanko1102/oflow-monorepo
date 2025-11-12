@@ -5,14 +5,12 @@ import { supabase } from "@/lib/supabase";
 import * as appleLoginService from "@/services/appleLoginService";
 import * as lineLoginService from "@/services/lineLoginService";
 import { useAuthStore } from "@/stores/useAuthStore";
-import * as AppleAuthentication from "expo-apple-authentication";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -334,31 +332,6 @@ export default function LoginScreen() {
             )}
           </Pressable>
         </View>
-
-        {/* 分隔線與其他登入方式（僅 iOS） */}
-        {Platform.OS === "ios" && (
-          <>
-            <View className="flex-row items-center mb-4 w-full">
-              <View className="flex-1 h-px bg-gray-300" />
-              <Text className="mx-3 text-xs text-gray-500">或</Text>
-              <View className="flex-1 h-px bg-gray-300" />
-            </View>
-
-            <View className="w-full mb-4">
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                }
-                buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                }
-                cornerRadius={14}
-                style={{ width: "100%", height: 44 }}
-                onPress={handleAppleLogin}
-              />
-            </View>
-          </>
-        )}
 
         {/* Footer */}
         <View className="mt-4">

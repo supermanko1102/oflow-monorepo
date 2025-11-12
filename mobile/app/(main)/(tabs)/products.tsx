@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/EmptyState";
-import { LoadingState } from "@/components/LoadingState";
+import { ProductsSkeleton } from "@/components/skeletons/ProductsSkeleton";
 import { Card } from "@/components/native/Card";
 import { Chip } from "@/components/native/Chip";
 import {
@@ -181,7 +181,7 @@ export default function ProductsScreen() {
 
   // Loading state
   if (isLoading && !products.length) {
-    return <LoadingState message="載入商品中..." />;
+    return <ProductsSkeleton />;
   }
 
   // 沒有選擇團隊
