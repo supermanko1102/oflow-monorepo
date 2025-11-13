@@ -4,7 +4,6 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import { config } from "@/lib/config";
 import type {
   CreateProductRequest,
   Product,
@@ -12,7 +11,9 @@ import type {
 } from "@/types/product";
 
 // 建立 Product API Client 實例
-const productApi = new ApiClient(config.api.productOperations);
+const productApi = new ApiClient(
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/product-operations`
+);
 
 // ==================== Product Queries ====================
 

@@ -1,11 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
-import { config } from "./config";
 
 // 建立 Supabase Client
 export const supabase = createClient(
-  config.supabase.url,
-  config.supabase.anonKey,
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
   {
     auth: {
       // 使用 AsyncStorage 儲存 session

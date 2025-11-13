@@ -1,4 +1,3 @@
-import { config } from "@/lib/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
@@ -8,7 +7,7 @@ const LINE_AUTHORIZE_ENDPOINT = "https://access.line.me/oauth2/v2.1/authorize";
 
 // 取得 LINE Channel ID
 const getLineChannelId = (): string => {
-  const channelId = config.line.channelId;
+  const channelId = process.env.EXPO_PUBLIC_LINE_CHANNEL_ID;
   if (!channelId) {
     throw new Error("請在 .env 檔案中設定 EXPO_PUBLIC_LINE_CHANNEL_ID");
   }

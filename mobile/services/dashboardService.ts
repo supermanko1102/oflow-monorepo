@@ -4,11 +4,12 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import { config } from "@/lib/config";
 import type { DashboardSummary, RevenueStats, TimeRange } from "@/types/order";
 
 // 建立 Dashboard API Client 實例
-const dashboardApi = new ApiClient(config.api.orderOperations);
+const dashboardApi = new ApiClient(
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/dashboard-summary`
+);
 
 /**
  * 查詢 Dashboard 摘要

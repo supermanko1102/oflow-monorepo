@@ -1,4 +1,3 @@
-import { config } from "@/lib/config";
 import * as AppleAuthentication from "expo-apple-authentication";
 
 // Supabase Session 介面（從 backend 回傳）
@@ -40,13 +39,13 @@ export const initiateAppleLogin = async (): Promise<SupabaseSession> => {
     // 3. 呼叫 backend Edge Function
     console.log("[Apple Login] 呼叫 backend 進行 Token 驗證...");
     const response = await fetch(
-      `${config.supabase.url}/functions/v1/auth-apple-callback`,
+      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/auth-apple-callback`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${config.supabase.anonKey}`,
-          apikey: config.supabase.anonKey,
+          Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+          apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
         },
         body: JSON.stringify({
           identityToken: credential.identityToken,

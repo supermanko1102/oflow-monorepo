@@ -6,7 +6,6 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import { config } from "@/lib/config";
 import type {
   Order,
   OrderFilters,
@@ -15,7 +14,9 @@ import type {
 } from "@/types/order";
 
 // 建立 Order API Client 實例
-const orderApi = new ApiClient(config.api.orderOperations);
+const orderApi = new ApiClient(
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/order-operations`
+);
 
 // ==================== Order Queries ====================
 

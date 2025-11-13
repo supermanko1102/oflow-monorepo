@@ -4,11 +4,12 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import { config } from "@/lib/config";
 import type { DeliverySettings } from "@/types/delivery-settings";
 
 // 建立 Delivery Settings API Client 實例
-const deliverySettingsApi = new ApiClient(config.api.teamOperations);
+const deliverySettingsApi = new ApiClient(
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delivery-settings`
+);
 
 // ==================== Queries ====================
 
@@ -53,4 +54,3 @@ export async function updateDeliverySettings(
     throw error;
   }
 }
-

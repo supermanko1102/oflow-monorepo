@@ -6,7 +6,6 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import { config } from "@/lib/config";
 import type {
   CreateTeamParams,
   CreateTeamResponse,
@@ -21,7 +20,9 @@ import type {
 } from "@/types/team";
 
 // 建立 Team API Client 實例
-const teamApi = new ApiClient(config.api.teamOperations);
+const teamApi = new ApiClient(
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/team-operations`
+);
 
 // ==================== Team Queries ====================
 
