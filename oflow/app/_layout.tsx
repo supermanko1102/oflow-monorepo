@@ -24,6 +24,7 @@ function Roots() {
   return (
     <Stack initialRouteName="index" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(main)" />
       <Stack.Screen name="index" />
     </Stack>
   );

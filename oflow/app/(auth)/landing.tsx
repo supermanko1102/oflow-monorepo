@@ -1,6 +1,76 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+// app/(auth)/login.tsx
+import { supabase } from "@/lib/supabase";
+import { loginWithLine } from "@/services/auth";
+import { handleAuthCallback, initiateLineLogin } from "@/services/line";
+import { useRouter } from "expo-router";
+import { useState } from "react"; // ← 不需要 useCallback, useEffect
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 export default function Landing() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ 簡化：直接定義為普通 async function
+  const handleLineLogin = async () => {
+    try {
+      setIsLoading(true);
+
+      // 1. 啟動 LINE 登入（會等待用戶完成）
+      const redirectUrl = await initiateLineLogin();
+
+      if (!redirectUrl) {
+        // 用戶取消
+        Alert.alert("登入已取消", "您已取消 LINE 登入", [{ text: "確定" }]);
+        return;
+      }
+
+      // 2. 解析 session tokens
+      const session = await handleAuthCallback(redirectUrl);
+
+      // 3. 設定 Supabase session
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+
+      if (sessionError || !sessionData.user) {
+        throw new Error(sessionError?.message || "Session 設定失敗");
+      }
+
+      // 4. 從 user metadata 取得 LINE 資料
+      const lineUserId = sessionData.user.user_metadata?.line_user_id || "";
+      const displayName =
+        sessionData.user.user_metadata?.display_name || "使用者";
+      const pictureUrl = sessionData.user.user_metadata?.picture_url || null;
+
+      // 5. 調用登入邏輯
+      await loginWithLine(
+        lineUserId,
+        sessionData.user.id,
+        displayName,
+        pictureUrl,
+        session.access_token
+      );
+
+      // 6. loginWithLine 會處理狀態更新和導航
+    } catch (error: any) {
+      console.error("[Login] 登入失敗:", error);
+      Alert.alert("登入失敗", "無法完成 LINE 登入，請稍後再試", [
+        { text: "確定" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 justify-center items-center px-6 py-12 min-h-screen">
@@ -18,7 +88,7 @@ export default function Landing() {
         <View className="mb-8 w-full">
           <View className="bg-gray-50 rounded-xl p-6 mb-4">
             <Text className="text-lg font-semibold text-gray-900 mb-3 text-center">
-              讓 AI 幫你自動處理訂單(Beta)
+              讓 AI 幫你自動處理訂單
             </Text>
             <View className="space-y-3">
               <View className="mb-3">
@@ -54,12 +124,23 @@ export default function Landing() {
         {/* LINE 登入（主要） */}
         <View className="w-full mb-6">
           <Pressable
-            onPress={() => {}}
+            onPress={() => handleLineLogin()}
+            disabled={isLoading}
             className="w-full h-14 bg-green-500 rounded-md items-center justify-center"
+            style={{ opacity: isLoading ? 0.7 : 1 }}
           >
-            <Text className="text-white font-semibold text-xl">
-              使用 LINE 登入
-            </Text>
+            {isLoading ? (
+              <View className="flex-row items-center">
+                <ActivityIndicator color="white" className="mr-2" />
+                <Text className="text-white font-semibold text-xl">
+                  登入中...
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-white font-semibold text-xl">
+                使用 LINE 登入
+              </Text>
+            )}
           </Pressable>
         </View>
 
