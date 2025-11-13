@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "associatedDomains": ["applinks:oflow-website.vercel.app"],
+      "bundleIdentifier": "com.alexanderko.oflow",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
