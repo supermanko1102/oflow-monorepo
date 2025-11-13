@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "oflow",
-    "slug": "o-flow",
+    "slug": "oflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
