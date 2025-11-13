@@ -1,134 +1,75 @@
-import { FutureOrdersSection } from "@/components/FutureOrdersSection";
-import { TodaySummaryCard } from "@/components/TodaySummaryCard";
-import { TodayTodoList } from "@/components/TodayTodoList";
-import { useHaptics } from "@/hooks/useHaptics";
-import { useToast } from "@/hooks/useToast";
-import type { TimeRange } from "@/types/order";
-import { TIME_RANGE_LABELS } from "@/types/order";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { logout } from "@/services/auth";
 import { useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-// TODO: Menu 需要用 BottomSheet 替換
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 
-export default function TodayScreen() {
-  const insets = useSafeAreaInsets();
-  const toast = useToast();
-  const haptics = useHaptics();
+export default function Dashboard() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // 時間範圍選擇狀態
-  const [timeRange, setTimeRange] = useState<TimeRange>("day");
-  const [menuVisible, setMenuVisible] = useState(false);
+  /**
+   * 處理登出
+   * 清除所有認證狀態並導航回登入頁面
+   */
+  const handleLogout = async () => {
+    // 顯示確認對話框
+    Alert.alert("確認登出", "確定要登出嗎？", [
+      {
+        text: "取消",
+        style: "cancel",
+      },
+      {
+        text: "登出",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoggingOut(true);
+            await logout();
+            // 登出後會自動導航到 landing 頁面（由 MainLayout 處理）
+          } catch (error) {
+            console.error("登出失敗:", error);
+            Alert.alert("登出失敗", "無法完成登出，請稍後再試", [
+              { text: "確定" },
+            ]);
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* 極簡功能型 Header */}
-      <View
-        className="flex-row items-center justify-between px-6 py-4 bg-white border-b border-gray-100"
-        style={[{ paddingTop: insets.top + 16 }]}
-      >
-        {/* 左側：時間範圍選擇器 */}
-        <View>
-          <TouchableOpacity
-            onPress={() => {
-              haptics.light();
-              setMenuVisible(!menuVisible);
-            }}
-            activeOpacity={0.6}
-            className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
-          >
-            <Text className="text-sm font-semibold text-gray-700 mr-1">
-              {TIME_RANGE_LABELS[timeRange]}
-            </Text>
-            <MaterialCommunityIcons
-              name="chevron-down"
-              size={16}
-              color="#374151"
-            />
-          </TouchableOpacity>
-
-          {/* 下拉選單 */}
-          {menuVisible && (
-            <View className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-              {(["day", "week", "month", "year"] as TimeRange[]).map(
-                (range) => (
-                  <TouchableOpacity
-                    key={range}
-                    onPress={() => {}}
-                    className="px-4 py-3 border-b border-gray-100"
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      className="text-sm"
-                      style={{
-                        color: timeRange === range ? "#00B900" : "#374151",
-                        fontWeight: timeRange === range ? "600" : "normal",
-                      }}
-                    >
-                      {TIME_RANGE_LABELS[range]}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* 右側：功能圖標 */}
-        <View className="flex-row gap-4">
-          {/* 通知 icon */}
-          <TouchableOpacity
-            onPress={() => {}}
-            activeOpacity={0.6}
-            accessibilityLabel="通知"
-          >
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={24}
-              color="#6B7280"
-            />
-          </TouchableOpacity>
-        </View>
+    <View className="flex-1 bg-white p-6">
+      {/* Header */}
+      <View className="mb-8">
+        <Text className="text-2xl font-bold text-gray-900">控制面板</Text>
+        <Text className="text-sm text-gray-600 mt-1">歡迎使用 OFlow</Text>
       </View>
 
-      {/* 可滾動內容 */}
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={() => {}}
-            tintColor="#00B900"
-            colors={["#00B900"]}
-          />
-        }
-      >
-        {/* 營收統計卡片 */}
-        <TodaySummaryCard
-          orderCount={0}
-          totalRevenue={0}
-          timeRange={timeRange}
-          paymentStats={{ cash: 0, transfer: 0, other: 0 }}
-        />
-        {/* 今日訂單列表（待處理 + 已完成） */}
-        <TodayTodoList
-          pendingOrders={[]}
-          completedOrders={[]}
-          onToggleComplete={() => {}}
-        />
+      {/* Content Area */}
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-gray-500 mb-4">Dashboard 內容開發中...</Text>
+      </View>
 
-        {/* 未來訂單區塊 */}
-        <FutureOrdersSection futureOrders={[]} />
-
-        {/* 底部間距 */}
-        <View className="h-8" />
-      </ScrollView>
+      {/* Logout Button */}
+      <View className="mt-auto">
+        <Pressable
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full h-14 bg-red-500 rounded-lg items-center justify-center"
+          style={{ opacity: isLoggingOut ? 0.6 : 1 }}
+        >
+          {isLoggingOut ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator color="white" className="mr-2" />
+              <Text className="text-white font-semibold text-base">
+                登出中...
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-white font-semibold text-base">登出</Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }

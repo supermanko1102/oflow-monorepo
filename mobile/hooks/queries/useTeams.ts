@@ -226,38 +226,6 @@ export function useLeaveTeam() {
  * };
  * ```
  */
-export function useDeleteTeam() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: teamService.deleteTeam,
-    onSuccess: async (_, teamId) => {
-      // 如果刪除的是當前團隊，清除 currentTeamId
-      const { useAuthStore } = await import("@/stores/useAuthStore");
-      const currentTeamId = useAuthStore.getState().currentTeamId;
-      if (currentTeamId === teamId) {
-        console.log(
-          "[useDeleteTeam] 刪除的是當前團隊，清除 currentTeamId:",
-          teamId
-        );
-        useAuthStore.getState().setCurrentTeamId(null);
-      }
-
-      // 刪除成功後，重新載入團隊列表
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.teams.list(),
-      });
-
-      // 移除該團隊的所有相關 cache
-      queryClient.removeQueries({
-        queryKey: queryKeys.teams.members(teamId),
-      });
-      queryClient.removeQueries({
-        queryKey: queryKeys.teams.inviteCode(teamId),
-      });
-    },
-  });
-}
 
 /**
  * 更新團隊自動模式設定
@@ -284,13 +252,8 @@ export function useUpdateAutoMode() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      teamId,
-      autoMode,
-    }: {
-      teamId: string;
-      autoMode: boolean;
-    }) => teamService.updateAutoMode(teamId, autoMode),
+    mutationFn: ({ teamId, autoMode }: { teamId: string; autoMode: boolean }) =>
+      teamService.updateAutoMode(teamId, autoMode),
     onSuccess: () => {
       // 更新成功後，重新載入團隊列表（包含最新的 auto_mode 狀態）
       queryClient.invalidateQueries({

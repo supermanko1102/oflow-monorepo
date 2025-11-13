@@ -71,6 +71,5 @@ export async function logout() {
   // 2. 清除 Supabase session
   await supabase.auth.signOut();
 
-  // 3. 清除 React Query cache
   queryClient.clear();
 }
