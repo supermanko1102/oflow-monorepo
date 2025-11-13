@@ -32,6 +32,32 @@ export async function loginWithLine(
 }
 
 /**
+ * Apple 登入
+ * 使用 Apple Sign In 取得的 session 來設定認證狀態
+ *
+ * @param supabaseUserId - Supabase 用戶 UUID
+ * @param accessToken - Supabase Access token
+ * @param refreshToken - Supabase Refresh token
+ */
+export async function loginWithApple(
+  supabaseUserId: string,
+  accessToken: string,
+  refreshToken: string
+) {
+  // 1. 設定 Supabase session
+  await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  // 2. 更新 store 狀態
+  useAuthStore.setState({
+    supabaseUserId,
+    status: AuthStatus.NoTeam, // 先設為 NoTeam，後續會更新
+  });
+}
+
+/**
  * 登出
  */
 export async function logout() {
