@@ -1,3 +1,4 @@
+import { updateLineSettings } from "@/services/teamService";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -27,19 +28,11 @@ export default function LineSetup() {
 
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
 
-  /**
-   * 開啟 LINE Developers Console
-   */
   const openLineConsole = () => {
     Linking.openURL("https://developers.line.biz/console/");
   };
 
-  /**
-   * 提交 LINE 設定
-   * 成功後更新狀態為 Active
-   */
   const handleSubmit = async () => {
-    // 驗證輸入
     if (
       !channelId.trim() ||
       !channelSecret.trim() ||
@@ -49,19 +42,22 @@ export default function LineSetup() {
       return;
     }
 
+    // 驗證 currentTeamId 存在
+    if (!currentTeamId) {
+      Alert.alert("錯誤", "找不到團隊 ID，請重新登入", [{ text: "確定" }]);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      // TODO: 呼叫 API 儲存 LINE 設定
-      // await updateLineSettings({
-      //   team_id: currentTeamId,
-      //   channel_id: channelId,
-      //   channel_secret: channelSecret,
-      //   channel_access_token: channelAccessToken,
-      // });
-
-      // 模擬 API 呼叫
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 呼叫 API 儲存 LINE 設定
+      await updateLineSettings({
+        team_id: currentTeamId,
+        line_channel_id: channelId.trim(),
+        line_channel_secret: channelSecret.trim(),
+        line_channel_access_token: channelAccessToken.trim(),
+      });
 
       // 更新狀態為 Active
       useAuthStore.setState({
@@ -74,7 +70,11 @@ export default function LineSetup() {
       router.replace("/(main)/(tabs)/dashboard");
     } catch (error) {
       console.error("設定失敗:", error);
-      Alert.alert("設定失敗", "無法完成設定，請稍後再試", [{ text: "確定" }]);
+      Alert.alert(
+        "設定失敗",
+        "無法完成設定，請檢查 LINE 資訊是否正確或稍後再試",
+        [{ text: "確定" }]
+      );
     } finally {
       setIsSubmitting(false);
     }

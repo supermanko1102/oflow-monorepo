@@ -1,5 +1,5 @@
 import { AuthStatus, useAuthStore } from "@/stores/auth";
-import { Stack, useFocusEffect, useRouter, useSegments } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { ActivityIndicator } from "react-native";
 
@@ -11,31 +11,21 @@ const authenticatedStatuses = [
 
 export default function MainLayout() {
   const router = useRouter();
-  const segments = useSegments();
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const status = useAuthStore((state) => state.status);
   const isAuthenticated = authenticatedStatuses.includes(status);
 
   const checkAccessible = useCallback(() => {
-    if (!isHydrated) return;
-
-    if (!isAuthenticated) {
-      router.replace("/landing");
-      return;
+    if (isHydrated && isAuthenticated) {
+      if (status === AuthStatus.NoTeam) {
+        router.replace("/(main)/team-setup");
+      } else if (status === AuthStatus.NoWebhook) {
+        router.replace("/(main)/line-setup");
+      } else {
+        router.replace("/(main)/(tabs)/dashboard");
+      }
     }
-
-    const inTeamSetup = segments.some((s) => s === "team-setup");
-    if (status === AuthStatus.NoTeam && !inTeamSetup) {
-      router.replace("/(main)/team-setup");
-      return;
-    }
-
-    const inLineSetup = segments.some((s) => s === "line-setup");
-    if (status === AuthStatus.NoWebhook && !inLineSetup) {
-      router.replace("/(main)/line-setup");
-      return;
-    }
-  }, [isHydrated, isAuthenticated, status, segments, router]);
+  }, [isHydrated, isAuthenticated, status, router]);
 
   useFocusEffect(checkAccessible);
   try {

@@ -49,7 +49,8 @@ export default function Landing() {
         sessionData.user.id,
         displayName,
         pictureUrl,
-        session.access_token
+        session.access_token,
+        session.refresh_token
       );
     } catch (e) {
       e instanceof Error && console.log(`AuthLayout: Blocking [${e.message}]`);
