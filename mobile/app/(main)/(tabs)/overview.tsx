@@ -2,7 +2,7 @@ import { logout } from "@/services/auth";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 
-export default function Dashboard() {
+export default function Overview() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   /**

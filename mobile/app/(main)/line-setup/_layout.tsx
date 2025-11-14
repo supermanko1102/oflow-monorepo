@@ -16,7 +16,7 @@ export default function LineSetupLayout() {
       if (status === AuthStatus.NoTeam) {
         router.replace("/(main)/team-setup");
       } else if (status === AuthStatus.Active) {
-        router.replace("/(main)/(tabs)/dashboard");
+        router.replace("/(main)/(tabs)/inbox");
       } else if (status === AuthStatus.Unauthenticated) {
         router.replace("/landing");
       }

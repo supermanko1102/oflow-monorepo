@@ -67,7 +67,7 @@ export default function LineSetup() {
       Alert.alert("設定成功", "LINE 官方帳號已設定完成", [{ text: "確定" }]);
 
       // 導向 dashboard
-      router.replace("/(main)/(tabs)/dashboard");
+      router.replace("/(main)/(tabs)/inbox");
     } catch (error) {
       console.error("設定失敗:", error);
       Alert.alert(
@@ -97,7 +97,7 @@ export default function LineSetup() {
             useAuthStore.setState({
               status: AuthStatus.Active,
             });
-            router.replace("/(main)/(tabs)/dashboard");
+            router.replace("/(main)/(tabs)/inbox");
           },
         },
       ]

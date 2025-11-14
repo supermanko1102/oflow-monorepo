@@ -22,7 +22,7 @@ export default function MainLayout() {
       } else if (status === AuthStatus.NoWebhook) {
         router.replace("/(main)/line-setup");
       } else {
-        router.replace("/(main)/(tabs)/dashboard");
+        router.replace("/(main)/(tabs)/inbox");
       }
     }
   }, [isHydrated, isAuthenticated, status, router]);

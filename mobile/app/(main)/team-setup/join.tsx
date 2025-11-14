@@ -50,7 +50,7 @@ export default function JoinTeam() {
       ]);
 
       // 導向 dashboard
-      router.replace("/(main)/(tabs)/dashboard");
+      router.replace("/(main)/(tabs)/inbox");
     } catch (error) {
       console.error("加入團隊失敗:", error);
       Alert.alert("加入失敗", "邀請碼無效或已過期，請檢查後重試", [
