@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 /**
- * Team Setup - 加入團隊頁面
+ * Team Setup - 加入團隊頁面（Onboarding）
  * 讓使用者輸入邀請碼加入現有團隊
  */
 export default function JoinTeam() {
@@ -23,10 +23,6 @@ export default function JoinTeam() {
   const joinTeam = useJoinTeam();
   const { refetch: refetchTeams } = useTeams();
 
-  /**
-   * 處理加入團隊
-   * 成功後更新 Auth Store 並導向 dashboard
-   */
   const handleJoinTeam = async () => {
     if (!inviteCode.trim()) {
       Alert.alert("請輸入邀請碼", "邀請碼不能為空", [{ text: "確定" }]);
@@ -36,20 +32,17 @@ export default function JoinTeam() {
     try {
       const team = await joinTeam.mutateAsync(inviteCode.trim());
 
-      // 更新 Auth Store 狀態
       useAuthStore.setState({
         currentTeamId: team.team_id,
-        status: AuthStatus.Active, // 加入現有團隊，直接設為 Active
+        status: AuthStatus.Active,
       });
 
-      // 重新載入團隊列表
       await refetchTeams();
 
       Alert.alert("加入成功", `已加入團隊「${team.team_name}」`, [
         { text: "確定" },
       ]);
 
-      // 導向 dashboard
       router.replace("/(main)/(tabs)/inbox");
     } catch (error) {
       console.error("加入團隊失敗:", error);
@@ -62,7 +55,6 @@ export default function JoinTeam() {
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 px-6 py-12">
-        {/* Header */}
         <View className="mb-8">
           <Pressable onPress={() => router.back()} className="mb-4">
             <Text className="text-blue-500 text-base">← 返回</Text>
@@ -75,7 +67,6 @@ export default function JoinTeam() {
           </Text>
         </View>
 
-        {/* 輸入表單 */}
         <View className="mb-8">
           <Text className="text-sm font-semibold text-gray-700 mb-2">
             邀請碼
@@ -93,7 +84,6 @@ export default function JoinTeam() {
           />
         </View>
 
-        {/* 加入按鈕 */}
         <Pressable
           onPress={handleJoinTeam}
           disabled={joinTeam.isPending || !inviteCode.trim()}
@@ -117,3 +107,4 @@ export default function JoinTeam() {
     </ScrollView>
   );
 }
+

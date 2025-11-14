@@ -4,22 +4,25 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-export default function TeamSetupLayout() {
+export default function TeamSetupOnboardingLayout() {
   const router = useRouter();
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const status = useAuthStore((state) => state.status);
 
   const checkAccessible = useCallback(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || status === AuthStatus.Unauthenticated) {
+      router.replace("/landing");
+      return;
+    }
 
-    if (status !== AuthStatus.NoWebhook) {
-      if (status === AuthStatus.NoTeam) {
-        router.replace("/(main)/team-setup");
-      } else if (status === AuthStatus.Active) {
-        router.replace("/(main)/(tabs)/inbox");
-      } else if (status === AuthStatus.Unauthenticated) {
-        router.replace("/landing");
-      }
+    if (status === AuthStatus.Active) {
+      router.replace("/(main)/(tabs)/inbox");
+      return;
+    }
+
+    if (status === AuthStatus.NoWebhook) {
+      router.replace("/(onboarding)/line-setup");
+      return;
     }
   }, [isHydrated, status, router]);
 

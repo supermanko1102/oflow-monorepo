@@ -42,7 +42,7 @@ export default function CreateTeam() {
         [{ text: "確定" }]
       );
 
-      router.replace("/(main)/line-setup");
+      router.replace("/(onboarding)/line-setup");
     } catch (error) {
       console.error("建立團隊失敗:", error);
       Alert.alert("建立失敗", "無法建立團隊，請稍後再試", [{ text: "確定" }]);
@@ -104,3 +104,4 @@ export default function CreateTeam() {
     </ScrollView>
   );
 }
+

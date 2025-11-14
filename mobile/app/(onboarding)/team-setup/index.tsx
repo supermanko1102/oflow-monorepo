@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 /**
- * Team Setup - 選擇模式頁面
+ * Team Setup - 選擇模式頁面（Onboarding）
  * 讓使用者選擇要建立新團隊或加入現有團隊
  */
 export default function TeamSetupIndex() {
@@ -25,7 +25,7 @@ export default function TeamSetupIndex() {
         <View className="w-full space-y-4">
           {/* 建立新團隊 */}
           <Pressable
-            onPress={() => router.push("/(main)/team-setup/create")}
+            onPress={() => router.push("/(onboarding)/team-setup/create")}
             className="w-full bg-blue-500 rounded-xl p-6 mb-4"
           >
             <Text className="text-white font-bold text-xl mb-2">
@@ -38,7 +38,7 @@ export default function TeamSetupIndex() {
 
           {/* 加入現有團隊 */}
           <Pressable
-            onPress={() => router.push("/(main)/team-setup/join")}
+            onPress={() => router.push("/(onboarding)/team-setup/join")}
             className="w-full bg-gray-100 rounded-xl p-6 border-2 border-gray-300"
           >
             <Text className="text-gray-900 font-bold text-xl mb-2">
@@ -53,3 +53,4 @@ export default function TeamSetupIndex() {
     </ScrollView>
   );
 }
+

@@ -317,3 +317,4 @@ export default function LineSetup() {
     </ScrollView>
   );
 }
+

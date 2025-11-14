@@ -17,9 +17,9 @@ export default function AuthLayout() {
   const checkAccessible = useCallback(() => {
     if (isHydrated && isAuthenticated) {
       if (status === AuthStatus.NoTeam) {
-        router.replace("/(main)/team-setup");
+        router.replace("/(onboarding)/team-setup");
       } else if (status === AuthStatus.NoWebhook) {
-        router.replace("/(main)/line-setup");
+        router.replace("/(onboarding)/line-setup");
       } else {
         router.replace("/(main)/(tabs)/inbox");
       }

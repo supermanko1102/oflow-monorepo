@@ -16,16 +16,8 @@ export default function MainLayout() {
   const isAuthenticated = authenticatedStatuses.includes(status);
 
   const checkAccessible = useCallback(() => {
-    if (isHydrated && isAuthenticated) {
-      if (status === AuthStatus.NoTeam) {
-        router.replace("/(main)/team-setup");
-      } else if (status === AuthStatus.NoWebhook) {
-        router.replace("/(main)/line-setup");
-      } else {
-        router.replace("/(main)/(tabs)/inbox");
-      }
-    }
-  }, [isHydrated, isAuthenticated, status, router]);
+    if (isHydrated && !isAuthenticated) router.replace("/landing");
+  }, [isHydrated, isAuthenticated, router]);
 
   useFocusEffect(checkAccessible);
   try {
