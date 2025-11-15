@@ -41,7 +41,9 @@ export default function TabLayout() {
 
       <NativeTabs.Trigger name="settings">
         <Label>Settings</Label>
-        <Icon src={<VectorIcon family={MaterialCommunityIcons} name="cog" />} />
+        <Icon
+          src={<VectorIcon family={MaterialCommunityIcons} name="cog" />}
+        />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

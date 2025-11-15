@@ -23,7 +23,7 @@ export default function MainLayout() {
   try {
     if (!isHydrated) throw new Error("Not hydrated");
     if (!isAuthenticated) throw new Error("Not authenticated");
-    return <Stack />;
+    return <Stack screenOptions={{ headerShown: false }} />;
   } catch (e) {
     e instanceof Error && console.log(`MainLayout: Blocking [${e.message}]`);
     return <ActivityIndicator size="large" color="white" />;
