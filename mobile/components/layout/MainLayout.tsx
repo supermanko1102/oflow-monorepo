@@ -1,8 +1,16 @@
 import { ReactNode } from "react";
-import { ActionSheetIOS, Alert, Platform, ScrollView, View } from "react-native";
+import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  ScrollView,
+  View,
+  useColorScheme,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Navbar, NavbarTab } from "@/components/Navbar";
+import { Palette } from "@/constants/palette";
 
 type MainLayoutProps = {
   title: string;
@@ -42,6 +50,8 @@ export function MainLayout({
   onCreatePress,
 }: MainLayoutProps) {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const hasDangerActions = !!dangerActions && dangerActions.length > 0;
 
 
@@ -96,8 +106,11 @@ export function MainLayout({
 
   return (
       <View
-        className="flex-1"
+      className="flex-1"
         style={{
+          backgroundColor: isDark
+            ? Palette.neutralsDark.background
+            : Palette.neutrals.surface,
           paddingTop: insets.top,
           paddingLeft: insets.left,
           paddingRight: insets.right,
