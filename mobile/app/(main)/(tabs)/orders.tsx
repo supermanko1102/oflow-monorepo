@@ -3,13 +3,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-type OrderStatus = "pending" | "production" | "ready" | "completed";
+type OrderStatus = "pending" | "ready" | "completed";
 type PrimaryTab = "orders" | "products";
 
 const statusFilters = [
   { key: "all", label: "全部" },
   { key: "pending", label: "待處理" },
-  { key: "production", label: "製作中" },
   { key: "ready", label: "待取貨" },
   { key: "completed", label: "已完成" },
 ] as const;
@@ -54,7 +53,7 @@ export default function Orders() {
             customer: "陳小姐",
             summary: "檸檬塔 x2",
             amount: 960,
-            status: "production",
+            status: "pending",
             source: "手動",
           },
         ],
@@ -217,12 +216,6 @@ const productStats = useMemo(
         bg: "bg-orange-100",
         text: "text-orange-700",
         icon: "alert-circle",
-      },
-      production: {
-        label: "製作中",
-        bg: "bg-blue-100",
-        text: "text-blue-700",
-        icon: "hammer",
       },
       ready: {
         label: "待取貨",

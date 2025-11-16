@@ -14,10 +14,13 @@ type NavbarProps = {
   teamStatus?: "open" | "closed";
   title: string;
   subtitle?: string;
+  showActions?: boolean;
+  showDangerTrigger?: boolean;
   onTeamPress?: () => void;
   onSearchPress?: () => void;
   onNotificationsPress?: () => void;
   onCreatePress?: () => void;
+  onDangerPress?: () => void;
   tabs?: NavbarTab[];
   trailingContent?: ReactNode;
 };
@@ -33,10 +36,13 @@ export function Navbar({
   teamStatus = "open",
   title,
   subtitle,
+  showActions = true,
+  showDangerTrigger = false,
   onTeamPress,
   onSearchPress,
   onNotificationsPress,
   onCreatePress,
+  onDangerPress,
   tabs,
   trailingContent,
 }: NavbarProps) {
@@ -87,25 +93,41 @@ export function Navbar({
           <Ionicons name="chevron-down" size={16} color="#4B5563" />
         </Pressable>
 
-        <View className="flex-row items-center gap-3">
-          <IconButton
-            icon="search"
-            ariaLabel="搜尋"
-            onPress={onSearchPress}
-          />
-          <IconButton
-            icon="notifications-outline"
-            ariaLabel="提醒"
-            onPress={onNotificationsPress}
-          />
-          <Pressable
-            onPress={onCreatePress}
-            className="flex-row items-center gap-1 rounded-full bg-gray-900 px-3 py-2"
-          >
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text className="text-white text-xs font-semibold">新增</Text>
-          </Pressable>
-        </View>
+        {(showActions || showDangerTrigger) ? (
+          <View className="flex-row items-center gap-3">
+            {showActions ? (
+              <>
+                <IconButton
+                  icon="search"
+                  ariaLabel="搜尋"
+                  onPress={onSearchPress}
+                />
+                <IconButton
+                  icon="notifications-outline"
+                  ariaLabel="提醒"
+                  onPress={onNotificationsPress}
+                />
+                <Pressable
+                  onPress={onCreatePress}
+                  className="flex-row items-center gap-1 rounded-full bg-gray-900 px-3 py-2"
+                >
+                  <Ionicons name="add" size={18} color="#fff" />
+                  <Text className="text-white text-xs font-semibold">
+                    新增
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {showDangerTrigger ? (
+              <IconButton
+                icon="log-out-outline"
+                ariaLabel="危險操作"
+                onPress={onDangerPress}
+                variant="danger"
+              />
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       <View className="mt-4">
@@ -125,16 +147,22 @@ type IconButtonProps = {
   icon: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
   ariaLabel: string;
+  variant?: "default" | "danger";
 };
 
-function IconButton({ icon, onPress, ariaLabel }: IconButtonProps) {
+function IconButton({ icon, onPress, ariaLabel, variant = "default" }: IconButtonProps) {
+  const baseClasses =
+    variant === "danger"
+      ? "w-10 h-10 rounded-full bg-red-50 border border-red-200"
+      : "w-10 h-10 rounded-full bg-gray-100";
+  const iconColor = variant === "danger" ? "#b91c1c" : "#111827";
   return (
     <Pressable
       accessibilityLabel={ariaLabel}
       onPress={onPress}
-      className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+      className={`${baseClasses} items-center justify-center`}
     >
-      <Ionicons name={icon} size={18} color="#111827" />
+      <Ionicons name={icon} size={18} color={iconColor} />
     </Pressable>
   );
 }

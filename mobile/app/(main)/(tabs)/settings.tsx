@@ -68,22 +68,32 @@ export default function Settings() {
         },
       ],
     },
+  {
+    title: "資料與支援",
+    items: [
+      {
+        icon: "cloud-download-outline",
+        label: "匯出資料",
+        detail: "訂單、顧客、對話紀錄",
+        actionLabel: "匯出",
+      },
+      {
+        icon: "help-circle-outline",
+        label: "取得協助",
+        detail: "聯絡客服或查看指南",
+        actionLabel: "開啟",
+      },
+    ],
+  },
+  ];
+
+  const dangerActions = [
+    { label: "登出帳號", onPress: () => console.log("logout") },
+    { label: "退出目前團隊", onPress: () => console.log("leave team") },
     {
-      title: "資料與支援",
-      items: [
-        {
-          icon: "cloud-download-outline",
-          label: "匯出資料",
-          detail: "訂單、顧客、對話紀錄",
-          actionLabel: "匯出",
-        },
-        {
-          icon: "help-circle-outline",
-          label: "取得協助",
-          detail: "聯絡客服或查看指南",
-          actionLabel: "開啟",
-        },
-      ],
+      label: "刪除帳號與資料",
+      destructive: true,
+      onPress: () => console.log("delete account"),
     },
   ];
 
@@ -92,6 +102,9 @@ export default function Settings() {
       title="設定"
       subtitle="管理帳戶、團隊與整合服務"
       teamName="甜點工作室 A"
+      showActions={false}
+      showDangerTrigger
+      dangerActions={dangerActions}
       onTeamPress={() => console.log("team picker")}
       onSearchPress={() => console.log("search settings")}
       onNotificationsPress={() => console.log("notifications")}
@@ -101,7 +114,7 @@ export default function Settings() {
         {sections.map((section) => (
           <View
             key={section.title}
-            className="rounded-2xl border border-gray-100 bg-white p-4  "
+            className="rounded-2xl border border-gray-100 bg-white p-4"
           >
             <Text className="text-sm font-semibold text-gray-900">
               {section.title}

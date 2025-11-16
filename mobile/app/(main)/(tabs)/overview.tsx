@@ -180,7 +180,7 @@ export default function Overview() {
                 {option.label}
               </Text>
               <Text
-                className={`text-[11px] text-center ${
+                className={` text-center ${
                   mode === option.key ? "text-gray-500" : "text-gray-400"
                 }`}
               >
@@ -190,7 +190,7 @@ export default function Overview() {
           )
         )}
       </View>
-      <Text className="text-[11px] text-gray-500 mt-2">
+      <Text className=" text-gray-500 mt-2">
         {mode === "auto"
           ? "AI 會自動處理對話並建立訂單，對話結果可在 Inbox 的自動紀錄查看。"
           : "AI 先整理草稿，待你或團隊在 Inbox 確認/補欄位後建單。"}
@@ -210,7 +210,7 @@ export default function Overview() {
                 key={range}
                 onPress={() => setRevenueRange(range)}
                 className={`px-3 py-1 rounded-full ${
-                  revenueRange === range ? "bg-white shadow" : ""
+                  revenueRange === range ? "bg-white " : ""
                 }`}
               >
                 <Text

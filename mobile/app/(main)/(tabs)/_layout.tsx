@@ -9,6 +9,7 @@ import {
 } from "expo-router/unstable-native-tabs";
 
 export default function TabLayout() {
+  
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="overview">
@@ -47,8 +48,6 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
     </NativeTabs>
   );
-
-  //   <Tabs
   //     screenOptions={{
   //       tabBarActiveTintColor: Colors.light.line.green,
   //       tabBarInactiveTintColor: Colors.light.text,
