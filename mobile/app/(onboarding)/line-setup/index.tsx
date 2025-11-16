@@ -1,3 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
+
+import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Palette } from "@/constants/palette";
 import { updateLineSettings } from "@/services/teamService";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
@@ -8,7 +11,6 @@ import {
   Alert,
   Linking,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -108,213 +110,203 @@ export default function LineSetup() {
   // 步驟 1: 說明
   if (step === 1) {
     return (
-      <ScrollView className="flex-1 bg-white">
-        <View className="flex-1 px-6 py-12">
-          {/* Header */}
-          <View className="mb-8">
-            <Text className="text-2xl font-bold text-gray-900 mb-2">
-              設定 LINE 官方帳號
-            </Text>
-            <Text className="text-sm text-gray-600">
-              連接你的 LINE 官方帳號，讓 AI 自動處理訂單
-            </Text>
-          </View>
+      <OnboardingLayout>
+        <View className="space-y-3">
+          <Text className="text-3xl font-black text-gray-900">
+            設定 LINE 官方帳號
+          </Text>
+          <Text className="text-sm text-gray-600">
+            連接你的 LINE 官方帳號，讓 AI 自動處理訂單
+          </Text>
+        </View>
 
-          {/* 說明卡片 */}
-          <View className="mb-6 bg-blue-50 rounded-xl p-5 border border-blue-200">
-            <Text className="text-base font-semibold text-blue-900 mb-3">
-              📱 你需要準備：
-            </Text>
-            <View className="space-y-2">
-              <Text className="text-sm text-blue-800 mb-2">
-                • LINE 官方帳號（Messaging API）
-              </Text>
-              <Text className="text-sm text-blue-800 mb-2">• Channel ID</Text>
-              <Text className="text-sm text-blue-800 mb-2">
-                • Channel Secret
-              </Text>
-              <Text className="text-sm text-blue-800">
-                • Channel Access Token
-              </Text>
-            </View>
-          </View>
-
-          {/* 步驟說明 */}
-          <View className="mb-8 bg-gray-50 rounded-xl p-5">
-            <Text className="text-base font-semibold text-gray-900 mb-3">
-              🔧 設定步驟：
-            </Text>
-            <View className="space-y-3">
-              <View>
-                <Text className="text-sm font-semibold text-gray-800 mb-1">
-                  1. 前往 LINE Developers Console
-                </Text>
-                <Text className="text-xs text-gray-600">
-                  登入並選擇你的 Messaging API Channel
-                </Text>
+        <View className="rounded-2xl border border-gray-100 bg-white p-5 space-y-3">
+          <Text className="text-sm font-semibold text-gray-900">
+            你需要準備
+          </Text>
+          <View className="space-y-2">
+            {[
+              "LINE 官方帳號（Messaging API）",
+              "Channel ID",
+              "Channel Secret",
+              "Channel Access Token",
+            ].map((item) => (
+              <View key={item} className="flex-row items-center gap-2">
+                <View className="w-2 h-2 rounded-full bg-emerald-500" />
+                <Text className="text-sm text-gray-700">{item}</Text>
               </View>
-              <View>
-                <Text className="text-sm font-semibold text-gray-800 mb-1">
-                  2. 取得 Channel 資訊
-                </Text>
-                <Text className="text-xs text-gray-600">
-                  在「Basic settings」頁面複製 Channel ID 和 Channel Secret
-                </Text>
-              </View>
-              <View>
-                <Text className="text-sm font-semibold text-gray-800 mb-1">
-                  3. 發行 Access Token
-                </Text>
-                <Text className="text-xs text-gray-600">
-                  在「Messaging API」頁面發行 Channel Access Token
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 按鈕組 */}
-          <View className="space-y-3">
-            <Pressable
-              onPress={openLineConsole}
-              className="w-full h-14 bg-green-500 rounded-lg items-center justify-center"
-            >
-              <Text className="text-white font-semibold text-base">
-                開啟 LINE Developers Console
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setStep(2)}
-              className="w-full h-14 bg-blue-500 rounded-lg items-center justify-center"
-            >
-              <Text className="text-white font-semibold text-base">
-                我已準備好，繼續
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={handleSkip}
-              className="w-full h-14 items-center justify-center"
-            >
-              <Text className="text-gray-600 text-sm">暫時跳過</Text>
-            </Pressable>
+            ))}
           </View>
         </View>
-      </ScrollView>
+
+        <View className="rounded-2xl border border-gray-100 bg-white p-5 space-y-4">
+          <Text className="text-sm font-semibold text-gray-900">
+            設定步驟
+          </Text>
+          <View className="space-y-3">
+            {[
+              {
+                title: "前往 LINE Developers Console",
+                description: "登入並選擇你的 Messaging API Channel",
+              },
+              {
+                title: "取得 Channel 資訊",
+                description: "在 Basic settings 複製 Channel ID 與 Secret",
+              },
+              {
+                title: "發行 Access Token",
+                description: "在 Messaging API 頁面發行 Access Token",
+              },
+            ].map((stepItem, index) => (
+              <View key={stepItem.title} className="flex-row gap-3">
+                <View className="w-6 h-6 rounded-full bg-gray-100 items-center justify-center">
+                  <Text className="text-xs font-semibold text-gray-600">
+                    {index + 1}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-gray-900">
+                    {stepItem.title}
+                  </Text>
+                  <Text className="text-xs text-gray-500 mt-0.5">
+                    {stepItem.description}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className="space-y-3">
+          <Pressable
+            onPress={openLineConsole}
+            className="w-full h-14 rounded-2xl items-center justify-center border border-gray-200 bg-white"
+          >
+            <Text className="text-gray-900 font-semibold text-base">
+              開啟 LINE Developers Console
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setStep(2)}
+            className="w-full h-14 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: Palette.brand.primary }}
+          >
+            <Text className="text-white font-semibold text-base">
+              我已準備好，繼續
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={handleSkip} className="items-center py-2">
+            <Text className="text-sm text-gray-500">暫時跳過</Text>
+          </Pressable>
+        </View>
+      </OnboardingLayout>
     );
   }
 
   // 步驟 2: 輸入資料
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View className="flex-1 px-6 py-12">
-        {/* Header */}
-        <View className="mb-8">
-          <Pressable onPress={() => setStep(1)} className="mb-4">
-            <Text className="text-blue-500 text-base">← 返回</Text>
-          </Pressable>
-          <Text className="text-2xl font-bold text-gray-900 mb-2">
-            輸入 LINE 資訊
+    <OnboardingLayout>
+      <Pressable
+        onPress={() => setStep(1)}
+        className="self-start flex-row items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2"
+      >
+        <Ionicons name="chevron-back" size={16} color={Palette.neutrals.heading} />
+        <Text className="text-xs font-semibold text-gray-900">返回</Text>
+      </Pressable>
+
+      <View className="space-y-2">
+        <Text className="text-3xl font-black text-gray-900">輸入 LINE 資訊</Text>
+        <Text className="text-sm text-gray-600">
+          請從 LINE Developers Console 複製以下資訊
+        </Text>
+      </View>
+
+      <View className="space-y-6">
+        <View>
+          <Text className="text-sm font-semibold text-gray-700 mb-2">
+            Channel ID
           </Text>
-          <Text className="text-sm text-gray-600">
-            請從 LINE Developers Console 複製以下資訊
-          </Text>
+          <TextInput
+            value={channelId}
+            onChangeText={setChannelId}
+            placeholder="例如：1234567890"
+            className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
+            placeholderTextColor={Palette.neutrals.placeholder}
+            keyboardType="numeric"
+          />
         </View>
 
-        {/* 表單 */}
-        <View className="space-y-6">
-          {/* Channel ID */}
-          <View>
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Channel ID
-            </Text>
-            <TextInput
-              value={channelId}
-              onChangeText={setChannelId}
-              placeholder="例如：1234567890"
-              className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor={Palette.neutrals.placeholder}
-              keyboardType="numeric"
-            />
-          </View>
-
-          {/* Channel Secret */}
-          <View>
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Channel Secret
-            </Text>
-            <TextInput
-              value={channelSecret}
-              onChangeText={setChannelSecret}
-              placeholder="例如：abcdef1234567890"
-              className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor={Palette.neutrals.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Channel Access Token */}
-          <View>
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Channel Access Token
-            </Text>
-            <TextInput
-              value={channelAccessToken}
-              onChangeText={setChannelAccessToken}
-              placeholder="長字串的 Access Token"
-              className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor={Palette.neutrals.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              multiline={false}
-            />
-          </View>
+        <View>
+          <Text className="text-sm font-semibold text-gray-700 mb-2">
+            Channel Secret
+          </Text>
+          <TextInput
+            value={channelSecret}
+            onChangeText={setChannelSecret}
+            placeholder="例如：abcdef1234567890"
+            className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
+            placeholderTextColor={Palette.neutrals.placeholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </View>
 
-        {/* 提交按鈕 */}
-        <View className="mt-8">
-          <Pressable
-            onPress={handleSubmit}
-            disabled={
+        <View>
+          <Text className="text-sm font-semibold text-gray-700 mb-2">
+            Channel Access Token
+          </Text>
+          <TextInput
+            value={channelAccessToken}
+            onChangeText={setChannelAccessToken}
+            placeholder="長字串的 Access Token"
+            className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
+            placeholderTextColor={Palette.neutrals.placeholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+            multiline={false}
+          />
+        </View>
+      </View>
+
+      <View className="space-y-2">
+        <Pressable
+          onPress={handleSubmit}
+          disabled={
+            isSubmitting ||
+            !channelId ||
+            !channelSecret ||
+            !channelAccessToken
+          }
+          className="w-full h-14 rounded-2xl items-center justify-center"
+          style={{
+            backgroundColor: Palette.brand.primary,
+            opacity:
               isSubmitting ||
               !channelId ||
               !channelSecret ||
               !channelAccessToken
-            }
-            className="w-full h-14 bg-blue-500 rounded-lg items-center justify-center"
-            style={{
-              opacity:
-                isSubmitting ||
-                !channelId ||
-                !channelSecret ||
-                !channelAccessToken
-                  ? 0.6
-                  : 1,
-            }}
-          >
-            {isSubmitting ? (
-              <View className="flex-row items-center">
-                <ActivityIndicator color="white" className="mr-2" />
-                <Text className="text-white font-semibold text-base">
-                  設定中...
-                </Text>
-              </View>
-            ) : (
+                ? 0.6
+                : 1,
+          }}
+        >
+          {isSubmitting ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator color={Palette.neutrals.white} className="mr-2" />
               <Text className="text-white font-semibold text-base">
-                完成設定
+                設定中...
               </Text>
-            )}
-          </Pressable>
+            </View>
+          ) : (
+            <Text className="text-white font-semibold text-base">完成設定</Text>
+          )}
+        </Pressable>
 
-          <Pressable
-            onPress={handleSkip}
-            className="w-full h-14 items-center justify-center mt-2"
-          >
-            <Text className="text-gray-600 text-sm">暫時跳過</Text>
-          </Pressable>
-        </View>
+        <Pressable onPress={handleSkip} className="items-center py-2">
+          <Text className="text-sm text-gray-500">暫時跳過</Text>
+        </Pressable>
       </View>
-    </ScrollView>
+    </OnboardingLayout>
   );
 }
