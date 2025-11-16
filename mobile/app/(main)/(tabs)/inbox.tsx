@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -154,7 +155,11 @@ export default function Inbox() {
           </Text>
         </View>
         <Pressable className="flex-row items-center gap-1">
-          <Ionicons name="receipt-outline" size={14} color="#111827" />
+          <Ionicons
+            name="receipt-outline"
+            size={14}
+            color={Palette.neutrals.heading}
+          />
           <Text className="text-[11px] text-gray-900 font-medium">
             {record.orderNo}
           </Text>
@@ -260,7 +265,11 @@ function ActionButton({ icon, label, onPress, primary }: ActionButtonProps) {
         primary ? "border-gray-900 bg-gray-900" : "border-gray-200"
       }`}
     >
-      <Ionicons name={icon} size={12} color={primary ? "#fff" : "#111827"} />
+      <Ionicons
+        name={icon}
+        size={12}
+        color={primary ? Palette.neutrals.white : Palette.neutrals.heading}
+      />
       <Text
         className={`text-[10px] font-semibold ${
           primary ? "text-white" : "text-gray-900"

@@ -1,3 +1,4 @@
+import { Palette } from "@/constants/palette";
 import { useCreateTeam, useTeams } from "@/hooks/queries/useTeams";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { useRouter } from "expo-router";
@@ -75,7 +76,7 @@ export default function CreateTeam() {
             onChangeText={setTeamName}
             placeholder="例如：美味餐廳、甜點工作室"
             className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={Palette.neutrals.placeholder}
             autoFocus
           />
         </View>
@@ -91,7 +92,10 @@ export default function CreateTeam() {
         >
           {createTeam.isPending ? (
             <View className="flex-row items-center">
-              <ActivityIndicator color="white" className="mr-2" />
+              <ActivityIndicator
+                color={Palette.neutrals.white}
+                className="mr-2"
+              />
               <Text className="text-white font-semibold text-base">
                 建立中...
               </Text>
@@ -104,4 +108,3 @@ export default function CreateTeam() {
     </ScrollView>
   );
 }
-

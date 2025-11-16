@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -112,7 +113,11 @@ export default function Customers() {
               )}
             </View>
             <Pressable className="flex-row items-center gap-1">
-              <Ionicons name="chatbubble-ellipses-outline" size={14} color="#111827" />
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={14}
+                color={Palette.neutrals.heading}
+              />
               <Text className="text-[11px] text-gray-900 font-medium">
                 查看對話
               </Text>
@@ -251,7 +256,11 @@ function Suggestion({ icon, title, detail }: SuggestionProps) {
   return (
     <View className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex-row items-start gap-3">
       <View className="w-8 h-8 rounded-full bg-white items-center justify-center">
-        <Ionicons name={icon} size={16} color="#111827" />
+        <Ionicons
+          name={icon}
+          size={16}
+          color={Palette.neutrals.heading}
+        />
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold text-gray-900">{title}</Text>

@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+import { Palette } from '@/constants/palette';
+
 // 檢查是否在 Expo Go 環境
 // 在 Expo Go 中，Android 推送通知功能受限（從 SDK 53 開始）
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -59,7 +61,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#00B900',
+        lightColor: Palette.brand.primary,
       });
     }
 
@@ -244,4 +246,3 @@ export function addNotificationReceivedListener(
 ) {
   return Notifications.addNotificationReceivedListener(handler);
 }
-

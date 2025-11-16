@@ -1,3 +1,4 @@
+import { Palette } from "@/constants/palette";
 import { useJoinTeam, useTeams } from "@/hooks/queries/useTeams";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { useRouter } from "expo-router";
@@ -76,7 +77,7 @@ export default function JoinTeam() {
             onChangeText={setInviteCode}
             placeholder="輸入 邀請碼"
             className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200 tracking-widest"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={Palette.neutrals.placeholder}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={10}
@@ -94,7 +95,10 @@ export default function JoinTeam() {
         >
           {joinTeam.isPending ? (
             <View className="flex-row items-center">
-              <ActivityIndicator color="white" className="mr-2" />
+              <ActivityIndicator
+                color={Palette.neutrals.white}
+                className="mr-2"
+              />
               <Text className="text-white font-semibold text-base">
                 加入中...
               </Text>
@@ -107,4 +111,3 @@ export default function JoinTeam() {
     </ScrollView>
   );
 }
-

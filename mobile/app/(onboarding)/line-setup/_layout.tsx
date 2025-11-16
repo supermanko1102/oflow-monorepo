@@ -1,3 +1,4 @@
+import { Palette } from "@/constants/palette";
 import { syncAuthStatus } from "@/services/auth";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -34,7 +35,7 @@ export default function LineSetupOnboardingLayout() {
   if (!isHydrated) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color={Palette.status.info} />
       </View>
     );
   }
@@ -45,7 +46,7 @@ export default function LineSetupOnboardingLayout() {
 
   return (
     <View className="flex-1 justify-center items-center bg-white">
-      <ActivityIndicator size="large" color="#9CA3AF" />
+      <ActivityIndicator size="large" color={Palette.neutrals.placeholder} />
     </View>
   );
 }

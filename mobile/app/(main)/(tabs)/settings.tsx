@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
@@ -147,7 +148,11 @@ function SettingRow({
     <View className="flex-row items-center justify-between rounded-xl border border-gray-100 p-3">
       <View className="flex-row items-center gap-3">
         <View className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center">
-          <Ionicons name={icon} size={18} color="#111827" />
+          <Ionicons
+            name={icon}
+            size={18}
+            color={Palette.neutrals.heading}
+          />
         </View>
         <View>
           <Text className="text-sm font-semibold text-gray-900">{label}</Text>

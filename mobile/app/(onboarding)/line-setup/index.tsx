@@ -1,3 +1,4 @@
+import { Palette } from "@/constants/palette";
 import { updateLineSettings } from "@/services/teamService";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { useRouter } from "expo-router";
@@ -232,7 +233,7 @@ export default function LineSetup() {
               onChangeText={setChannelId}
               placeholder="例如：1234567890"
               className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Palette.neutrals.placeholder}
               keyboardType="numeric"
             />
           </View>
@@ -247,7 +248,7 @@ export default function LineSetup() {
               onChangeText={setChannelSecret}
               placeholder="例如：abcdef1234567890"
               className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Palette.neutrals.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -263,7 +264,7 @@ export default function LineSetup() {
               onChangeText={setChannelAccessToken}
               placeholder="長字串的 Access Token"
               className="w-full h-14 bg-gray-50 rounded-lg px-4 text-base border border-gray-200"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Palette.neutrals.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               multiline={false}
@@ -317,4 +318,3 @@ export default function LineSetup() {
     </ScrollView>
   );
 }
-

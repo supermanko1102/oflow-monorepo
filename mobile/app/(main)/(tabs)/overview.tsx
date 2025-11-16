@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Palette } from "@/constants/palette";
 import { logout } from "@/services/auth";
 import { useMemo, useState } from "react";
 import {
@@ -309,10 +310,14 @@ export default function Overview() {
                 <MaterialCommunityIcons
                   name="inbox"
                   size={18}
-                  color="#9333ea"
+                  color={Palette.status.warning}
                 />
               ) : (
-                <Ionicons name="alarm" size={18} color="#2563eb" />
+                <Ionicons
+                  name="alarm"
+                  size={18}
+                  color={Palette.status.info}
+                />
               )}
               <Text className="text-sm text-gray-800" numberOfLines={1}>
                 {r.title}
@@ -395,7 +400,7 @@ export default function Overview() {
       >
         {isLoggingOut ? (
           <View className="flex-row items-center">
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color={Palette.neutrals.white} />
             <Text className="text-white font-semibold text-base ml-2">
               登出中...
             </Text>

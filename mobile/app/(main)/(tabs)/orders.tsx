@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -298,7 +299,13 @@ const productStats = useMemo(
             label="商品數"
             value={`${productStats.totalProducts} 個`}
             description="AI 已可辨識 20 個"
-            icon={<Ionicons name="cube-outline" size={18} color="#2563eb" />}
+            icon={
+              <Ionicons
+                name="cube-outline"
+                size={18}
+                color={Palette.status.info}
+              />
+            }
           />
         </View>
         <View className="w-1/2 px-1 mb-2">
@@ -306,7 +313,13 @@ const productStats = useMemo(
             label="低庫存提醒"
             value={`${productStats.lowStock} 項`}
             description="建議補貨"
-            icon={<Ionicons name="warning-outline" size={18} color="#f97316" />}
+            icon={
+              <Ionicons
+                name="warning-outline"
+                size={18}
+                color={Palette.status.warning}
+              />
+            }
           />
         </View>
         <View className="w-1/2 px-1 mb-2">
@@ -314,7 +327,13 @@ const productStats = useMemo(
             label="AI 自動對應"
             value={productStats.autoMatchedRate}
             description="近 7 天成功率"
-            icon={<Ionicons name="flash-outline" size={18} color="#16a34a" />}
+            icon={
+              <Ionicons
+                name="flash-outline"
+                size={18}
+                color={Palette.status.success}
+              />
+            }
           />
         </View>
       </View>
@@ -326,7 +345,11 @@ const productStats = useMemo(
             onPress={action.onPress}
             className="flex-1 h-12 rounded-xl border border-gray-200 items-center justify-center flex-row gap-2 bg-white"
           >
-            <Ionicons name={action.icon} size={16} color="#111827" />
+            <Ionicons
+              name={action.icon}
+              size={16}
+              color={Palette.neutrals.heading}
+            />
             <Text className="text-xs text-gray-900 font-semibold">
               {action.label}
             </Text>
@@ -451,7 +474,11 @@ function IconAction({ icon, label }: IconActionProps) {
       className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={14} color="#111827" />
+      <Ionicons
+        name={icon}
+        size={14}
+        color={Palette.neutrals.heading}
+      />
     </Pressable>
   );
 }
