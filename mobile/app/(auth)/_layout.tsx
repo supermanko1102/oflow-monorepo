@@ -30,7 +30,7 @@ export default function AuthLayout() {
   try {
     if (!isHydrated) throw new Error("Hydrating");
     if (isAuthenticated) throw new Error("Already authenticated");
-    return <Stack />;
+    return <Stack screenOptions={{ headerShown: false }} />;
   } catch (e) {
     e instanceof Error && console.log(`AuthLayout: Blocking [${e.message}]`);
     return <ActivityIndicator size="large" color="white" />;
