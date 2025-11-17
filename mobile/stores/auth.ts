@@ -11,7 +11,6 @@ export enum AuthStatus {
 interface AuthState {
   isHydrated: boolean;
   status: AuthStatus;
-  supabaseUserId: string | null;
   currentTeamId: string | null;
 }
 export const useAuthStore = create<AuthState>()(
@@ -19,7 +18,6 @@ export const useAuthStore = create<AuthState>()(
     (_set, _get) => ({
       isHydrated: false,
       status: AuthStatus.Unauthenticated,
-      supabaseUserId: null,
       currentTeamId: null,
     }),
     {
