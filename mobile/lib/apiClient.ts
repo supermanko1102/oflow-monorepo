@@ -6,6 +6,8 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { queryClient } from "@/lib/queryClient";
+import { AuthStatus, useAuthStore } from "@/stores/auth";
 import {
   ApiError,
   ApiErrorCode,
@@ -170,6 +172,11 @@ export class ApiClient {
 
     let errorMessage = response.statusText;
 
+    // 當 401（未授權）時，執行一次性的登出與狀態重置
+    if (statusCode === 401) {
+      await handleUnauthorizedOnce();
+    }
+
     try {
       const errorData = await response.json();
       errorMessage = errorData.error || errorData.message || errorMessage;
@@ -233,6 +240,30 @@ export class ApiClient {
     });
 
     throw apiError;
+  }
+}
+
+// 確保在 401 風暴時只處理一次，避免重複 signOut/清 cache
+let handlingUnauthorized = false;
+async function handleUnauthorizedOnce() {
+  if (handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  try {
+    // 重置本地認證狀態，讓版面導回登入頁
+    useAuthStore.setState({
+      status: AuthStatus.Unauthenticated,
+      currentTeamId: null,
+    });
+    // 撤銷目前 session（也會讓 refresh token 失效）
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    // 清除快取避免殘留舊資料
+    try {
+      queryClient.clear();
+    } catch {}
+  } finally {
+    handlingUnauthorized = false;
   }
 }
 

@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase";
 import { initiateAppleLogin } from "@/services/apple";
 import { loginWithApple, loginWithLine } from "@/services/auth";
 import { handleAuthCallback, initiateLineLogin } from "@/services/line";
@@ -28,30 +27,7 @@ export default function Landing() {
         return;
       }
       const session = await handleAuthCallback(redirectUrl);
-
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
-
-      if (sessionError || !sessionData.user) {
-        throw new Error(sessionError?.message || "Session 設定失敗");
-      }
-
-      const lineUserId = sessionData.user.user_metadata?.line_user_id || "";
-      const displayName =
-        sessionData.user.user_metadata?.display_name || "使用者";
-      const pictureUrl = sessionData.user.user_metadata?.picture_url || null;
-
-      await loginWithLine(
-        lineUserId,
-        sessionData.user.id,
-        displayName,
-        pictureUrl,
-        session.access_token,
-        session.refresh_token
-      );
+      await loginWithLine(session.access_token, session.refresh_token);
     } catch (e) {
       e instanceof Error && console.log(`AuthLayout: Blocking [${e.message}]`);
       Alert.alert("登入失敗", "無法完成 LINE 登入，請稍後再試", [
@@ -67,39 +43,17 @@ export default function Landing() {
     try {
       setIsLoading(true);
 
-      // 1. 透過 Apple Service 取得 Supabase session
       const session = await initiateAppleLogin();
 
-      // 2. 將 session 設定到 Supabase client
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
-
-      if (sessionError || !sessionData.user) {
-        throw new Error(sessionError?.message || "Session 設定失敗");
-      }
-
-      // 3. 更新 Auth Store 狀態
-      await loginWithApple(
-        sessionData.user.id,
-        session.access_token,
-        session.refresh_token
-      );
+      await loginWithApple(session.access_token, session.refresh_token);
     } catch (e) {
-      // 紀錄錯誤訊息
       if (e instanceof Error) {
         console.log(`Apple Login: Error [${e.message}]`);
-
-        // 處理使用者取消的情況
         if (e.message === "使用者取消登入") {
           Alert.alert("登入已取消", "您已取消 Apple 登入", [{ text: "確定" }]);
           return;
         }
       }
-
-      // 其他錯誤
       Alert.alert("登入失敗", "無法完成 Apple 登入，請稍後再試", [
         { text: "確定" },
       ]);
