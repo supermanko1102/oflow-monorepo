@@ -153,6 +153,7 @@ serve(async (req) => {
               line_user_id: lineProfile.userId,
               display_name: lineProfile.displayName,
               picture_url: lineProfile.pictureUrl || null,
+              auth_provider: "line",
               last_login_at: new Date().toISOString(),
             },
           }
@@ -174,6 +175,7 @@ serve(async (req) => {
             line_user_id: lineProfile.userId,
             display_name: lineProfile.displayName,
             picture_url: lineProfile.pictureUrl || null,
+            auth_provider: "line",
             last_login_at: new Date().toISOString(),
           },
         });
@@ -185,18 +187,33 @@ serve(async (req) => {
           createError.message?.includes("already exists")
         ) {
           console.log("[Auth] 使用者已存在（透過錯誤檢測），嘗試查詢...");
-          // 使用 listUsers 並過濾
-          const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const foundUser = allUsers?.users?.find((u) => u.email === email);
+          // 使用 listUsers 並過濾 (增加每頁數量以確保找到用戶)
+          const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          });
+
+          console.log(`[Auth Debug] 搜尋目標 Email: ${email}`);
+          console.log(`[Auth Debug] listUsers 回傳數量: ${allUsers?.users?.length || 0}`);
+
+          // 1. 嘗試用 Email 找
+          let foundUser = allUsers?.users?.find((u) => u.email === email);
+
+          // 2. 如果 Email 找不到，嘗試用 metadata 中的 line_user_id 找 (防止 Email 格式不一致)
+          if (!foundUser) {
+            console.log(`[Auth Debug] Email 未匹配，嘗試使用 metadata.line_user_id 搜尋: ${lineProfile.userId}`);
+            foundUser = allUsers?.users?.find((u) => u.user_metadata?.line_user_id === lineProfile.userId);
+          }
 
           if (foundUser) {
-            console.log("[Auth] 找到現有使用者，更新資料...");
+            console.log(`[Auth] 找到現有使用者 (ID: ${foundUser.id})，更新資料...`);
             const { data: updateData, error: updateError } =
               await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
                 user_metadata: {
                   line_user_id: lineProfile.userId,
                   display_name: lineProfile.displayName,
                   picture_url: lineProfile.pictureUrl || null,
+                  auth_provider: "line",
                   last_login_at: new Date().toISOString(),
                 },
               });
@@ -207,8 +224,12 @@ serve(async (req) => {
 
             authUser = updateData.user;
           } else {
+            // 若真的找不到，列出前幾個 email 幫助除錯
+            const firstFewEmails = allUsers?.users?.slice(0, 5).map(u => `${u.email} (meta: ${u.user_metadata?.line_user_id})`).join(", ");
+            console.log(`[Auth Debug] 前 5 筆用戶資料: ${firstFewEmails}`);
+
             throw new Error(
-              "User exists but could not be found: " + createError.message
+              `User exists (according to create error) but could not be found in list (total: ${allUsers?.users?.length}). Target: ${email}`
             );
           }
         } else {
@@ -245,6 +266,7 @@ serve(async (req) => {
           line_user_id: lineProfile.userId,
           line_display_name: lineProfile.displayName,
           line_picture_url: lineProfile.pictureUrl || null,
+          auth_provider: "line",
           last_login_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
