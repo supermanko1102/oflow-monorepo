@@ -29,7 +29,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.oflow.app",
-      "versionCode": 11
+      "versionCode": 12
     },
     "experiments": {
       "typedRoutes": true,
