@@ -1,7 +1,6 @@
-import { initiateAppleLogin } from "@/services/apple";
-import { loginWithApple, loginWithLine } from "@/services/auth";
+import { loginWithApple, loginWithGoogle } from "@/services/auth-providers";
+import { syncAuthStatus, loginWithLine } from "@/services/auth";
 import { handleAuthCallback, initiateLineLogin } from "@/services/line";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { useState } from "react";
 
 import {
@@ -38,22 +37,32 @@ export default function Landing() {
     }
   };
 
-  // Apple 登入處理函數
+  // Google 登入處理函數
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      await loginWithGoogle();
+      // OAuth flow 會自動導向，登入成功後 Supabase 會觸發 onAuthStateChange
+      await syncAuthStatus();
+    } catch (e) {
+      console.error("Google Login: Error", e);
+      Alert.alert("登入失敗", "無法完成 Google 登入，請稍後再試", [
+        { text: "確定" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Apple 登入處理函數  
   const handleAppleLogin = async () => {
     try {
       setIsLoading(true);
-
-      const session = await initiateAppleLogin();
-
-      await loginWithApple(session.access_token, session.refresh_token);
+      await loginWithApple();
+      // OAuth flow 會自動導向，登入成功後 Supabase 會觸發 onAuthStateChange
+      await syncAuthStatus();
     } catch (e) {
-      if (e instanceof Error) {
-        console.log(`Apple Login: Error [${e.message}]`);
-        if (e.message === "使用者取消登入") {
-          Alert.alert("登入已取消", "您已取消 Apple 登入", [{ text: "確定" }]);
-          return;
-        }
-      }
+      console.error("Apple Login: Error", e);
       Alert.alert("登入失敗", "無法完成 Apple 登入，請稍後再試", [
         { text: "確定" },
       ]);
@@ -113,7 +122,7 @@ export default function Landing() {
         </View>
 
         {/* LINE 登入（主要） */}
-        <View className="w-full mb-6">
+        <View className="w-full mb-4">
           <Pressable
             onPress={() => handleLineLogin()}
             disabled={isLoading}
@@ -134,29 +143,44 @@ export default function Landing() {
             )}
           </Pressable>
         </View>
-        {Platform.OS === "ios" && (
-          <>
-            <View className="flex-row items-center mb-4 w-full">
-              <View className="flex-1 h-px bg-gray-300" />
-              <Text className="mx-3 text-xs text-gray-500">或</Text>
-              <View className="flex-1 h-px bg-gray-300" />
-            </View>
 
-            <View className="w-full mb-4">
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                }
-                buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                }
-                cornerRadius={14}
-                style={{ width: "100%", height: 44 }}
-                onPress={handleAppleLogin}
-              />
-            </View>
-          </>
+        {/* Divider */}
+        <View className="flex-row items-center mb-4 w-full">
+          <View className="flex-1 h-px bg-gray-300" />
+          <Text className="mx-3 text-xs text-gray-500">或</Text>
+          <View className="flex-1 h-px bg-gray-300" />
+        </View>
+
+        {/* Google 登入 */}
+        <View className="w-full mb-4">
+          <Pressable
+            onPress={() => handleGoogleLogin()}
+            disabled={isLoading}
+            className="w-full h-14 bg-white border border-gray-300 rounded-md items-center justify-center flex-row"
+            style={{ opacity: isLoading ? 0.7 : 1 }}
+          >
+            <Text className="text-gray-900 font-semibold text-lg">
+              使用 Google 登入
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Apple 登入 (iOS only) */}
+        {Platform.OS === "ios" && (
+          <View className="w-full mb-4">
+            <Pressable
+              onPress={() => handleAppleLogin()}
+              disabled={isLoading}
+              className="w-full h-14 bg-black rounded-md items-center justify-center"
+              style={{ opacity: isLoading ? 0.7 : 1 }}
+            >
+              <Text className="text-white font-semibold text-lg">
+                使用 Apple 登入
+              </Text>
+            </Pressable>
+          </View>
         )}
+
         {/* Footer */}
         <View className="mt-4">
           <Text className="text-xs text-gray-500 text-center">

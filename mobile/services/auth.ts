@@ -42,17 +42,6 @@ export async function loginWithLine(accessToken: string, refreshToken: string) {
   await syncAuthStatus();
 }
 
-export async function loginWithApple(
-  accessToken: string,
-  refreshToken: string
-) {
-  await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  await syncAuthStatus();
-}
-
 export async function logout() {
   useAuthStore.setState({
     status: AuthStatus.Unauthenticated,
