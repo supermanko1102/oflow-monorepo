@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Navbar, NavbarTab } from "@/components/Navbar";
-import { Palette } from "@/constants/palette";
 
 type MainLayoutProps = {
   title: string;
@@ -22,6 +21,8 @@ type MainLayoutProps = {
   dangerActions?: { label: string; onPress: () => void; destructive?: boolean }[];
   tabs?: NavbarTab[];
   trailingContent?: ReactNode;
+  centerContent?: ReactNode;
+  rightContent?: ReactNode;
   children: ReactNode;
   scrollable?: boolean;
   contentPaddingClassName?: string;
@@ -42,6 +43,8 @@ export function MainLayout({
   dangerActions,
   tabs,
   trailingContent,
+  centerContent,
+  rightContent,
   children,
   scrollable = true,
   onTeamPress,
@@ -104,19 +107,17 @@ export function MainLayout({
     </View>
   );
 
+  const backgroundClass = isDark ? "bg-slate-900" : "bg-slate-50";
   return (
-      <View
-      className="flex-1"
-        style={{
-          backgroundColor: isDark
-            ? Palette.neutralsDark.background
-            : Palette.neutrals.surface,
-          paddingTop: insets.top,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          paddingBottom: insets.bottom + 60,
-        }}
-      >
+    <View
+      className={`flex-1 ${backgroundClass}`}
+      style={{
+        paddingTop: insets.top,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        paddingBottom: insets.bottom + 60,
+      }}
+    >
       <Navbar
         title={title}
         subtitle={subtitle}
@@ -127,12 +128,14 @@ export function MainLayout({
         onDangerPress={handleDangerPress}
         tabs={tabs}
         trailingContent={trailingContent}
+        centerContent={centerContent}
+        rightContent={rightContent}
         onTeamPress={onTeamPress}
         onSearchPress={onSearchPress}
         onNotificationsPress={onNotificationsPress}
         onCreatePress={onCreatePress}
       />
-        {content}
-      </View>
+      {content}
+    </View>
   );
 }

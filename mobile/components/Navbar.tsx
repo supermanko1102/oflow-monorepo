@@ -7,7 +7,6 @@ import {
   View,
   useColorScheme,
 } from "react-native";
-
 import { Palette } from "@/constants/palette";
 
 export type NavbarTab = {
@@ -31,12 +30,15 @@ type NavbarProps = {
   onDangerPress?: () => void;
   tabs?: NavbarTab[];
   trailingContent?: ReactNode;
+  centerContent?: ReactNode;
+  rightContent?: ReactNode;
 };
 
 /**
  * 輕量客製化的 Navbar，可在不同頁面共用。
  * - 左側顯示 Team 狀態 (綠點/灰點) 與名稱
- * - 右側提供搜尋、提醒、主要 CTA
+ * - 中間可顯示標題或自定義內容 (centerContent)
+ * - 右側提供搜尋、提醒、主要 CTA 或自定義內容 (rightContent)
  * - 下方可選擇渲染 Contextual tabs (Scrollable)
  */
 export function Navbar({
@@ -53,37 +55,27 @@ export function Navbar({
   onDangerPress,
   tabs,
   trailingContent,
+  centerContent,
+  rightContent,
 }: NavbarProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const colors = {
-    background: isDark
-      ? Palette.neutralsDark.background
-      : Palette.neutrals.white,
-    border: isDark ? Palette.neutralsDark.border : "#F3F4F6",
-    surface: isDark ? Palette.neutralsDark.surface : Palette.neutrals.surface,
-    text: isDark ? Palette.neutralsDark.heading : Palette.neutrals.heading,
-    subtitle: isDark ? Palette.neutralsDark.icon : Palette.neutrals.icon,
-    muted: isDark ? Palette.neutralsDark.icon : Palette.neutrals.slate600,
-    icon: isDark ? Palette.neutralsDark.icon : Palette.neutrals.icon,
-    tabInactiveText: isDark
-      ? Palette.neutralsDark.icon
-      : Palette.neutrals.slate600,
-    tabInactiveBorder: isDark ? Palette.neutralsDark.border : "#E5E7EB",
-  };
+  const containerBorderClass = isDark ? "border-slate-800" : "border-slate-100";
+  const containerBackgroundClass = isDark ? "bg-slate-900" : "bg-white";
+  const surfaceClass = isDark ? "bg-slate-800" : "bg-slate-100";
+  const textClass = isDark ? "text-slate-100" : "text-slate-900";
+  const subtitleClass = isDark ? "text-slate-400" : "text-slate-500";
+  const iconColor = isDark ? "#E2E8F0" : "#475569";
+  const tabInactiveTextClass = isDark ? "text-slate-400" : "text-slate-500";
+  const tabInactiveBorderClass = isDark ? "border-slate-800" : "border-slate-200";
 
-  const statusIndicatorColor =
+  const statusIndicatorClass =
     teamStatus === "open"
-      ? Palette.brand.primary
+      ? "bg-brand-teal"
       : isDark
-      ? Palette.neutralsDark.icon
-      : Palette.neutrals.iconMuted;
-
-  const tabActiveBackground = isDark
-    ? Palette.brand.primary
-    : Palette.neutrals.heading;
-  const tabInactiveBackground = colors.surface;
+        ? "bg-slate-500"
+        : "bg-slate-400";
 
   const renderTabs = () => {
     if (!tabs || tabs.length === 0) return null;
@@ -101,23 +93,16 @@ export function Navbar({
             <Pressable
               key={tab.key}
               onPress={tab.onPress}
-              className="px-3 py-1.5 rounded-full border"
-              style={{
-                backgroundColor: isActive
-                  ? tabActiveBackground
-                  : tabInactiveBackground,
-                borderColor: isActive
-                  ? tabActiveBackground
-                  : colors.tabInactiveBorder,
-              }}
+              className={`px-3 py-1.5 rounded-full ${
+                isActive
+                  ? "bg-brand-teal border border-brand-teal"
+                  : `border ${tabInactiveBorderClass} ${surfaceClass}`
+              }`}
             >
               <Text
-                className="text-xs font-medium"
-                style={{
-                  color: isActive
-                    ? Palette.neutrals.white
-                    : colors.tabInactiveText,
-                }}
+                className={`text-xs font-medium ${
+                  isActive ? "text-white" : tabInactiveTextClass
+                }`}
               >
                 {tab.label}
               </Text>
@@ -130,96 +115,95 @@ export function Navbar({
 
   return (
     <View
-      className="px-5 pt-5 pb-3 border-b"
-      style={{ backgroundColor: colors.background, borderColor: colors.border }}
+      className={`px-5 pt-5 pb-3 border-b ${containerBackgroundClass} ${containerBorderClass}`}
     >
       <View className="flex-row items-center justify-between">
+        {/* Left: Team / Logo */}
         <Pressable
           onPress={onTeamPress}
-          className="flex-row items-center gap-3 rounded-full px-3 py-2"
-          style={{ backgroundColor: colors.surface }}
+          className={`flex-row items-center gap-3 rounded-full px-3 py-2 ${surfaceClass}`}
         >
           <View
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: statusIndicatorColor }}
+            className={`w-2 h-2 rounded-full ${statusIndicatorClass}`}
           />
-          <Text
-            className="text-sm font-semibold"
-            style={{ color: colors.text }}
-          >
+          <Text className={`text-sm font-semibold ${textClass}`}>
             {teamName}
           </Text>
           <Ionicons
             name="chevron-down"
             size={16}
-            color={colors.icon}
-          />
+            color={iconColor}
+          >
+          </Ionicons>
         </Pressable>
 
-        {(showActions || showDangerTrigger) ? (
-          <View className="flex-row items-center gap-3">
-            {showActions ? (
-              <>
-                <IconButton
-                  icon="search"
-                  ariaLabel="搜尋"
-                  onPress={onSearchPress}
-                  isDark={isDark}
-                />
-                <IconButton
-                  icon="notifications-outline"
-                  ariaLabel="提醒"
-                  onPress={onNotificationsPress}
-                  isDark={isDark}
-                />
-                <Pressable
-                  onPress={onCreatePress}
-                  className="flex-row items-center gap-1 rounded-full px-3 py-2"
-                  style={{
-                    backgroundColor: isDark
-                      ? Palette.brand.primary
-                      : Palette.neutrals.heading,
-                  }}
-                >
-                  <Ionicons
-                    name="add"
-                    size={18}
-                    color={Palette.neutrals.white}
+        {/* Right: Actions or Custom Content */}
+        <View className="flex-row items-center gap-3">
+          {rightContent ? (
+            rightContent
+          ) : (showActions || showDangerTrigger) ? (
+            <>
+              {showActions ? (
+                <>
+                  <IconButton
+                    icon="search"
+                    ariaLabel="搜尋"
+                    onPress={onSearchPress}
+                    isDark={isDark}
                   />
-                  <Text className="text-white text-xs font-semibold">
-                    新增
-                  </Text>
-                </Pressable>
-              </>
-            ) : null}
-            {showDangerTrigger ? (
-              <IconButton
-                icon="log-out-outline"
-                ariaLabel="危險操作"
-                onPress={onDangerPress}
-                variant="danger"
-                isDark={isDark}
-              />
-            ) : null}
-          </View>
-        ) : null}
+                  <IconButton
+                    icon="notifications-outline"
+                    ariaLabel="提醒"
+                    onPress={onNotificationsPress}
+                    isDark={isDark}
+                  />
+              <Pressable
+                onPress={onCreatePress}
+                className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
+                  isDark ? "bg-brand-teal" : "bg-slate-900"
+                }`}
+              >
+                <Ionicons
+                  name="add"
+                  size={18}
+                  color="#FFFFFF"
+                />
+                <Text className="text-white text-xs font-semibold">
+                  新增
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {showDangerTrigger ? (
+                <IconButton
+                  icon="log-out-outline"
+                  ariaLabel="危險操作"
+                  onPress={onDangerPress}
+                  variant="danger"
+                  isDark={isDark}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </View>
       </View>
 
+      {/* Center: Title or Custom Content */}
       <View className="mt-4">
-        <Text
-          className="text-xl font-bold"
-          style={{ color: colors.text }}
-        >
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text
-            className="text-xs mt-1"
-            style={{ color: colors.subtitle }}
-          >
-            {subtitle}
-          </Text>
-        ) : null}
+        {centerContent ? (
+          centerContent
+        ) : (
+          <>
+            <Text className={`text-xl font-bold ${textClass}`}>
+              {title}
+            </Text>
+            {subtitle ? (
+              <Text className={`text-xs mt-1 ${subtitleClass}`}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </>
+        )}
       </View>
 
       {trailingContent}
@@ -236,7 +220,7 @@ type IconButtonProps = {
   isDark: boolean;
 };
 
-function IconButton({
+export function IconButton({
   icon,
   onPress,
   ariaLabel,
@@ -246,22 +230,24 @@ function IconButton({
   const isDanger = variant === "danger";
   const backgroundColor = isDanger
     ? isDark
-      ? "rgba(239, 68, 68, 0.12)"
-      : "#FEF2F2"
+      ? "rgba(239, 68, 68, 0.15)"
+      : "#FEE2E2"
     : isDark
-    ? Palette.neutralsDark.border
-    : "#F3F4F6";
+      ? "rgba(255, 255, 255, 0.08)"
+      : "#F8FAFC";
   const borderColor = isDanger
     ? isDark
-      ? "rgba(239, 68, 68, 0.3)"
-      : "#FECACA"
-    : backgroundColor;
+      ? "rgba(239, 68, 68, 0.35)"
+      : "#FCA5A5"
+    : isDark
+      ? "#1F2937"
+      : "#E2E8F0";
   const iconColor =
     variant === "danger"
       ? Palette.status.danger
       : isDark
-      ? Palette.neutralsDark.heading
-      : Palette.neutrals.heading;
+        ? "#F8FAFC"
+        : "#0F172A";
   return (
     <Pressable
       accessibilityLabel={ariaLabel}

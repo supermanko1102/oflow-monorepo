@@ -10,11 +10,11 @@ import { Palette } from "./palette";
 
 export const Colors = {
   light: {
-    text: Palette.neutrals.text,
-    background: Palette.neutrals.white,
+    text: "#0F172A",
+    background: "#FFFFFF",
     tint: Palette.brand.primary,
-    icon: Palette.neutrals.icon,
-    tabIconDefault: Palette.neutrals.icon,
+    icon: "#475569",
+    tabIconDefault: "#94A3B8",
     tabIconSelected: Palette.brand.primary,
     line: {
       green: Palette.brand.primary,
@@ -22,11 +22,11 @@ export const Colors = {
     },
   },
   dark: {
-    text: Palette.neutralsDark.text,
-    background: Palette.neutralsDark.background,
+    text: "#F8FAFC",
+    background: "#0F172A",
     tint: Palette.brand.primary,
-    icon: Palette.neutralsDark.icon,
-    tabIconDefault: Palette.neutralsDark.iconMuted,
+    icon: "#CBD5F5",
+    tabIconDefault: "#94A3B8",
     tabIconSelected: Palette.brand.primary,
   },
 };

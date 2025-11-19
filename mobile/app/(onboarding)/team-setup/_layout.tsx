@@ -35,7 +35,7 @@ export default function TeamSetupOnboardingLayout() {
   if (!isHydrated) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color={Palette.status.info} />
+        <ActivityIndicator size="large" color={Palette.brand.primary} />
       </View>
     );
   }
@@ -46,7 +46,7 @@ export default function TeamSetupOnboardingLayout() {
 
   return (
     <View className="flex-1 justify-center items-center bg-white">
-      <ActivityIndicator size="large" color={Palette.neutrals.placeholder} />
+      <ActivityIndicator size="large" color={Palette.brand.slate} />
     </View>
   );
 }

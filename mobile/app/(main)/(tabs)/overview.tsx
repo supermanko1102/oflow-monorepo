@@ -1,11 +1,12 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Palette } from "@/constants/palette";
+import { IconButton } from "@/components/Navbar";
 import { logout } from "@/services/auth";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -16,119 +17,105 @@ type MetricCardProps = {
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  accent?: "blue" | "green" | "orange" | "purple" | "gray";
-  note?: string;
-  emphasized?: boolean;
+  trend?: string;
+  trendType?: "up" | "down" | "neutral";
+  primary?: boolean;
 };
 
 function MetricCard({
   label,
   value,
   icon,
-  accent = "gray",
-  note,
-  emphasized,
+  trend,
+  trendType = "neutral",
+  primary,
 }: MetricCardProps) {
-  const colorMap: Record<string, string> = {
-    blue: "text-blue-600",
-    green: "text-green-600",
-    orange: "text-orange-600",
-    purple: "text-purple-600",
-    gray: "text-gray-600",
-  };
-  const borderMap: Record<string, string> = {
-    orange: "border-2 border-orange-200 bg-orange-50",
-    blue: "",
-    green: "",
-    purple: "",
-    gray: "",
-  };
-
   return (
-    <View className={`rounded-xl p-4 bg-white ${borderMap[accent] || ""} `}>
-      <View className="flex-row items-center justify-between">
-        <Text className={`text-xs ${accent === "orange" ? "text-orange-700 font-medium" : "text-gray-600"}`}>
-          {label}
-        </Text>
-        <View className={`${colorMap[accent]}`}>{icon}</View>
+    <View
+      className={`rounded-2xl p-4 mr-3 w-40 ${primary ? "bg-brand-teal" : "bg-white border border-gray-100"
+        }`}
+    >
+      <View className="flex-row items-center justify-between mb-2">
+        <View
+          className={`p-1.5 rounded-full ${primary ? "bg-white/20" : "bg-gray-100"
+            }`}
+        >
+          {icon}
+        </View>
+        {trend && (
+          <View className="flex-row items-center">
+            <Ionicons
+              name={trendType === "up" ? "arrow-up" : "arrow-down"}
+              size={12}
+              color={primary ? "white" : trendType === "up" ? "#22C55E" : "#EF4444"}
+            />
+            <Text
+              className={`text-xs ml-0.5 ${primary
+                ? "text-white"
+                : trendType === "up"
+                  ? "text-status-success"
+                  : "text-status-danger"
+                }`}
+            >
+              {trend}
+            </Text>
+          </View>
+        )}
       </View>
-      <View className="mt-2">
-        <Text className={`font-bold ${emphasized ? "text-2xl" : "text-2xl"} ${accent === "orange" ? "text-orange-600" : "text-gray-900"}`}>
-          {typeof value === "number" ? value.toLocaleString() : value}
-        </Text>
-        {note ? (
-          <Text className={`text-xs mt-1 ${accent === "orange" ? "text-orange-600" : "text-gray-500"}`}>{note}</Text>
-        ) : null}
-      </View>
+      <Text
+        className={`text-2xl font-bold mb-1 ${primary ? "text-white" : "text-brand-slate"
+          }`}
+      >
+        {value}
+      </Text>
+      <Text className={`text-xs ${primary ? "text-white/80" : "text-gray-500"}`}>
+        {label}
+      </Text>
     </View>
   );
 }
-
-type RevenueRange = "day" | "week" | "month" | "year";
-
-const revenueRangeLabels: Record<RevenueRange, string> = {
-  day: "昨日",
-  week: "上週",
-  month: "上月",
-  year: "去年",
-};
 
 type OperationMode = "auto" | "semi";
 
 export default function Overview() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [revenueRange, setRevenueRange] = useState<RevenueRange>("day");
   const [mode, setMode] = useState<OperationMode>("auto");
 
-  // Mock data for static preview
-  const today = useMemo(
-    () =>
-      new Date().toLocaleDateString("zh-TW", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        weekday: "long",
-      }),
-    []
-  );
-
-  const revenueStats = useMemo(
-    () => ({
-      day: { amount: 12580, change: +12 },
-      week: { amount: 86540, change: +8 },
-      month: { amount: 345200, change: +5 },
-      year: { amount: 4120000, change: +15 },
-    }),
-    []
-  );
-
-  const orderStats = useMemo(
-    () => ({
-      day: { count: 18, change: +8 },
-      week: { count: 96, change: +12 },
-      month: { count: 382, change: +6 },
-      year: { count: 4210, change: +18 },
-    }),
-    []
-  );
-
-  const metrics = useMemo(
-    () => ({
-      pendingOrders: 5,
-    }),
-    []
-  );
+  // Mock Data
+  const todayMetrics = {
+    revenue: "$12,580",
+    orders: 18,
+    pending: 5,
+  };
 
   const reminders = [
-    { id: "r1", type: "today", title: "14:00 取貨 - 陳小姐 巴斯克6吋", tag: "今日" },
-    { id: "r2", type: "3day", title: "3 天後取貨 - 公司團購 12 入盒", tag: "3天" },
-    { id: "r3", type: "draft", title: "AI 草稿待確認 - 王小姐 改17:00", tag: "待確認" },
+    {
+      id: "r1",
+      title: "明天有 3 筆訂單需備貨",
+      time: "10:00 AM",
+      type: "alert",
+    },
+    {
+      id: "r2",
+      title: "王小姐的生日蛋糕需確認口味",
+      time: "14:30 PM",
+      type: "warning",
+    },
   ];
 
-  const todayOrders = [
-    { id: "o1", time: "10:30", customer: "王小明", item: "巴斯克6吋x1", status: "pending" },
-    { id: "o2", time: "14:00", customer: "陳小姐", item: "檸檬塔x2", status: "paid" },
-    { id: "o3", time: "17:30", customer: "劉先生", item: "布朗尼x3", status: "completed" },
+  const activities = [
+    {
+      id: "a1",
+      content: "AI 剛自動建立了 1 筆訂單",
+      time: "5 分鐘前",
+      type: "auto",
+    },
+    {
+      id: "a2",
+      content: "陳先生 完成了付款",
+      time: "15 分鐘前",
+      type: "success",
+    },
   ];
 
   const handleLogout = async () => {
@@ -152,278 +139,182 @@ export default function Overview() {
     ]);
   };
 
-  const highlightOrders = todayOrders.slice(0, 2);
+  const today = new Date().toLocaleDateString("zh-TW", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
 
-  const renderContent = () => (
-    <>
-    <View className="rounded-2xl border border-gray-100 bg-white p-4 ">
-      <Text className="text-sm font-semibold text-gray-900 mb-3">
-        營運模式
-      </Text>
-      <View className="flex-row bg-gray-100 rounded-full p-1">
-        {([
-          { key: "auto", label: "全自動", detail: "AI 自動回覆建單" },
-          { key: "semi", label: "半自動", detail: "需商家確認" },
-        ] as { key: OperationMode; label: string; detail: string }[]).map(
-          (option) => (
-            <TouchableOpacity
-              key={option.key}
-              onPress={() => setMode(option.key)}
-              className={`flex-1 px-3 py-2 rounded-full ${
-                mode === option.key ? "bg-white " : ""
-              }`}
-            >
-              <Text
-                className={`text-sm font-semibold text-center ${
-                  mode === option.key ? "text-gray-900" : "text-gray-500"
-                }`}
-              >
-                {option.label}
-              </Text>
-              <Text
-                className={` text-center ${
-                  mode === option.key ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
-                {option.detail}
-              </Text>
-            </TouchableOpacity>
-          )
-        )}
-      </View>
-      <Text className=" text-gray-500 mt-2">
-        {mode === "auto"
-          ? "AI 會自動處理對話並建立訂單，對話結果可在 Inbox 的自動紀錄查看。"
-          : "AI 先整理草稿，待你或團隊在 Inbox 確認/補欄位後建單。"}
-      </Text>
-    </View>
-
-    {/* Revenue & Orders Segments */}
-    <View className="my-4">
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-sm font-semibold text-gray-700">
-          營收 / 訂單期間
-        </Text>
-        <View className="flex-row bg-gray-100 rounded-full p-1">
-          {(["day", "week", "month", "year"] as RevenueRange[]).map(
-            (range) => (
-              <TouchableOpacity
-                key={range}
-                onPress={() => setRevenueRange(range)}
-                className={`px-3 py-1 rounded-full ${
-                  revenueRange === range ? "bg-white " : ""
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    revenueRange === range
-                      ? "text-gray-900"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {range === "day"
-                    ? "當日"
-                    : range === "week"
-                    ? "當週"
-                    : range === "month"
-                    ? "當月"
-                    : "當年"}
-                </Text>
-              </TouchableOpacity>
-            )
-          )}
-        </View>
-      </View>
-      <View className="flex-row -mx-1">
-        <View className="w-1/2 px-1">
-          <MetricCard
-            label={`${
-              revenueRange === "day"
-                ? "今日"
-                : revenueRange === "week"
-                ? "本週"
-                : revenueRange === "month"
-                ? "本月"
-                : "本年"
-            }營收`}
-            value={`$${revenueStats[revenueRange].amount.toLocaleString()}`}
-            note={`較${revenueRangeLabels[revenueRange]} ${
-              revenueStats[revenueRange].change > 0 ? "+" : ""
-            }${revenueStats[revenueRange].change}%`}
-            accent="blue"
-            icon={<Ionicons name="trending-up" size={16} />}
-          />
-        </View>
-        <View className="w-1/2 px-1">
-          <MetricCard
-            label={`${
-              revenueRange === "day"
-                ? "今日"
-                : revenueRange === "week"
-                ? "本週"
-                : revenueRange === "month"
-                ? "本月"
-                : "本年"
-            }訂單`}
-            value={`${orderStats[revenueRange].count} 筆`}
-            note={`較${revenueRangeLabels[revenueRange]} ${
-              orderStats[revenueRange].change > 0 ? "+" : ""
-            }${orderStats[revenueRange].change}%`}
-            accent="green"
-            icon={<Ionicons name="bag-handle" size={16} />}
-          />
-        </View>
-      </View>
-    </View>
-
-    {/* KPI Grid */}
-    <View className="flex-row flex-wrap -mx-1">
-      <View className="w-full px-1 mb-2">
-        <MetricCard
-          label="待處理訂單"
-          value={metrics.pendingOrders}
-          note="筆待確認"
-          accent="orange"
-          emphasized
-          icon={<Ionicons name="alert-circle" size={16} />}
-        />
-      </View>
-    
-    </View>
-
-    {/* Reminders */}
-    <View className="mt-6">
-      <View className="flex-row items-center justify-between mb-2">
-        <Text className="font-semibold text-gray-900">待辦與提醒</Text>
-        <Text className="text-xs text-gray-500">
-          共 {reminders.length} 項
-        </Text>
-      </View>
-      <View className="space-y-2">
-        {reminders.map((r) => (
-          <View
-            key={r.id}
-            className="flex-row items-center justify-between rounded-xl border border-gray-100 bg-white p-3 "
-          >
-            <View className="flex-row items-center gap-3">
-              {r.type === "draft" ? (
-                <MaterialCommunityIcons
-                  name="inbox"
-                  size={18}
-                  color={Palette.status.warning}
-                />
-              ) : (
-                <Ionicons
-                  name="alarm"
-                  size={18}
-                  color={Palette.status.info}
-                />
-              )}
-              <Text className="text-sm text-gray-800" numberOfLines={1}>
-                {r.title}
-              </Text>
-            </View>
-            <View className="rounded-full bg-gray-100 px-2 py-1">
-              <Text className="text-[10px] text-gray-600">{r.tag}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-
-    {/* Highlight Orders */}
-    <View className="mt-6">
-      <Text className="font-semibold text-gray-900 mb-2">最新訂單</Text>
-      <View className="space-y-2">
-        {highlightOrders.map((o) => (
-          <View
-            key={o.id}
-            className="flex-row items-center justify-between rounded-xl border border-gray-100 bg-white p-3 "
-          >
-            <View className="flex-1 mr-2">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xs text-gray-500">{o.time}</Text>
-                <Text
-                  className="text-sm font-medium text-gray-900"
-                  numberOfLines={1}
-                >
-                  {o.customer}
-                </Text>
-              </View>
-              <Text
-                className="text-xs text-gray-600 mt-0.5"
-                numberOfLines={1}
-              >
-                {o.item}
-              </Text>
-            </View>
-            <View
-              className={`rounded-full px-2 py-1 ${
-                o.status === "completed"
-                  ? "bg-green-100"
-                  : o.status === "paid"
-                  ? "bg-blue-100"
-                  : "bg-orange-100"
-              }`}
-            >
-              <Text
-                className={`text-[10px] ${
-                  o.status === "completed"
-                    ? "text-green-700"
-                    : o.status === "paid"
-                    ? "text-blue-700"
-                    : "text-orange-700"
-                }`}
-              >
-                {o.status === "completed"
-                  ? "已完成"
-                  : o.status === "paid"
-                  ? "已付款"
-                  : "待處理"}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-      <Text className="text-xs text-gray-500 mt-2">
-        其餘訂單請至「訂單」頁查看
-      </Text>
-    </View>
-
-    {/* Logout */}
-    <View className="mt-8">
-      <Pressable
-        onPress={handleLogout}
-        disabled={isLoggingOut}
-        className="w-full h-12 bg-red-500 rounded-lg items-center justify-center"
-        style={{ opacity: isLoggingOut ? 0.6 : 1 }}
-      >
-        {isLoggingOut ? (
-          <View className="flex-row items-center">
-            <ActivityIndicator color={Palette.neutrals.white} />
-            <Text className="text-white font-semibold text-base ml-2">
-              登出中...
-            </Text>
-          </View>
-        ) : (
-          <Text className="text-white font-semibold text-base">登出</Text>
-        )}
-      </Pressable>
-    </View>
-  </>
-  )
   return (
     <MainLayout
-      title="首頁總覽"
-      subtitle={`今日 ${orderStats.day.count} 筆訂單 · ${today}`}
+      title="Hi, 店主 Alex"
+      subtitle={`今日 ${todayMetrics.orders} 筆訂單 · ${today}`}
       teamName="甜點工作室 A"
       teamStatus="open"
-      onCreatePress={() => console.log("create")}
+      showActions={false} // Custom actions via rightContent
+      rightContent={
+        <View className="flex-row items-center gap-3">
+          <IconButton
+            icon="notifications-outline"
+            ariaLabel="提醒"
+            onPress={() => console.log("notifications")}
+            isDark={false}
+          />
+        </View>
+      }
       onNotificationsPress={() => console.log("notifications")}
-      onSearchPress={() => console.log("search")}
-      onTeamPress={() => console.log("team picker")}
     >
-     {renderContent()}
+      {/* AI Mode Switcher */}
+      <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
+        <TouchableOpacity
+          onPress={() => setMode("auto")}
+          className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${mode === "auto" ? "bg-white " : ""
+            }`}
+        >
+          <MaterialCommunityIcons
+            name="robot"
+            size={20}
+            color={mode === "auto" ? "#008080" : "#9CA3AF"}
+          />
+          <View>
+            <Text
+              className={`text-sm font-bold ${mode === "auto" ? "text-brand-teal" : "text-gray-500"
+                }`}
+            >
+              全自動
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setMode("semi")}
+          className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${mode === "semi" ? "bg-white " : ""
+            }`}
+        >
+          <MaterialCommunityIcons
+            name="file-document-edit"
+            size={20}
+            color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
+          />
+          <View>
+            <Text
+              className={`text-sm font-bold ${mode === "semi" ? "text-brand-slate" : "text-gray-500"
+                }`}
+            >
+              半自動
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Mode Description */}
+      <View className="mb-6 px-2">
+        <Text className="text-center text-gray-500 text-sm">
+          {mode === "auto"
+            ? "✨ AI 將自動回覆訊息並建立訂單"
+            : "📝 AI 生成草稿，需您確認後發送"}
+        </Text>
+      </View>
+
+      {/* Metrics Carousel */}
+      <View className="mb-8">
+        <View className="flex-row items-center justify-between mb-4 px-1">
+          <Text className="text-lg font-bold text-brand-slate">今日概況</Text>
+          <Text className="text-xs text-gray-400">Updated just now</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="-mx-6 px-6"
+        >
+          <MetricCard
+            label="今日營收"
+            value={todayMetrics.revenue}
+            icon={<Ionicons name="cash" size={20} color="white" />}
+            trend="+12%"
+            trendType="up"
+            primary
+          />
+          <MetricCard
+            label="今日訂單"
+            value={todayMetrics.orders}
+            icon={
+              <Ionicons name="receipt" size={20} color="rgb(90, 107, 124)" />
+            }
+            trend="+5"
+            trendType="up"
+          />
+          <MetricCard
+            label="待處理訊息"
+            value={todayMetrics.pending}
+            icon={
+              <MaterialCommunityIcons
+                name="message-processing"
+                size={20}
+                color="rgb(249, 115, 22)"
+              />
+            }
+            trend="需關注"
+            trendType="down"
+          />
+        </ScrollView>
+      </View>
+
+      {/* Timeline / Feed */}
+      <View className="mb-8">
+        <Text className="text-lg font-bold text-brand-slate mb-4 px-1">
+          待辦與動態
+        </Text>
+
+        {/* Reminders */}
+        <View className="space-y-3 mb-6">
+          {reminders.map((item) => (
+            <View
+              key={item.id}
+              className="bg-white p-4 rounded-xl border-l-4 border-l-brand-teal flex-row items-center"
+            >
+              <View className="bg-teal-50 p-2 rounded-full mr-3">
+                <Ionicons name="notifications" size={20} color="#008080" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-brand-slate font-semibold text-sm mb-1">
+                  {item.title}
+                </Text>
+                <Text className="text-gray-400 text-xs">{item.time}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Activities */}
+        <View className="space-y-4">
+          <Text className="text-sm font-semibold text-gray-500 px-1">最新動態</Text>
+          {activities.map((item) => (
+            <View key={item.id} className="flex-row items-start px-1">
+              <View className="mt-1 w-2 h-2 rounded-full bg-brand-teal mr-3" />
+              <View className="flex-1">
+                <Text className="text-gray-800 text-sm mb-0.5">{item.content}</Text>
+                <Text className="text-gray-400 text-xs">{item.time}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Logout */}
+      <View className="mt-4 mb-8">
+        <Pressable
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full h-12 bg-gray-100 rounded-xl items-center justify-center active:bg-gray-200"
+          style={{ opacity: isLoggingOut ? 0.6 : 1 }}
+        >
+          {isLoggingOut ? (
+            <ActivityIndicator color="#666" />
+          ) : (
+            <Text className="text-gray-600 font-semibold">登出</Text>
+          )}
+        </Pressable>
+      </View>
     </MainLayout>
   );
 }

@@ -8,10 +8,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // LINE 品牌綠色（唯一的彩色）
-        line: {
-          green: '#00B900',
-          DEFAULT: '#00B900',
+        // Design System Colors
+        brand: {
+          teal: '#008080', // Teal: AI, Automation, Efficiency
+          slate: '#5A6B7C', // Slate Blue: Business, Trust
+        },
+        status: {
+          success: '#22C55E', // Green: Auto-logged
+          warning: '#F97316', // Orange: Manual intervention
+          danger: '#EF4444',
         },
       }
     },

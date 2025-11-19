@@ -1,485 +1,497 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { IconButton } from "@/components/Navbar";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useMemo, useState, type ReactNode } from "react";
+import { Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
 
-type OrderStatus = "pending" | "ready" | "completed";
+type OrderStatus = "pending" | "processing" | "payment_pending" | "completed";
 type PrimaryTab = "orders" | "products";
+type StatusFilterKey = "all" | OrderStatus;
 
 const statusFilters = [
   { key: "all", label: "全部" },
-  { key: "pending", label: "待處理" },
-  { key: "ready", label: "待取貨" },
+  { key: "pending", label: "待確認" },
+  { key: "processing", label: "製作中" },
+  { key: "payment_pending", label: "待付款" },
   { key: "completed", label: "已完成" },
-] as const;
+] as const satisfies { key: StatusFilterKey; label: string }[];
+
+const brandTeal = Palette.brand.primary;
+const brandSlate = Palette.brand.slate;
+
+const statusChipMeta: Record<
+  StatusFilterKey,
+  { background: string; border: string; color: string; icon?: string }
+> = {
+  all: {
+    background: "#0F172A",
+    border: "#0F172A",
+    color: "#FFFFFF",
+  },
+  pending: {
+    background: "rgba(248, 113, 113, 0.15)",
+    border: "rgba(248, 113, 113, 0.4)",
+    color: "#DC2626",
+    icon: "#DC2626",
+  },
+  processing: {
+    background: "rgba(251, 146, 60, 0.15)",
+    border: "rgba(251, 146, 60, 0.4)",
+    color: "#EA580C",
+    icon: "#EA580C",
+  },
+  payment_pending: {
+    background: "rgba(59, 130, 246, 0.12)",
+    border: "rgba(59, 130, 246, 0.35)",
+    color: "#2563EB",
+    icon: "#2563EB",
+  },
+  completed: {
+    background: "rgba(34, 197, 94, 0.15)",
+    border: "rgba(34, 197, 94, 0.35)",
+    color: "#16A34A",
+    icon: "#16A34A",
+  },
+};
+
+const orderStatusMeta: Record<
+  OrderStatus,
+  {
+    label: string;
+    strip: string;
+    badgeBackground: string;
+    badgeColor: string;
+  }
+> = {
+  pending: {
+    label: "待確認",
+    strip: "#DC2626",
+    badgeBackground: "rgba(248, 113, 113, 0.15)",
+    badgeColor: "#DC2626",
+  },
+  processing: {
+    label: "製作中",
+    strip: "#F97316",
+    badgeBackground: "rgba(251, 146, 60, 0.15)",
+    badgeColor: "#EA580C",
+  },
+  payment_pending: {
+    label: "待付款",
+    strip: "#3B82F6",
+    badgeBackground: "rgba(59, 130, 246, 0.12)",
+    badgeColor: "#2563EB",
+  },
+  completed: {
+    label: "已完成",
+    strip: "#22C55E",
+    badgeBackground: "rgba(34, 197, 94, 0.15)",
+    badgeColor: "#16A34A",
+  },
+};
 
 type OrderItem = {
   id: string;
-  time: string;
+  orderNo: string;
+  timeLabel: string;
+  isToday: boolean;
   customer: string;
   summary: string;
+  itemCount: number;
   amount: number;
   status: OrderStatus;
-  source: "AI" | "手動";
 };
 
-type OrderSection = {
-  dateLabel: string;
-  items: OrderItem[];
+type ProductItem = {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  isOn: boolean;
+  stock?: number;
 };
 
 export default function Orders() {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("orders");
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof statusFilters)[number]["key"]>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
-  const sections = useMemo<OrderSection[]>(
+  // Mock Orders
+  const orders = useMemo<OrderItem[]>(
     () => [
       {
-        dateLabel: "今天 · 2/14 (週三)",
-        items: [
-          {
-            id: "o100",
-            time: "10:30",
-            customer: "王小明",
-            summary: "巴斯克 6吋 x1",
-            amount: 1280,
-            status: "pending",
-            source: "AI",
-          },
-          {
-            id: "o101",
-            time: "15:00",
-            customer: "陳小姐",
-            summary: "檸檬塔 x2",
-            amount: 960,
-            status: "pending",
-            source: "手動",
-          },
-        ],
+        id: "o1",
+        orderNo: "#202401",
+        timeLabel: "今天 14:00",
+        isToday: true,
+        customer: "王小明",
+        summary: "草莓鮮奶油蛋糕 6寸",
+        itemCount: 1,
+        amount: 1250,
+        status: "pending",
       },
       {
-        dateLabel: "明天 · 2/15 (週四)",
-        items: [
-          {
-            id: "o102",
-            time: "09:00",
-            customer: "劉先生",
-            summary: "綜合禮盒 x3",
-            amount: 2280,
-            status: "ready",
-            source: "AI",
-          },
-          {
-            id: "o103",
-            time: "18:00",
-            customer: "林小姐",
-            summary: "手工餅乾 x20",
-            amount: 1800,
-            status: "completed",
-            source: "手動",
-          },
-        ],
+        id: "o2",
+        orderNo: "#202402",
+        timeLabel: "今天 16:30",
+        isToday: true,
+        customer: "陳小姐",
+        summary: "檸檬塔",
+        itemCount: 3,
+        amount: 960,
+        status: "processing",
+      },
+      {
+        id: "o3",
+        orderNo: "#202399",
+        timeLabel: "11/20 14:00",
+        isToday: false,
+        customer: "林先生",
+        summary: "綜合禮盒",
+        itemCount: 5,
+        amount: 2800,
+        status: "payment_pending",
       },
     ],
     []
   );
 
-const productStats = useMemo(
-    () => ({
-      totalProducts: 24,
-      autoReplyTemplates: 6,
-      lowStock: 3,
-      autoMatchedRate: "82%",
-    }),
-    []
-  );
-
-  const products = useMemo(
-    () => [
-      {
-        id: "p1",
-        name: "巴斯克 6吋",
-        price: 1280,
-        prepTime: "2 小時",
-        aiPrompt: "提醒選口味與取貨時段",
-        stock: 8,
-        tags: ["常態商品", "蛋奶素"],
-      },
-      {
-        id: "p2",
-        name: "檸檬塔",
-        price: 480,
-        prepTime: "1 小時",
-        aiPrompt: "提供組合優惠、保存方式",
-        stock: 15,
-        tags: ["限量", "熱門"],
-      },
-      {
-        id: "p3",
-        name: "客製禮盒",
-        price: 1680,
-        prepTime: "3 小時",
-        aiPrompt: "詢問口味與卡片內容",
-        stock: 4,
-        tags: ["預購", "企業"],
-      },
-    ],
-    []
-  );
-
-  const aiTemplates = useMemo(
-    () => [
-      {
-        id: "t1",
-        name: "預購流程",
-        usage: "針對節慶預購，詢問日期與數量",
-      },
-      {
-        id: "t2",
-        name: "客製禮盒",
-        usage: "引導客人提供口味/卡片內容",
-      },
-      {
-        id: "t3",
-        name: "到貨提醒",
-        usage: "自動告知取貨時間與付款狀態",
-      },
-    ],
-    []
-  );
-
-  const quickProductActions = [
+  // Mock Products
+  const [products, setProducts] = useState<ProductItem[]>([
     {
-      icon: "add-circle-outline" as const,
-      label: "新增商品",
-      onPress: () => console.log("新增商品"),
+      id: "p1",
+      name: "草莓鮮奶油蛋糕",
+      price: 1250,
+      image: "https://placehold.co/100x100/png",
+      isOn: true,
+      stock: 5,
     },
     {
-      icon: "copy-outline" as const,
-      label: "建立範本",
-      onPress: () => console.log("建立範本"),
+      id: "p2",
+      name: "經典檸檬塔",
+      price: 320,
+      image: "https://placehold.co/100x100/png",
+      isOn: true,
+      stock: 12,
     },
     {
-      icon: "sparkles-outline" as const,
-      label: "AI 調教",
-      onPress: () => console.log("AI 調教"),
+      id: "p3",
+      name: "季節限定水果塔",
+      price: 450,
+      image: "https://placehold.co/100x100/png",
+      isOn: false,
+      stock: 0,
     },
-  ];
+  ]);
 
-  const primaryTabs = [
-    { key: "orders", label: "訂單" },
-    { key: "products", label: "商品" },
-  ] satisfies { key: PrimaryTab; label: string }[];
-
-  const handleCreate = () => {
-    if (primaryTab === "orders") {
-      console.log("create order");
-    } else {
-      console.log("create product");
-    }
+  const toggleProduct = (id: string) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, isOn: !p.isOn } : p))
+    );
   };
 
-  const renderStatusChip = (
-    key: (typeof statusFilters)[number]["key"],
-    label: string
-  ) => {
-    const isActive = statusFilter === key;
+  const summaryCards = useMemo(
+    () => {
+      const todaysOrders = orders.filter((order) => order.isToday);
+      const todaysRevenue = todaysOrders.reduce(
+        (sum, order) => sum + order.amount,
+        0
+      );
+      const pendingCount = todaysOrders.filter(
+        (order) => order.status === "pending"
+      ).length;
+      const processingCount = todaysOrders.filter(
+        (order) => order.status === "processing"
+      ).length;
+      const awaitingPayment = orders.filter(
+        (order) => order.status === "payment_pending"
+      ).length;
+
+      return [
+        {
+          label: "今日訂單",
+          value: `${todaysOrders.length} 筆`,
+          description: `待確認 ${pendingCount} · 製作中 ${processingCount}`,
+          icon: (
+            <Ionicons name="reader-outline" size={16} color="#FFFFFF" />
+          ),
+          highlight: true,
+        },
+        {
+          label: "今日營收",
+          value: `$${todaysRevenue.toLocaleString()}`,
+          description: "含預約訂單 2 筆",
+          icon: (
+            <Ionicons
+              name="cash-outline"
+              size={16}
+              color={brandTeal}
+            />
+          ),
+        },
+        {
+          label: "待付款",
+          value: `${awaitingPayment} 筆`,
+          description: "提醒顧客完成付款",
+          icon: (
+            <Ionicons
+              name="card-outline"
+              size={16}
+              color={brandSlate}
+            />
+          ),
+        },
+      ];
+    },
+    [orders]
+  );
+
+  const renderStatusChip = (filter: (typeof statusFilters)[number]) => {
+    const isActive = statusFilter === filter.key;
+    const meta = statusChipMeta[filter.key];
+
+    const backgroundColor = isActive ? meta.background : "#FFFFFF";
+    const borderColor = isActive ? meta.border : "#E2E8F0";
+    const textColor = isActive ? meta.color : "#475569";
+    const iconColor = isActive ? meta.icon ?? meta.color : "#94A3B8";
+
     return (
       <Pressable
-        key={key}
-        onPress={() => setStatusFilter(key)}
-        className={`px-3 py-1.5 rounded-full border ${
-          isActive ? "bg-gray-900 border-gray-900" : "border-gray-200 bg-white"
-        }`}
+        key={filter.key}
+        onPress={() => setStatusFilter(filter.key)}
+        className="px-3 py-1.5 rounded-full mr-2 border"
+        style={{ backgroundColor, borderColor }}
       >
-        <Text
-          className={`text-xs font-medium ${
-            isActive ? "text-white" : "text-gray-600"
-          }`}
-        >
-          {label}
-        </Text>
+        <View className="flex-row items-center gap-1">
+          {filter.key === "completed" && (
+            <Ionicons
+              name="checkmark-circle"
+              size={12}
+              color={iconColor}
+            />
+          )}
+          <Text className="text-xs font-semibold" style={{ color: textColor }}>
+            {filter.label}
+          </Text>
+        </View>
       </Pressable>
     );
   };
 
   const renderOrderCard = (order: OrderItem) => {
-    if (statusFilter !== "all" && statusFilter !== order.status) return null;
-
-    const statusMap: Record<
-      OrderStatus,
-      { label: string; bg: string; text: string; icon: keyof typeof Ionicons.glyphMap }
-    > = {
-      pending: {
-        label: "待確認",
-        bg: "bg-orange-100",
-        text: "text-orange-700",
-        icon: "alert-circle",
-      },
-      ready: {
-        label: "待取貨",
-        bg: "bg-purple-100",
-        text: "text-purple-700",
-        icon: "cube",
-      },
-      completed: {
-        label: "已完成",
-        bg: "bg-green-100",
-        text: "text-green-700",
-        icon: "checkmark-circle",
-      },
-    };
-
-    const currentStatus = statusMap[order.status];
+    const statusStyle = orderStatusMeta[order.status];
 
     return (
       <View
         key={order.id}
-        className="rounded-xl border border-gray-100 bg-white p-4   mb-3"
+        className="flex-row rounded-3xl bg-white overflow-hidden mb-3 border border-slate-100 "
+        style={{ minHeight: 100 }}
       >
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-gray-500">{order.time}</Text>
-            <Text className="text-base font-semibold text-gray-900">
-              {order.customer}
-            </Text>
-            <View className="rounded-full bg-gray-100 px-2 py-0.5">
-              <Text className="text-[10px] text-gray-500">{order.source}</Text>
+        {/* Status Strip */}
+        <View
+          className="w-1.5"
+          style={{ backgroundColor: statusStyle.strip }}
+        />
+
+        {/* Content */}
+        <View className="flex-1 p-4">
+          {/* Header */}
+          <View className="flex-row justify-between items-start mb-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-lg font-bold text-slate-900">
+                {order.customer}
+              </Text>
+              <Text className="text-xs text-slate-400">{order.orderNo}</Text>
+            </View>
+            <View className="flex-row items-center gap-1">
+              <View
+                className="px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: statusStyle.badgeBackground,
+                }}
+              >
+                <Text
+                  className="text-[11px] font-semibold"
+                  style={{ color: statusStyle.badgeColor }}
+                >
+                  {statusStyle.label}
+                </Text>
+              </View>
+              <Text
+                className={`text-xs ${order.isToday ? "font-bold text-slate-700" : "text-slate-500"
+                  }`}
+              >
+                {order.timeLabel}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color="#CBD5E1" />
             </View>
           </View>
-          <View
-            className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${currentStatus.bg}`}
-          >
-            <Ionicons name={currentStatus.icon} size={12} color="black" />
-            <Text className={`text-[10px] ${currentStatus.text}`}>
-              {currentStatus.label}
-            </Text>
-          </View>
-        </View>
-        <Text className="text-sm text-gray-700 mb-2">{order.summary}</Text>
-        <View className="flex-row items-center justify-between">
-          <Text className="text-base font-semibold text-gray-900">
-            ${order.amount.toLocaleString()}
+
+          {/* Summary */}
+          <Text className="text-sm text-slate-600 mb-3">
+            {order.summary}
+            {order.itemCount > 1 ? ` 等 ${order.itemCount} 件商品` : ""}
           </Text>
-          <View className="flex-row gap-3">
-            <IconAction icon="chatbubble-ellipses-outline" label="訊息" />
-            <IconAction icon="calendar-outline" label="提醒" />
-            <IconAction icon="ellipsis-horizontal" label="更多" />
+
+          {/* Price */}
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-bold" style={{ color: brandTeal }}>
+              ${order.amount.toLocaleString()}
+            </Text>
+            <Pressable
+              onPress={() => console.log("open order detail")}
+              className="flex-row items-center gap-1"
+            >
+              <Text className="text-xs font-semibold text-brand-slate">
+                查看詳情
+              </Text>
+              <Ionicons
+                name="arrow-forward-circle"
+                size={16}
+                color={brandSlate}
+              />
+            </Pressable>
           </View>
         </View>
       </View>
     );
   };
 
-  const renderOrderContent = () => (
-    <>
-      <View className="flex-row flex-wrap gap-2 mb-4">
-        {statusFilters.map((filter) =>
-          renderStatusChip(filter.key, filter.label)
+  const renderProductRow = (product: ProductItem) => (
+    <View
+      key={product.id}
+      className="flex-row items-center p-4 rounded-2xl border border-slate-100 bg-white shadow-[0px_10px_25px_rgba(15,23,42,0.04)] mb-3"
+    >
+      <View className="relative mr-3">
+        <Image
+          source={{ uri: product.image }}
+          className="w-12 h-12 rounded-xl"
+        />
+        {!product.isOn && (
+          <View className="absolute inset-0 bg-white/60 rounded-xl" />
         )}
       </View>
-      {sections.map((section) => (
-        <View key={section.dateLabel} className="mb-6">
-          <Text className="text-xs font-semibold text-gray-500 mb-2">
-            {section.dateLabel}
-          </Text>
-          {section.items.map((order) => renderOrderCard(order))}
-        </View>
-      ))}
-    </>
-  );
 
-  const renderProductContent = () => (
-    <View className="space-y-5">
-      <View className="flex-row flex-wrap -mx-1">
-        <View className="w-1/2 px-1 mb-2">
-          <SummaryCard
-            label="商品數"
-            value={`${productStats.totalProducts} 個`}
-            description="AI 已可辨識 20 個"
-            icon={
-              <Ionicons
-                name="cube-outline"
-                size={18}
-                color={Palette.status.info}
-              />
-            }
-          />
-        </View>
-        <View className="w-1/2 px-1 mb-2">
-          <SummaryCard
-            label="低庫存提醒"
-            value={`${productStats.lowStock} 項`}
-            description="建議補貨"
-            icon={
-              <Ionicons
-                name="warning-outline"
-                size={18}
-                color={Palette.status.warning}
-              />
-            }
-          />
-        </View>
-        <View className="w-1/2 px-1 mb-2">
-          <SummaryCard
-            label="AI 自動對應"
-            value={productStats.autoMatchedRate}
-            description="近 7 天成功率"
-            icon={
-              <Ionicons
-                name="flash-outline"
-                size={18}
-                color={Palette.status.success}
-              />
-            }
-          />
-        </View>
+      <View className="flex-1">
+        <Text
+          className={`text-base font-semibold ${product.isOn ? "text-slate-900" : "text-slate-400"
+            }`}
+        >
+          {product.name}
+        </Text>
+        <Text className="text-sm text-slate-500">
+          ${product.price}
+          {product.stock !== undefined && ` · 剩餘: ${product.stock}`}
+        </Text>
       </View>
 
-      <View className="flex-row gap-2">
-        {quickProductActions.map((action) => (
-          <Pressable
-            key={action.label}
-            onPress={action.onPress}
-            className="flex-1 h-12 rounded-xl border border-gray-200 items-center justify-center flex-row gap-2 bg-white"
-          >
-            <Ionicons
-              name={action.icon}
-              size={16}
-              color={Palette.neutrals.heading}
-            />
-            <Text className="text-xs text-gray-900 font-semibold">
-              {action.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View>
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-sm font-semibold text-gray-900">商品清單</Text>
-          <Text className="text-[11px] text-gray-500">總共 {products.length} 項</Text>
-        </View>
-        <View className="space-y-3">
-          {products.map((product) => (
-            <View
-              key={product.id}
-              className="rounded-xl border border-gray-100 bg-white p-4  "
-            >
-              <View className="flex-row items-center justify-between mb-2">
-                <View>
-                  <Text className="text-base font-semibold text-gray-900">
-                    {product.name}
-                  </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
-                    準備時間 {product.prepTime}
-                  </Text>
-                </View>
-                <Text className="text-base font-semibold text-gray-900">
-                  ${product.price.toLocaleString()}
-                </Text>
-              </View>
-              <View className="flex-row flex-wrap gap-2 mb-2">
-                {product.tags.map((tag) => (
-                  <View
-                    key={tag}
-                    className="rounded-full bg-gray-100 px-2 py-0.5"
-                  >
-                    <Text className="text-[10px] text-gray-600">{tag}</Text>
-                  </View>
-                ))}
-              </View>
-              <Text className="text-xs text-gray-500 mb-3">
-                AI 提醒：{product.aiPrompt}
-              </Text>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
-                  <View className="w-2 h-2 rounded-full bg-green-400" />
-                  <Text className="text-xs text-gray-600">
-                    現貨 {product.stock} 份
-                  </Text>
-                </View>
-                <Pressable className="px-3 py-1 rounded-full border border-gray-200">
-                  <Text className="text-xs text-gray-900 font-medium">
-                    編輯設定
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View>
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-sm font-semibold text-gray-900">AI 範本</Text>
-          <Text className="text-[11px] text-gray-500">
-            {aiTemplates.length} 組
-          </Text>
-        </View>
-        <View className="space-y-2">
-          {aiTemplates.map((tpl) => (
-            <View
-              key={tpl.id}
-              className="rounded-xl border border-gray-100 bg-white p-3  "
-            >
-              <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-sm font-semibold text-gray-900">
-                  {tpl.name}
-                </Text>
-                <Pressable className="px-2 py-1 rounded-full border border-gray-200">
-                  <Text className="text-[10px] text-gray-900">調整</Text>
-                </Pressable>
-              </View>
-              <Text className="text-xs text-gray-600">{tpl.usage}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+      <Switch
+        value={product.isOn}
+        onValueChange={() => toggleProduct(product.id)}
+        trackColor={{ false: "#CBD5E1", true: brandTeal }}
+        thumbColor={"#FFFFFF"}
+      />
     </View>
   );
 
   return (
     <MainLayout
       title="訂單管理"
-      subtitle={
-        primaryTab === "orders" ? "本週 24 筆 · 5 待處理" : "商品設定"
-      }
       teamName="甜點工作室 A"
-      onCreatePress={handleCreate}
-      onSearchPress={() => console.log("search order")}
-      onNotificationsPress={() => console.log("notifications")}
-      onTeamPress={() => console.log("team picker")}
-      tabs={primaryTabs.map((tab) => ({
-        ...tab,
-        active: tab.key === primaryTab,
-        onPress: () => setPrimaryTab(tab.key),
-      }))}
+      centerContent={
+        <SegmentedControl
+          options={[
+            { label: "訂單管理", value: "orders" },
+            { label: "商品管理", value: "products" },
+          ]}
+          value={primaryTab}
+          onChange={(val) => setPrimaryTab(val as PrimaryTab)}
+          theme="brand"
+        />
+      }
+      rightContent={
+        <View className="flex-row items-center gap-2">
+          {primaryTab === "orders" ? (
+            <IconButton
+              icon="add"
+              ariaLabel="新增訂單"
+              onPress={() => console.log("create order")}
+              isDark={false}
+            />
+          ) : (
+            <View />
+          )}
+        </View>
+      }
     >
-      {primaryTab === "orders" ? renderOrderContent() : renderProductContent()}
+      {primaryTab === "orders" ? (
+        <View>
+          <View className="mb-6">
+            <View className="flex-row items-center justify-between mb-3 px-1">
+              <Text className="text-lg font-bold text-brand-slate">
+                今日概況
+              </Text>
+              <Text className="text-xs text-slate-400">模擬資料</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="pl-1"
+              contentContainerStyle={{ gap: 12, paddingRight: 16 }}
+            >
+              {summaryCards.map((card) => (
+                <SummaryCard key={card.label} {...card} />
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Sub-Header Tools */}
+          <View className="flex-row items-center justify-between mb-4">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="flex-1 mr-2"
+            >
+              {statusFilters.map((filter) => renderStatusChip(filter))}
+            </ScrollView>
+            <View className="border-l border-gray-200 pl-2">
+              <IconButton
+                icon={viewMode === "list" ? "list-outline" : "calendar-outline"}
+                ariaLabel="切換檢視"
+                onPress={() =>
+                  setViewMode((v) => (v === "list" ? "calendar" : "list"))
+                }
+                isDark={false}
+              />
+            </View>
+          </View>
+
+          {/* Order List */}
+          <View className="pb-20">
+            {orders.map((order) => renderOrderCard(order))}
+          </View>
+        </View>
+      ) : (
+        <View className="relative h-full">
+          {/* Product List */}
+          <ScrollView
+            className="pb-20"
+            contentContainerStyle={{ paddingBottom: 80 }}
+          >
+            {products.map((product) => renderProductRow(product))}
+          </ScrollView>
+
+          {/* FAB */}
+          <Pressable
+            className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-brand-teal items-center justify-center "
+            onPress={() => console.log("add product")}
+          >
+            <Ionicons name="add" size={30} color="white" />
+          </Pressable>
+        </View>
+      )}
     </MainLayout>
-  );
-}
-
-type IconActionProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-};
-
-function IconAction({ icon, label }: IconActionProps) {
-  return (
-    <Pressable
-      className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
-      accessibilityLabel={label}
-    >
-      <Ionicons
-        name={icon}
-        size={14}
-        color={Palette.neutrals.heading}
-      />
-    </Pressable>
   );
 }
 
@@ -487,21 +499,53 @@ type SummaryCardProps = {
   label: string;
   value: string;
   description?: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
+  highlight?: boolean;
 };
 
-function SummaryCard({ label, value, description, icon }: SummaryCardProps) {
+function SummaryCard({
+  label,
+  value,
+  description,
+  icon,
+  highlight,
+}: SummaryCardProps) {
+  const backgroundColor = highlight ? brandTeal : "#FFFFFF";
+  const textColor = highlight ? "#FFFFFF" : "#0F172A";
+  const descriptionColor = highlight ? "rgba(255,255,255,0.7)" : "#64748B";
+
   return (
-    <View className="rounded-xl bg-white p-4 border border-gray-100  ">
-      <View className="flex-row items-center gap-2 mb-2">
-        <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center">
-          {icon}
-        </View>
-        <Text className="text-xs text-gray-500">{label}</Text>
+    <View
+      className="w-48 rounded-3xl border p-4"
+      style={{
+        backgroundColor,
+        borderColor: highlight ? "transparent" : "#E2E8F0",
+      }}
+    >
+      <View
+        className="w-10 h-10 rounded-2xl items-center justify-center mb-3"
+        style={{
+          backgroundColor: highlight ? "rgba(255,255,255,0.2)" : "#F1F5F9",
+        }}
+      >
+        {icon}
       </View>
-      <Text className="text-xl font-bold text-gray-900">{value}</Text>
+      <Text
+        className="text-xs font-semibold uppercase tracking-wide"
+        style={{ color: descriptionColor }}
+      >
+        {label}
+      </Text>
+      <Text className="text-2xl font-bold mt-1" style={{ color: textColor }}>
+        {value}
+      </Text>
       {description ? (
-        <Text className="text-[11px] text-gray-500 mt-1">{description}</Text>
+        <Text
+          className="text-[11px] mt-1"
+          style={{ color: descriptionColor }}
+        >
+          {description}
+        </Text>
       ) : null}
     </View>
   );

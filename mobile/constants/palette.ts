@@ -1,33 +1,18 @@
+const BRAND_TEAL = "#008080";
+const BRAND_SLATE = "#5A6B7C";
+const STATUS_SUCCESS = "#22C55E";
+const STATUS_WARNING = "#F97316";
+const STATUS_DANGER = "#EF4444";
+
 export const Palette = {
   brand: {
-    primary: "#00B900",
-  },
-  neutrals: {
-    white: "#FFFFFF",
-    surface: "#F8FAFC",
-    text: "#11181C",
-    heading: "#111827",
-    slate600: "#4B5563",
-    icon: "#687076",
-    iconMuted: "#9BA1A6",
-    placeholder: "#9CA3AF",
-    darkSurface: "#151718",
-  },
-  neutralsDark: {
-    text: "#ECEDEE",
-    background: "#151718",
-    surface: "#1F2125",
-    heading: "#F8FAFC",
-    icon: "#9BA1A6",
-    iconMuted: "#6B7280",
-    border: "#1F2933",
+    primary: BRAND_TEAL,
+    teal: BRAND_TEAL,
+    slate: BRAND_SLATE,
   },
   status: {
-    success: "#22C55E",
-    warning: "#F97316",
-    danger: "#EF4444",
-    info: "#0EA5E9",
+    success: STATUS_SUCCESS,
+    warning: STATUS_WARNING,
+    danger: STATUS_DANGER,
   },
 } as const;
-
-export type Palette = typeof Palette;

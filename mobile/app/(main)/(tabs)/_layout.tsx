@@ -1,111 +1,33 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
-
+import { Palette } from "@/constants/palette";
 import {
   Icon,
   Label,
   NativeTabs,
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
-
 export default function TabLayout() {
-  
+  const activeColor = Palette.brand.primary;
+  const tabConfigs = [
+    { name: "overview", icon: "view-dashboard", label: "總覽" },
+    { name: "orders", icon: "clipboard-list", label: "訂單" },
+    { name: "inbox", icon: "message-text", label: "訊息" },
+    { name: "customers", icon: "account-group", label: "顧客" },
+    { name: "settings", icon: "cog", label: "設定" },
+  ] as const;
+
   return (
     <NativeTabs>
-      <NativeTabs.Trigger name="overview">
-        <Label>Home</Label>
-        <Icon
-          src={<VectorIcon family={MaterialCommunityIcons} name="home" />}
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="orders">
-        <Label>Orders</Label>
-        <Icon
-          src={<VectorIcon family={MaterialCommunityIcons} name="receipt" />}
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="inbox">
-        <Label>Inbox</Label>
-        <Icon
-          src={<VectorIcon family={MaterialCommunityIcons} name="email" />}
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="customers">
-        <Label>Customers</Label>
-        <Icon
-          src={<VectorIcon family={MaterialCommunityIcons} name="account" />}
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="settings">
-        <Label>Settings</Label>
-        <Icon
-          src={<VectorIcon family={MaterialCommunityIcons} name="cog" />}
-        />
-      </NativeTabs.Trigger>
+      {tabConfigs.map(({ name, icon, label }) => (
+        <NativeTabs.Trigger key={name} name={name}>
+          <Icon
+            selectedColor={activeColor}
+            src={<VectorIcon family={MaterialCommunityIcons} name={icon} />}
+          />
+          <Label selectedStyle={{ color: activeColor }}>{label}</Label>
+        </NativeTabs.Trigger>
+      ))}
     </NativeTabs>
   );
-  //     screenOptions={{
-  //       tabBarActiveTintColor: Colors.light.line.green,
-  //       tabBarInactiveTintColor: Colors.light.text,
-  //       headerShown: false,
-  //       tabBarStyle: {
-  //         backgroundColor: Colors.light.background,
-  //         borderTopColor: Colors.light.icon,
-  //       },
-  //     }}
-  //   >
-  //     <Tabs.Screen
-  //       name="overview"
-  //       options={{
-  //         tabBarIcon: ({ color, size }) => (
-  //           <MaterialCommunityIcons name="home" size={size} color={color} />
-  //         ),
-  //       }}
-  //     />
-  //     <Tabs.Screen
-  //       name="orders"
-  //       options={{
-  //         tabBarIcon: ({ color, size }) => (
-  //           <MaterialCommunityIcons name="inbox" size={size} color={color} />
-  //         ),
-  //       }}
-  //     />
-  //     <Tabs.Screen
-  //       name="inbox"
-  //       options={{
-  //         tabBarIcon: ({ color, size }) => (
-  //           <MaterialCommunityIcons
-  //             name="clipboard-text"
-  //             size={size}
-  //             color={color}
-  //           />
-  //         ),
-  //       }}
-  //     />
-  //     <Tabs.Screen
-  //       name="customers"
-  //       options={{
-  //         tabBarIcon: ({ color, size }) => (
-  //           <MaterialCommunityIcons
-  //             name="account-group"
-  //             size={size}
-  //             color={color}
-  //           />
-  //         ),
-  //       }}
-  //     />
-  //     <Tabs.Screen
-  //       name="settings"
-  //       options={{
-  //         tabBarIcon: ({ color, size }) => (
-  //           <MaterialCommunityIcons name="cog" size={size} color={color} />
-  //         ),
-  //       }}
-  //     />
-  //   </Tabs>
-  // );
+  
 }

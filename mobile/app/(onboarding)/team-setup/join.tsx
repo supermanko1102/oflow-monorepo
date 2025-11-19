@@ -60,7 +60,7 @@ export default function JoinTeam() {
           onPress={() => router.back()}
           className="self-start flex-row items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2"
         >
-          <Ionicons name="chevron-back" size={16} color={Palette.neutrals.heading} />
+          <Ionicons name="chevron-back" size={16} color="#0F172A" />
           <Text className="text-xs font-semibold text-gray-900">返回</Text>
         </Pressable>
 
@@ -97,7 +97,7 @@ export default function JoinTeam() {
             onChangeText={setInviteCode}
             placeholder="例如：OFLOW1234"
             className="w-full h-16 bg-white rounded-3xl px-4 text-center text-base border border-gray-200 tracking-widest"
-            placeholderTextColor={Palette.neutrals.placeholder}
+            placeholderTextColor="#94A3B8"
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={10}
@@ -119,7 +119,7 @@ export default function JoinTeam() {
         >
           {joinTeam.isPending ? (
             <View className="flex-row items-center">
-              <ActivityIndicator color={Palette.neutrals.white} className="mr-2" />
+              <ActivityIndicator color="#FFFFFF" className="mr-2" />
               <Text className="text-white font-semibold text-base">加入中...</Text>
             </View>
           ) : (

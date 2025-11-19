@@ -1,9 +1,9 @@
-import { Palette } from "@/constants/palette";
 import { syncAuthStatus } from "@/services/auth";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { Palette } from "@/constants/palette";
 
 export default function LineSetupOnboardingLayout() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function LineSetupOnboardingLayout() {
   if (!isHydrated) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color={Palette.status.info} />
+        <ActivityIndicator size="large" color={Palette.brand.primary} />
       </View>
     );
   }
@@ -46,7 +46,7 @@ export default function LineSetupOnboardingLayout() {
 
   return (
     <View className="flex-1 justify-center items-center bg-white">
-      <ActivityIndicator size="large" color={Palette.neutrals.placeholder} />
+      <ActivityIndicator size="large" color={Palette.brand.slate} />
     </View>
   );
 }

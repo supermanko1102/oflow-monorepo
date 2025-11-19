@@ -99,9 +99,7 @@ export default function TeamSetupIndex() {
               <Ionicons
                 name={option.icon}
                 size={22}
-                color={
-                  isPrimary ? Palette.neutrals.white : Palette.neutrals.heading
-                }
+                color={isPrimary ? "#FFFFFF" : "#0F172A"}
               />
             </View>
             <View className="flex-1">
@@ -124,7 +122,7 @@ export default function TeamSetupIndex() {
           <Ionicons
             name="chevron-forward"
             size={20}
-            color={isPrimary ? Palette.neutrals.white : Palette.neutrals.icon}
+            color={isPrimary ? "#FFFFFF" : "#64748B"}
           />
         </Pressable>
       </View>
@@ -167,7 +165,7 @@ export default function TeamSetupIndex() {
           <Ionicons
             name="information-circle-outline"
             size={18}
-            color={Palette.neutrals.heading}
+            color="#0F172A"
           />
           <Text className="text-sm font-semibold text-gray-900">什麼是團隊？</Text>
         </View>

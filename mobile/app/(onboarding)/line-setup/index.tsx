@@ -212,7 +212,7 @@ export default function LineSetup() {
         onPress={() => setStep(1)}
         className="self-start flex-row items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2"
       >
-        <Ionicons name="chevron-back" size={16} color={Palette.neutrals.heading} />
+        <Ionicons name="chevron-back" size={16} color="#0F172A" />
         <Text className="text-xs font-semibold text-gray-900">返回</Text>
       </Pressable>
 
@@ -233,7 +233,7 @@ export default function LineSetup() {
             onChangeText={setChannelId}
             placeholder="例如：1234567890"
             className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
-            placeholderTextColor={Palette.neutrals.placeholder}
+            placeholderTextColor="#94A3B8"
             keyboardType="numeric"
           />
         </View>
@@ -247,7 +247,7 @@ export default function LineSetup() {
             onChangeText={setChannelSecret}
             placeholder="例如：abcdef1234567890"
             className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
-            placeholderTextColor={Palette.neutrals.placeholder}
+            placeholderTextColor="#94A3B8"
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -262,7 +262,7 @@ export default function LineSetup() {
             onChangeText={setChannelAccessToken}
             placeholder="長字串的 Access Token"
             className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
-            placeholderTextColor={Palette.neutrals.placeholder}
+            placeholderTextColor="#94A3B8"
             autoCapitalize="none"
             autoCorrect={false}
             multiline={false}
@@ -293,7 +293,7 @@ export default function LineSetup() {
         >
           {isSubmitting ? (
             <View className="flex-row items-center">
-              <ActivityIndicator color={Palette.neutrals.white} className="mr-2" />
+              <ActivityIndicator color="#FFFFFF" className="mr-2" />
               <Text className="text-white font-semibold text-base">
                 設定中...
               </Text>

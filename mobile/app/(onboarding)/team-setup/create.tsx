@@ -126,7 +126,7 @@ export default function CreateTeam() {
         onPress={() => router.back()}
         className="self-start mb-2 flex-row items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2"
       >
-        <Ionicons name="chevron-back" size={16} color={Palette.neutrals.heading} />
+        <Ionicons name="chevron-back" size={16} color="#0F172A" />
         <Text className="text-xs font-semibold text-gray-900">返回</Text>
       </Pressable>
 
@@ -142,7 +142,7 @@ export default function CreateTeam() {
           onChangeText={setTeamName}
           placeholder="例如：美味餐廳、甜點工作室"
           className="w-full h-14 bg-white rounded-2xl px-4 text-base border border-gray-200"
-          placeholderTextColor={Palette.neutrals.placeholder}
+          placeholderTextColor="#94A3B8"
           autoFocus
         />
       </View>
@@ -175,9 +175,7 @@ export default function CreateTeam() {
                   <Ionicons
                     name={category.icon}
                     size={18}
-                    color={
-                      isActive ? Palette.brand.primary : Palette.neutrals.heading
-                    }
+                    color={isActive ? Palette.brand.primary : "#0F172A"}
                   />
                 </View>
                 <View className="flex-1">
@@ -195,9 +193,7 @@ export default function CreateTeam() {
                 <Ionicons
                   name={isActive ? "radio-button-on" : "radio-button-off"}
                   size={18}
-                  color={
-                    isActive ? Palette.brand.primary : Palette.neutrals.icon
-                  }
+                  color={isActive ? Palette.brand.primary : "#94A3B8"}
                 />
               </Pressable>
             );
@@ -216,7 +212,7 @@ export default function CreateTeam() {
       >
         {createTeam.isPending ? (
           <View className="flex-row items-center">
-            <ActivityIndicator color={Palette.neutrals.white} className="mr-2" />
+            <ActivityIndicator color="#FFFFFF" className="mr-2" />
             <Text className="text-white font-semibold text-base">建立中...</Text>
           </View>
         ) : (
