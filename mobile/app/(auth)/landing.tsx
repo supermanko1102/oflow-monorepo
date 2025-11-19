@@ -1,5 +1,5 @@
-import { loginWithApple, loginWithGoogle } from "@/services/auth-providers";
-import { syncAuthStatus, loginWithLine } from "@/services/auth";
+import { initiateAppleLogin } from "@/services/apple";
+import { loginWithApple, loginWithLine } from "@/services/auth";
 import { handleAuthCallback, initiateLineLogin } from "@/services/line";
 import { useState } from "react";
 
@@ -38,30 +38,36 @@ export default function Landing() {
   };
 
   // Google 登入處理函數
-  const handleGoogleLogin = async () => {
-    try {
-      setIsLoading(true);
-      await loginWithGoogle();
-      // OAuth flow 會自動導向，登入成功後 Supabase 會觸發 onAuthStateChange
-      await syncAuthStatus();
-    } catch (e) {
-      console.error("Google Login: Error", e);
-      Alert.alert("登入失敗", "無法完成 Google 登入，請稍後再試", [
-        { text: "確定" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const handleGoogleLogin = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const session = await initiateGoogleLogin();
+  //     await loginWithGoogle(session.access_token, session.refresh_token);
+  //   } catch (e) {
+  //     if (e instanceof Error && e.message === "使用者取消登入") {
+  //       Alert.alert("登入已取消", "您已取消 Google 登入", [{ text: "確定" }]);
+  //       return;
+  //     }
+  //     console.error("Google Login: Error", e);
+  //     Alert.alert("登入失敗", "無法完成 Google 登入，請稍後再試", [
+  //       { text: "確定" },
+  //     ]);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
-  // Apple 登入處理函數  
+  // Apple 登入處理函數
   const handleAppleLogin = async () => {
     try {
       setIsLoading(true);
-      await loginWithApple();
-      // OAuth flow 會自動導向，登入成功後 Supabase 會觸發 onAuthStateChange
-      await syncAuthStatus();
+      const session = await initiateAppleLogin();
+      await loginWithApple(session.access_token, session.refresh_token);
     } catch (e) {
+      if (e instanceof Error && e.message === "使用者取消登入") {
+        Alert.alert("登入已取消", "您已取消 Apple 登入", [{ text: "確定" }]);
+        return;
+      }
       console.error("Apple Login: Error", e);
       Alert.alert("登入失敗", "無法完成 Apple 登入，請稍後再試", [
         { text: "確定" },
@@ -152,7 +158,7 @@ export default function Landing() {
         </View>
 
         {/* Google 登入 */}
-        <View className="w-full mb-4">
+        {/* <View className="w-full mb-4">
           <Pressable
             onPress={() => handleGoogleLogin()}
             disabled={isLoading}
@@ -163,7 +169,7 @@ export default function Landing() {
               使用 Google 登入
             </Text>
           </Pressable>
-        </View>
+        </View> */}
 
         {/* Apple 登入 (iOS only) */}
         {Platform.OS === "ios" && (
