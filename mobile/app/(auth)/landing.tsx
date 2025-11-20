@@ -1,6 +1,7 @@
 import { initiateAppleLogin } from "@/services/apple";
-import { loginWithLine, loginWithApple } from "@/services/auth";
+import { loginWithLine, loginWithApple, syncAuthStatus } from "@/services/auth";
 import { handleAuthCallback, initiateLineLogin } from "@/services/line";
+import { supabase } from "@/lib/supabase";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 
@@ -12,11 +13,13 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
 export default function Landing() {
   const [isLoading, setIsLoading] = useState(false);
+  const [devEmail, setDevEmail] = useState("");
 
   // LINE 登入處理函數
   const handleLineLogin = async () => {
@@ -56,6 +59,28 @@ export default function Landing() {
       Alert.alert("登入失敗", "無法完成 Apple 登入，請稍後再試", [
         { text: "確定" },
       ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDevLogin = async () => {
+    if (!devEmail) {
+      Alert.alert("Error", "Please enter an email");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: devEmail,
+        password: "Dev1234!",
+      });
+      if (error) throw error;
+      await syncAuthStatus();
+    } catch (e) {
+      if (e instanceof Error) {
+        Alert.alert("Dev Login Failed", e.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -198,6 +223,30 @@ export default function Landing() {
                   使用 Apple 登入
                 </Text>
               </View>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Dev Login */}
+        {__DEV__ && Platform.OS === "android" && (
+          <View className="w-full mb-8 p-4 bg-gray-100 rounded-xl">
+            <Text className="text-sm font-bold text-gray-500 mb-2">
+              Developer Login
+            </Text>
+            <TextInput
+              className="w-full h-12 bg-white rounded-lg px-4 mb-3 border border-gray-200"
+              placeholder="Enter Dev Email"
+              value={devEmail}
+              onChangeText={setDevEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Pressable
+              onPress={handleDevLogin}
+              disabled={isLoading}
+              className="w-full h-12 bg-gray-800 rounded-lg items-center justify-center"
+            >
+              <Text className="text-white font-bold">Login as Dev</Text>
             </Pressable>
           </View>
         )}
