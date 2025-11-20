@@ -5,8 +5,10 @@ import {
   useDashboardSummary,
   useRevenueStats,
 } from "@/hooks/queries/useDashboard";
+import { useTeams, useUpdateAutoMode } from "@/hooks/queries/useTeams";
+import { useUser } from "@/hooks/queries/useUser";
 import { useAuthStore } from "@/stores/auth";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -93,8 +95,43 @@ type OperationMode = "auto" | "semi";
 
 export default function Overview() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [mode, setMode] = useState<OperationMode>("auto");
   const currentTeamId = useAuthStore((state) => state.currentTeamId);
+
+  // Fetch User
+  const { data: user } = useUser();
+
+  // Fetch Teams
+  const { data: teams } = useTeams();
+  const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
+
+  // Auto Mode Mutation
+  const { mutateAsync: mutateAutoMode, isPending: isUpdatingMode } =
+    useUpdateAutoMode();
+
+  // Local state for mode to allow optimistic UI, synced with server state
+  const [mode, setMode] = useState<OperationMode>("auto");
+
+  useEffect(() => {
+    if (currentTeam) {
+      setMode(currentTeam.auto_mode ? "auto" : "semi");
+    }
+  }, [currentTeam?.auto_mode]);
+
+  const handleModeChange = async (newMode: OperationMode) => {
+    if (!currentTeamId || isUpdatingMode) return;
+
+    try {
+      // Wait for server confirmation
+      await mutateAutoMode({
+        teamId: currentTeamId,
+        autoMode: newMode === "auto",
+      });
+      // Update local state only after success
+      setMode(newMode);
+    } catch (error) {
+      Alert.alert("更新失敗", "無法更新自動模式設定");
+    }
+  };
 
   // Fetch dashboard data
   const {
@@ -134,36 +171,100 @@ export default function Overview() {
     };
   }, [dashboardData, revenueData]);
 
-  // Mock reminders and activities (TODO: implement real data)
-  const reminders = [
-    {
-      id: "r1",
-      title: "明天有 3 筆訂單需備貨",
-      time: "10:00 AM",
-      type: "alert",
-    },
-    {
-      id: "r2",
-      title: "王小姐的生日蛋糕需確認口味",
-      time: "14:30 PM",
-      type: "warning",
-    },
-  ];
+  // Generate Reminders from real data
+  const reminders = useMemo(() => {
+    if (!dashboardData) return [];
 
-  const activities = [
-    {
-      id: "a1",
-      content: "AI 剛自動建立了 1 筆訂單",
-      time: "5 分鐘前",
-      type: "auto",
-    },
-    {
-      id: "a2",
-      content: "陳先生 完成了付款",
-      time: "15 分鐘前",
-      type: "success",
-    },
-  ];
+    const items = [];
+
+    // Pending orders reminder
+    if (dashboardData.todayPending.length > 0) {
+      items.push({
+        id: "pending-orders",
+        title: `今天還有 ${dashboardData.todayPending.length} 筆訂單需處理`,
+        time: "現在",
+        type: "alert",
+      });
+    }
+
+    // Future orders reminder
+    if (dashboardData.future.length > 0) {
+      const tomorrowOrders = dashboardData.future.filter((o) => {
+        const date = new Date(o.appointmentDate);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return date.getDate() === tomorrow.getDate();
+      });
+
+      if (tomorrowOrders.length > 0) {
+        items.push({
+          id: "tomorrow-orders",
+          title: `明天有 ${tomorrowOrders.length} 筆預約/訂單`,
+          time: "明天",
+          type: "warning",
+        });
+      }
+    }
+
+    if (items.length === 0) {
+      items.push({
+        id: "no-reminders",
+        title: "目前沒有緊急待辦事項",
+        time: "現在",
+        type: "success",
+      });
+    }
+
+    return items;
+  }, [dashboardData]);
+
+  // Generate Activities from real data
+  const activities = useMemo(() => {
+    if (!dashboardData) return [];
+
+    const items = [];
+
+    // Recent completed orders
+    dashboardData.todayCompleted.slice(0, 5).forEach((order) => {
+      items.push({
+        id: `completed-${order.id}`,
+        content: `${order.customerName || "客戶"} 的訂單已完成`,
+        time: order.completedAt
+          ? new Date(order.completedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "剛剛",
+        type: "success",
+      });
+    });
+
+    // Recent pending orders (newly created)
+    dashboardData.todayPending.slice(0, 3).forEach((order) => {
+      items.push({
+        id: `new-${order.id}`,
+        content: `新訂單：${order.customerName || "客戶"} (${order.items?.length || 1}項商品)`,
+        time: order.createdAt
+          ? new Date(order.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "剛剛",
+        type: "auto",
+      });
+    });
+
+    if (items.length === 0) {
+      items.push({
+        id: "no-activity",
+        content: "尚無今日動態",
+        time: "現在",
+        type: "neutral",
+      });
+    }
+
+    return items.sort((a, b) => (b.time > a.time ? 1 : -1)).slice(0, 5);
+  }, [dashboardData]);
 
   const handleRefresh = async () => {
     await Promise.all([refetchDashboard(), refetchRevenue()]);
@@ -200,9 +301,9 @@ export default function Overview() {
 
   return (
     <MainLayout
-      title="Hi, 店主 Alex"
+      title={`Hi, ${user?.displayName || "店主"}`}
       subtitle={`今日 ${todayMetrics.orders} 筆訂單 · ${today}`}
-      teamName="甜點工作室 A"
+      teamName={currentTeam?.team_name || "載入中..."}
       teamStatus="open"
       showActions={false}
       rightContent={
@@ -230,16 +331,21 @@ export default function Overview() {
         {/* AI Mode Switcher */}
         <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
           <TouchableOpacity
-            onPress={() => setMode("auto")}
+            onPress={() => handleModeChange("auto")}
+            disabled={isUpdatingMode}
             className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
               mode === "auto" ? "bg-white " : ""
             }`}
           >
-            <MaterialCommunityIcons
-              name="robot"
-              size={20}
-              color={mode === "auto" ? "#008080" : "#9CA3AF"}
-            />
+            {isUpdatingMode && mode !== "auto" ? (
+              <ActivityIndicator size="small" color="#9CA3AF" />
+            ) : (
+              <MaterialCommunityIcons
+                name="robot"
+                size={20}
+                color={mode === "auto" ? "#008080" : "#9CA3AF"}
+              />
+            )}
             <View>
               <Text
                 className={`text-sm font-bold ${
@@ -251,16 +357,21 @@ export default function Overview() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setMode("semi")}
+            onPress={() => handleModeChange("semi")}
+            disabled={isUpdatingMode}
             className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
               mode === "semi" ? "bg-white " : ""
             }`}
           >
-            <MaterialCommunityIcons
-              name="file-document-edit"
-              size={20}
-              color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
-            />
+            {isUpdatingMode && mode !== "semi" ? (
+              <ActivityIndicator size="small" color="#9CA3AF" />
+            ) : (
+              <MaterialCommunityIcons
+                name="file-document-edit"
+                size={20}
+                color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
+              />
+            )}
             <View>
               <Text
                 className={`text-sm font-bold ${

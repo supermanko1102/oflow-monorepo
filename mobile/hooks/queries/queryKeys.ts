@@ -51,6 +51,9 @@ export const queryKeys = {
   },
 
   // Dashboard 相關 queries
+  auth: {
+    user: () => ["auth", "user"] as const,
+  },
   dashboard: {
     // 所有 dashboard 相關的 queries
     all: () => ["dashboard"] as const,
