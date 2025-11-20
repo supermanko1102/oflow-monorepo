@@ -51,11 +51,17 @@ export const initiateAppleLogin = async (): Promise<AppleSession> => {
     }
 
     const data = await response.json();
-    console.log("[Apple Auth] ✅ Session created");
+
+    // 後端返回的格式是 { session: { access_token, refresh_token }, user, teams }
+    if (!data.session?.access_token || !data.session?.refresh_token) {
+      throw new Error(
+        "Invalid response from auth-apple-callback: missing session tokens"
+      );
+    }
 
     return {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
     };
   } catch (error: any) {
     if (error.code === "ERR_REQUEST_CANCELED") {

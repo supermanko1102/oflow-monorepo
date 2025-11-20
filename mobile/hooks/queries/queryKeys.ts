@@ -61,7 +61,12 @@ export const queryKeys = {
 
     // 營收統計（支援不同時間範圍）
     revenueStats: (teamId: string, timeRange: string) =>
-      [...queryKeys.dashboard.all(), "revenueStats", teamId, timeRange] as const,
+      [
+        ...queryKeys.dashboard.all(),
+        "revenueStats",
+        teamId,
+        timeRange,
+      ] as const,
   },
 
   // Products 相關 queries
@@ -90,5 +95,33 @@ export const queryKeys = {
     // 團隊配送設定
     detail: (teamId: string) =>
       [...queryKeys.deliverySettings.all(), "detail", teamId] as const,
+  },
+
+  // Customers 相關 queries
+  customers: {
+    // 所有 customers 相關的 queries
+    all: () => ["customers"] as const,
+
+    // 團隊顧客列表（支援篩選）
+    list: (teamId: string, filters?: any) =>
+      [...queryKeys.customers.all(), "list", teamId, filters] as const,
+
+    // 單一顧客詳情
+    detail: (customerId: string) =>
+      [...queryKeys.customers.all(), "detail", customerId] as const,
+  },
+
+  // Conversations 相關 queries
+  conversations: {
+    // 所有 conversations 相關的 queries
+    all: () => ["conversations"] as const,
+
+    // 團隊對話列表（支援狀態篩選）
+    list: (teamId: string, status?: string) =>
+      [...queryKeys.conversations.all(), "list", teamId, status] as const,
+
+    // 單一對話詳情
+    detail: (conversationId: string) =>
+      [...queryKeys.conversations.all(), "detail", conversationId] as const,
   },
 } as const;

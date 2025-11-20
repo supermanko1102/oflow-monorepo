@@ -1,0 +1,302 @@
+[
+  {
+    "schemaname": "public",
+    "tablename": "conversations",
+    "policyname": "service_role_full_access",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "conversations",
+    "policyname": "team_members_can_view_own_conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customers",
+    "policyname": "Team members can manage customers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_customers = true))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customers",
+    "policyname": "Team members can view customers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "line_messages",
+    "policyname": "System can insert messages",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "line_messages",
+    "policyname": "Team members can view messages",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Team members can delete orders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "DELETE",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_orders = true))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Team members can insert orders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_orders = true))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Team members can update orders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_orders = true))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Team members can view orders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "products",
+    "policyname": "Team members can manage products",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_orders = true))))",
+    "with_check": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_orders = true))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "products",
+    "policyname": "Team members can view products",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "reminders",
+    "policyname": "System can manage reminders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "reminders",
+    "policyname": "Team members can view reminders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "subscription_transactions",
+    "policyname": "System can insert transactions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "subscription_transactions",
+    "policyname": "Team members can view transactions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_invites",
+    "policyname": "Members can view team invites",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_invites",
+    "policyname": "Owners and admins can create invites",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND ((tm.role = 'owner'::text) OR (tm.role = 'admin'::text) OR (tm.can_invite_members = true)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_invites",
+    "policyname": "Owners and admins can update invites",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND ((tm.role = 'owner'::text) OR (tm.role = 'admin'::text)))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Members can view team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members_1.team_id\n   FROM team_members team_members_1\n  WHERE (team_members_1.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Owners can manage team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(team_id IN ( SELECT team_members_1.team_id\n   FROM team_members team_members_1\n  WHERE ((team_members_1.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND ((team_members_1.role = 'owner'::text) OR (team_members_1.role = 'admin'::text)))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Users can join teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_settings",
+    "policyname": "Owners and admins can manage settings",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_settings = true))))",
+    "with_check": "(team_id IN ( SELECT tm.team_id\n   FROM team_members tm\n  WHERE ((tm.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (tm.can_manage_settings = true))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_settings",
+    "policyname": "Team members can view settings",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(team_id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Members can view their teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE (team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid())))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Owners can update team",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(id IN ( SELECT team_members.team_id\n   FROM team_members\n  WHERE ((team_members.user_id = ( SELECT users.id\n           FROM users\n          WHERE (users.auth_user_id = auth.uid()))) AND (team_members.role = 'owner'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Users can create teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Users can insert own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth_user_id = auth.uid())"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Users can update own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(auth_user_id = auth.uid())",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Users can view own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(auth_user_id = auth.uid())",
+    "with_check": null
+  }
+]

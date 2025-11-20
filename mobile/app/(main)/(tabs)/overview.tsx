@@ -1,11 +1,17 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import { logout } from "@/services/auth";
+import {
+  useDashboardSummary,
+  useRevenueStats,
+} from "@/hooks/queries/useDashboard";
+import { useAuthStore } from "@/stores/auth";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -32,13 +38,15 @@ function MetricCard({
 }: MetricCardProps) {
   return (
     <View
-      className={`rounded-2xl p-4 mr-3 w-40 ${primary ? "bg-brand-teal" : "bg-white border border-gray-100"
-        }`}
+      className={`rounded-2xl p-4 mr-3 w-40 ${
+        primary ? "bg-brand-teal" : "bg-white border border-gray-100"
+      }`}
     >
       <View className="flex-row items-center justify-between mb-2">
         <View
-          className={`p-1.5 rounded-full ${primary ? "bg-white/20" : "bg-gray-100"
-            }`}
+          className={`p-1.5 rounded-full ${
+            primary ? "bg-white/20" : "bg-gray-100"
+          }`}
         >
           {icon}
         </View>
@@ -47,15 +55,18 @@ function MetricCard({
             <Ionicons
               name={trendType === "up" ? "arrow-up" : "arrow-down"}
               size={12}
-              color={primary ? "white" : trendType === "up" ? "#22C55E" : "#EF4444"}
+              color={
+                primary ? "white" : trendType === "up" ? "#22C55E" : "#EF4444"
+              }
             />
             <Text
-              className={`text-xs ml-0.5 ${primary
-                ? "text-white"
-                : trendType === "up"
-                  ? "text-status-success"
-                  : "text-status-danger"
-                }`}
+              className={`text-xs ml-0.5 ${
+                primary
+                  ? "text-white"
+                  : trendType === "up"
+                    ? "text-status-success"
+                    : "text-status-danger"
+              }`}
             >
               {trend}
             </Text>
@@ -63,12 +74,15 @@ function MetricCard({
         )}
       </View>
       <Text
-        className={`text-2xl font-bold mb-1 ${primary ? "text-white" : "text-brand-slate"
-          }`}
+        className={`text-2xl font-bold mb-1 ${
+          primary ? "text-white" : "text-brand-slate"
+        }`}
       >
         {value}
       </Text>
-      <Text className={`text-xs ${primary ? "text-white/80" : "text-gray-500"}`}>
+      <Text
+        className={`text-xs ${primary ? "text-white/80" : "text-gray-500"}`}
+      >
         {label}
       </Text>
     </View>
@@ -80,14 +94,47 @@ type OperationMode = "auto" | "semi";
 export default function Overview() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [mode, setMode] = useState<OperationMode>("auto");
+  const currentTeamId = useAuthStore((state) => state.currentTeamId);
 
-  // Mock Data
-  const todayMetrics = {
-    revenue: "$12,580",
-    orders: 18,
-    pending: 5,
-  };
+  // Fetch dashboard data
+  const {
+    data: dashboardData,
+    isLoading: isDashboardLoading,
+    refetch: refetchDashboard,
+    isRefetching: isDashboardRefetching,
+  } = useDashboardSummary(currentTeamId);
 
+  const {
+    data: revenueData,
+    isLoading: isRevenueLoading,
+    refetch: refetchRevenue,
+  } = useRevenueStats(currentTeamId, "day");
+
+  const isLoading = isDashboardLoading || isRevenueLoading;
+  const isRefreshing = isDashboardRefetching;
+
+  // Calculate metrics from real data
+  const todayMetrics = useMemo(() => {
+    if (!dashboardData || !revenueData) {
+      return {
+        revenue: "$0",
+        orders: 0,
+        pending: 0,
+      };
+    }
+
+    const todayOrders =
+      dashboardData.todayPending.length + dashboardData.todayCompleted.length;
+    const pendingCount = dashboardData.todayPending.length;
+
+    return {
+      revenue: `$${revenueData.totalRevenue.toLocaleString()}`,
+      orders: todayOrders,
+      pending: pendingCount,
+    };
+  }, [dashboardData, revenueData]);
+
+  // Mock reminders and activities (TODO: implement real data)
   const reminders = [
     {
       id: "r1",
@@ -118,6 +165,10 @@ export default function Overview() {
     },
   ];
 
+  const handleRefresh = async () => {
+    await Promise.all([refetchDashboard(), refetchRevenue()]);
+  };
+
   const handleLogout = async () => {
     Alert.alert("確認登出", "確定要登出嗎？", [
       { text: "取消", style: "cancel" },
@@ -130,7 +181,9 @@ export default function Overview() {
             await logout();
           } catch (error) {
             console.error("登出失敗:", error);
-            Alert.alert("登出失敗", "無法完成登出，請稍後再試", [{ text: "確定" }]);
+            Alert.alert("登出失敗", "無法完成登出，請稍後再試", [
+              { text: "確定" },
+            ]);
           } finally {
             setIsLoggingOut(false);
           }
@@ -151,7 +204,7 @@ export default function Overview() {
       subtitle={`今日 ${todayMetrics.orders} 筆訂單 · ${today}`}
       teamName="甜點工作室 A"
       teamStatus="open"
-      showActions={false} // Custom actions via rightContent
+      showActions={false}
       rightContent={
         <View className="flex-row items-center gap-3">
           <IconButton
@@ -164,157 +217,204 @@ export default function Overview() {
       }
       onNotificationsPress={() => console.log("notifications")}
     >
-      {/* AI Mode Switcher */}
-      <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
-        <TouchableOpacity
-          onPress={() => setMode("auto")}
-          className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${mode === "auto" ? "bg-white " : ""
-            }`}
-        >
-          <MaterialCommunityIcons
-            name="robot"
-            size={20}
-            color={mode === "auto" ? "#008080" : "#9CA3AF"}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#008080"
           />
-          <View>
-            <Text
-              className={`text-sm font-bold ${mode === "auto" ? "text-brand-teal" : "text-gray-500"
-                }`}
-            >
-              全自動
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setMode("semi")}
-          className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${mode === "semi" ? "bg-white " : ""
+        }
+      >
+        {/* AI Mode Switcher */}
+        <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
+          <TouchableOpacity
+            onPress={() => setMode("auto")}
+            className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
+              mode === "auto" ? "bg-white " : ""
             }`}
-        >
-          <MaterialCommunityIcons
-            name="file-document-edit"
-            size={20}
-            color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
-          />
-          <View>
-            <Text
-              className={`text-sm font-bold ${mode === "semi" ? "text-brand-slate" : "text-gray-500"
+          >
+            <MaterialCommunityIcons
+              name="robot"
+              size={20}
+              color={mode === "auto" ? "#008080" : "#9CA3AF"}
+            />
+            <View>
+              <Text
+                className={`text-sm font-bold ${
+                  mode === "auto" ? "text-brand-teal" : "text-gray-500"
                 }`}
-            >
-              半自動
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Mode Description */}
-      <View className="mb-6 px-2">
-        <Text className="text-center text-gray-500 text-sm">
-          {mode === "auto"
-            ? "✨ AI 將自動回覆訊息並建立訂單"
-            : "📝 AI 生成草稿，需您確認後發送"}
-        </Text>
-      </View>
-
-      {/* Metrics Carousel */}
-      <View className="mb-8">
-        <View className="flex-row items-center justify-between mb-4 px-1">
-          <Text className="text-lg font-bold text-brand-slate">今日概況</Text>
-          <Text className="text-xs text-gray-400">Updated just now</Text>
+              >
+                全自動
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setMode("semi")}
+            className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
+              mode === "semi" ? "bg-white " : ""
+            }`}
+          >
+            <MaterialCommunityIcons
+              name="file-document-edit"
+              size={20}
+              color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
+            />
+            <View>
+              <Text
+                className={`text-sm font-bold ${
+                  mode === "semi" ? "text-brand-slate" : "text-gray-500"
+                }`}
+              >
+                半自動
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="-mx-6 px-6"
-        >
-          <MetricCard
-            label="今日營收"
-            value={todayMetrics.revenue}
-            icon={<Ionicons name="cash" size={20} color="white" />}
-            trend="+12%"
-            trendType="up"
-            primary
-          />
-          <MetricCard
-            label="今日訂單"
-            value={todayMetrics.orders}
-            icon={
-              <Ionicons name="receipt" size={20} color="rgb(90, 107, 124)" />
-            }
-            trend="+5"
-            trendType="up"
-          />
-          <MetricCard
-            label="待處理訊息"
-            value={todayMetrics.pending}
-            icon={
-              <MaterialCommunityIcons
-                name="message-processing"
-                size={20}
-                color="rgb(249, 115, 22)"
-              />
-            }
-            trend="需關注"
-            trendType="down"
-          />
-        </ScrollView>
-      </View>
 
-      {/* Timeline / Feed */}
-      <View className="mb-8">
-        <Text className="text-lg font-bold text-brand-slate mb-4 px-1">
-          待辦與動態
-        </Text>
+        {/* Mode Description */}
+        <View className="mb-6 px-2">
+          <Text className="text-center text-gray-500 text-sm">
+            {mode === "auto"
+              ? "✨ AI 將自動回覆訊息並建立訂單"
+              : "📝 AI 生成草稿，需您確認後發送"}
+          </Text>
+        </View>
 
-        {/* Reminders */}
-        <View className="space-y-3 mb-6">
-          {reminders.map((item) => (
-            <View
-              key={item.id}
-              className="bg-white p-4 rounded-xl border-l-4 border-l-brand-teal flex-row items-center"
-            >
-              <View className="bg-teal-50 p-2 rounded-full mr-3">
-                <Ionicons name="notifications" size={20} color="#008080" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-brand-slate font-semibold text-sm mb-1">
-                  {item.title}
+        {/* Loading State */}
+        {isLoading ? (
+          <View className="py-20 items-center justify-center">
+            <ActivityIndicator size="large" color="#008080" />
+            <Text className="text-gray-500 mt-4">載入中...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Metrics Carousel */}
+            <View className="mb-8">
+              <View className="flex-row items-center justify-between mb-4 px-1">
+                <Text className="text-lg font-bold text-brand-slate">
+                  今日概況
                 </Text>
-                <Text className="text-gray-400 text-xs">{item.time}</Text>
+                <Text className="text-xs text-gray-400">Updated just now</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="-mx-6 px-6"
+              >
+                <MetricCard
+                  label="今日營收"
+                  value={todayMetrics.revenue}
+                  icon={<Ionicons name="cash" size={20} color="white" />}
+                  trend={
+                    revenueData?.orderCount
+                      ? `${revenueData.orderCount} 筆`
+                      : undefined
+                  }
+                  trendType="up"
+                  primary
+                />
+                <MetricCard
+                  label="今日訂單"
+                  value={todayMetrics.orders}
+                  icon={
+                    <Ionicons
+                      name="receipt"
+                      size={20}
+                      color="rgb(90, 107, 124)"
+                    />
+                  }
+                  trend={
+                    dashboardData?.todayCompleted.length
+                      ? `${dashboardData.todayCompleted.length} 已完成`
+                      : undefined
+                  }
+                  trendType="up"
+                />
+                <MetricCard
+                  label="待處理訂單"
+                  value={todayMetrics.pending}
+                  icon={
+                    <MaterialCommunityIcons
+                      name="message-processing"
+                      size={20}
+                      color="rgb(249, 115, 22)"
+                    />
+                  }
+                  trend={todayMetrics.pending > 0 ? "需關注" : "無"}
+                  trendType={todayMetrics.pending > 0 ? "down" : "neutral"}
+                />
+              </ScrollView>
+            </View>
+
+            {/* Timeline / Feed */}
+            <View className="mb-8">
+              <Text className="text-lg font-bold text-brand-slate mb-4 px-1">
+                待辦與動態
+              </Text>
+
+              {/* Reminders */}
+              <View className="space-y-3 mb-6">
+                {reminders.map((item) => (
+                  <View
+                    key={item.id}
+                    className="bg-white p-4 rounded-xl border-l-4 border-l-brand-teal flex-row items-center"
+                  >
+                    <View className="bg-teal-50 p-2 rounded-full mr-3">
+                      <Ionicons
+                        name="notifications"
+                        size={20}
+                        color="#008080"
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-brand-slate font-semibold text-sm mb-1">
+                        {item.title}
+                      </Text>
+                      <Text className="text-gray-400 text-xs">{item.time}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Activities */}
+              <View className="space-y-4">
+                <Text className="text-sm font-semibold text-gray-500 px-1">
+                  最新動態
+                </Text>
+                {activities.map((item) => (
+                  <View key={item.id} className="flex-row items-start px-1">
+                    <View className="mt-1 w-2 h-2 rounded-full bg-brand-teal mr-3" />
+                    <View className="flex-1">
+                      <Text className="text-gray-800 text-sm mb-0.5">
+                        {item.content}
+                      </Text>
+                      <Text className="text-gray-400 text-xs">{item.time}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
-        {/* Activities */}
-        <View className="space-y-4">
-          <Text className="text-sm font-semibold text-gray-500 px-1">最新動態</Text>
-          {activities.map((item) => (
-            <View key={item.id} className="flex-row items-start px-1">
-              <View className="mt-1 w-2 h-2 rounded-full bg-brand-teal mr-3" />
-              <View className="flex-1">
-                <Text className="text-gray-800 text-sm mb-0.5">{item.content}</Text>
-                <Text className="text-gray-400 text-xs">{item.time}</Text>
-              </View>
-            </View>
-          ))}
+        {/* Logout */}
+        <View className="mt-4 mb-8">
+          <Pressable
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full h-12 bg-gray-100 rounded-xl items-center justify-center active:bg-gray-200"
+            style={{ opacity: isLoggingOut ? 0.6 : 1 }}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator color="#666" />
+            ) : (
+              <Text className="text-gray-600 font-semibold">登出</Text>
+            )}
+          </Pressable>
         </View>
-      </View>
-
-      {/* Logout */}
-      <View className="mt-4 mb-8">
-        <Pressable
-          onPress={handleLogout}
-          disabled={isLoggingOut}
-          className="w-full h-12 bg-gray-100 rounded-xl items-center justify-center active:bg-gray-200"
-          style={{ opacity: isLoggingOut ? 0.6 : 1 }}
-        >
-          {isLoggingOut ? (
-            <ActivityIndicator color="#666" />
-          ) : (
-            <Text className="text-gray-600 font-semibold">登出</Text>
-          )}
-        </Pressable>
-      </View>
+      </ScrollView>
     </MainLayout>
   );
 }

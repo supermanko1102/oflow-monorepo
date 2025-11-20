@@ -1,3 +1,5 @@
 {
-  "cSpell.words": ["alexanderko", "applinks", "oflow", "Pressable", "supabase"]
+  "cSpell.words": ["alexanderko", "applinks", "oflow", "Pressable", "supabase"],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

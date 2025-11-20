@@ -1,5 +1,5 @@
 import { initiateAppleLogin } from "@/services/apple";
-import { loginWithApple, loginWithLine } from "@/services/auth";
+import { loginWithLine, loginWithApple } from "@/services/auth";
 import { handleAuthCallback, initiateLineLogin } from "@/services/line";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -17,8 +17,6 @@ import {
 
 export default function Landing() {
   const [isLoading, setIsLoading] = useState(false);
-
-
 
   // LINE 登入處理函數
   const handleLineLogin = async () => {
@@ -45,7 +43,9 @@ export default function Landing() {
   const handleAppleLogin = async () => {
     try {
       setIsLoading(true);
+      // 1. 獲取 Apple credential 並換取 Supabase session tokens
       const session = await initiateAppleLogin();
+      // 2. 設置 Supabase session（與 LINE 登入流程一致）
       await loginWithApple(session.access_token, session.refresh_token);
     } catch (e) {
       if (e instanceof Error && e.message === "使用者取消登入") {
@@ -85,7 +85,11 @@ export default function Landing() {
             <View className="space-y-6">
               <View className="flex-row items-start">
                 <View className="w-8 h-8 bg-teal-50 rounded-full items-center justify-center mr-4 mt-0.5">
-                  <Ionicons name="chatbubbles-outline" size={18} color="#008080" />
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={18}
+                    color="#008080"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-bold text-gray-800 mb-1">
@@ -99,7 +103,11 @@ export default function Landing() {
 
               <View className="flex-row items-start">
                 <View className="w-8 h-8 bg-teal-50 rounded-full items-center justify-center mr-4 mt-0.5">
-                  <Ionicons name="notifications-outline" size={18} color="#008080" />
+                  <Ionicons
+                    name="notifications-outline"
+                    size={18}
+                    color="#008080"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-bold text-gray-800 mb-1">
@@ -113,7 +121,11 @@ export default function Landing() {
 
               <View className="flex-row items-start">
                 <View className="w-8 h-8 bg-teal-50 rounded-full items-center justify-center mr-4 mt-0.5">
-                  <MaterialCommunityIcons name="robot-outline" size={18} color="#008080" />
+                  <MaterialCommunityIcons
+                    name="robot-outline"
+                    size={18}
+                    color="#008080"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-bold text-gray-800 mb-1">
@@ -139,13 +151,16 @@ export default function Landing() {
             {isLoading ? (
               <View className="flex-row items-center">
                 <ActivityIndicator color="white" className="mr-2" />
-                <Text className="text-white font-bold text-lg">
-                  登入中...
-                </Text>
+                <Text className="text-white font-bold text-lg">登入中...</Text>
               </View>
             ) : (
               <View className="flex-row items-center">
-                <Ionicons name="chatbubble-ellipses" size={24} color="white" className="mr-2" />
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={24}
+                  color="white"
+                  className="mr-2"
+                />
                 <Text className="text-white font-bold text-lg ml-2">
                   使用 LINE 登入
                 </Text>
@@ -173,7 +188,12 @@ export default function Landing() {
               style={{ opacity: isLoading ? 0.7 : 1 }}
             >
               <View className="flex-row items-center">
-                <Ionicons name="logo-apple" size={24} color="white" className="mr-2" />
+                <Ionicons
+                  name="logo-apple"
+                  size={24}
+                  color="white"
+                  className="mr-2"
+                />
                 <Text className="text-white font-bold text-lg ml-2">
                   使用 Apple 登入
                 </Text>

@@ -7,8 +7,9 @@ import { ApiClient } from "@/lib/apiClient";
 import type { DashboardSummary, RevenueStats, TimeRange } from "@/types/order";
 
 // 建立 Dashboard API Client 實例
+// Dashboard API 實際上在 order-operations Edge Function 中
 const dashboardApi = new ApiClient(
-  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/dashboard-summary`
+  `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/order-operations`
 );
 
 /**
