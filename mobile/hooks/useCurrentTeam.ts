@@ -11,10 +11,9 @@ export function useCurrentTeam(options?: Parameters<typeof useTeams>[0]) {
     () => teamsQuery.data?.find((team) => team.team_id === currentTeamId),
     [teamsQuery.data, currentTeamId]
   );
-  console.log("currentTeam", currentTeam);
   const hasWebhook = useMemo(
-    () => currentTeam?.line_channel_id !== undefined,
-    [currentTeam]
+    () => Boolean(currentTeam?.line_channel_id),
+    [currentTeam?.line_channel_id]
   );
 
   return {

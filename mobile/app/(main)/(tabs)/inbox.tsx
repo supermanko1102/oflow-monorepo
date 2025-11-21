@@ -5,8 +5,16 @@ import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
+import { useConversations } from "@/hooks/queries/useConversations";
 import { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 type InboxMode = "exception" | "auto";
 
@@ -23,9 +31,9 @@ type ExceptionTicket = {
 type AutoRecord = {
   id: string;
   customer: string;
-  orderNo: string;
-  pickup: string;
-  amount: number;
+  orderNo?: string;
+  pickup?: string;
+  amount?: number;
   snippet: string;
   createdAt: string;
 };
@@ -34,66 +42,65 @@ const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
 
 export default function Inbox() {
-  const { hasWebhook, isLoading } = useCurrentTeam();
+  const {
+    currentTeam,
+    currentTeamId,
+    hasWebhook,
+    isLoading: isTeamLoading,
+  } = useCurrentTeam();
+
+  const {
+    data: collecting = [],
+    isLoading: isCollectingLoading,
+    isRefetching: isCollectingRefetching,
+    refetch: refetchCollecting,
+  } = useConversations(currentTeamId, "collecting_info", 50, !!currentTeamId);
+
+  const {
+    data: completed = [],
+    isLoading: isCompletedLoading,
+    isRefetching: isCompletedRefetching,
+    refetch: refetchCompleted,
+  } = useConversations(currentTeamId, "completed", 50, !!currentTeamId);
 
   const [mode, setMode] = useState<InboxMode>("exception");
 
-  const exceptions = useMemo<ExceptionTicket[]>(
-    () => [
-      {
-        id: "e1",
-        customer: "王小明",
-        issue: "未指定付款方式",
-        hint: "AI 無法確認是否需收定金",
-        lastMessage: "那我到店再付現可以嗎？",
-        lastTime: "14:02",
-        missingFields: ["付款方式"],
-      },
-      {
-        id: "e2",
-        customer: "劉先生",
-        issue: "時間不在營業時段",
-        hint: "AI 偵測到顧客想要 23:00 取貨",
-        lastMessage: "可以晚一點嗎？我 11 點才到台北",
-        lastTime: "13:40",
-        missingFields: ["可行取貨時間"],
-      },
-      {
-        id: "e3",
-        customer: "陳小姐",
-        issue: "商品未在目錄",
-        hint: "顧客要求客製翻糖，小幫手無法對應",
-        lastMessage: "如果可以做翻糖熊熊，我願意加價",
-        lastTime: "11:05",
-        missingFields: ["商品確認", "價格"],
-      },
-    ],
-    []
-  );
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return "--:--";
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "--:--";
+    return date.toLocaleTimeString("zh-TW", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
-  const autoRecords = useMemo<AutoRecord[]>(
-    () => [
-      {
-        id: "a1",
-        customer: "林小姐",
-        orderNo: "#OD-20240214-001",
-        pickup: "2/20 (二) 15:30 自取",
-        amount: 1680,
-        snippet: "AI：已為您安排 2/20 取貨，期待您光臨。",
-        createdAt: "今天 12:10",
-      },
-      {
-        id: "a2",
-        customer: "簡先生",
-        orderNo: "#OD-20240214-002",
-        pickup: "2/18 (日) 11:00 外送",
-        amount: 2280,
-        snippet: "AI：外送地址已確認，請當天保持電話暢通。",
-        createdAt: "今天 09:45",
-      },
-    ],
-    []
-  );
+  const exceptions = useMemo<ExceptionTicket[]>(() => {
+    return collecting.map((conv) => ({
+      id: conv.id,
+      customer: conv.line_user_id || "LINE 使用者",
+      issue:
+        conv.missing_fields && conv.missing_fields.length > 0
+          ? `缺少 ${conv.missing_fields.join("、")}`
+          : "需要補充資料",
+      hint: conv.collected_data ? "已擷取部分資訊，請補齊缺漏" : "",
+      lastMessage: conv.lastMessage?.message || "無最新訊息",
+      lastTime: formatTime(conv.last_message_at),
+      missingFields: conv.missing_fields || [],
+    }));
+  }, [collecting]);
+
+  const autoRecords = useMemo<AutoRecord[]>(() => {
+    return completed.map((conv) => ({
+      id: conv.id,
+      customer: conv.line_user_id || "LINE 使用者",
+      orderNo: conv.order_id ? `#${conv.order_id}` : undefined,
+      pickup: "",
+      amount: conv.collected_data?.total_amount ?? 0,
+      snippet: conv.lastMessage?.message || "已完成對話",
+      createdAt: formatTime(conv.last_message_at),
+    }));
+  }, [completed]);
 
   const summaryCards = useMemo(
     () => [
@@ -126,7 +133,7 @@ export default function Inbox() {
     },
   };
 
-  if (!hasWebhook && !isLoading) {
+  if (!hasWebhook && !isTeamLoading) {
     return (
       <MainLayout title="對話收件匣">
         <NoWebhookState />
@@ -251,6 +258,7 @@ export default function Inbox() {
 
   const AutoRecordCard = ({ record }: { record: AutoRecord }) => {
     const [expanded, setExpanded] = useState(false);
+    const amount = record.amount ?? 0;
 
     return (
       <Pressable
@@ -263,7 +271,7 @@ export default function Inbox() {
               AI 已建立訂單
             </Text>
             <Text className="text-base font-bold text-slate-900 mt-1">
-              {record.orderNo}
+              {record.orderNo || `對話 ${record.id.slice(0, 6)}`}
             </Text>
           </View>
           <View className="items-end">
@@ -281,10 +289,12 @@ export default function Inbox() {
             {record.customer}
           </Text>
           <Text className="text-base font-bold" style={{ color: brandTeal }}>
-            ${record.amount.toLocaleString()}
+            ${amount.toLocaleString()}
           </Text>
         </View>
-        <Text className="text-xs text-slate-500 mt-1">{record.pickup}</Text>
+        <Text className="text-xs text-slate-500 mt-1">
+          {record.pickup || "未填寫取貨時間"}
+        </Text>
         <Text
           className="text-xs text-slate-500 mt-2"
           numberOfLines={expanded ? undefined : 1}
@@ -295,10 +305,14 @@ export default function Inbox() {
         {expanded && (
           <View className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <DetailRow label="顧客" value={record.customer} />
-            <DetailRow label="取貨" value={record.pickup} className="mt-1" />
+            <DetailRow
+              label="取貨"
+              value={record.pickup || ""}
+              className="mt-1"
+            />
             <DetailRow
               label="金額"
-              value={`$${record.amount.toLocaleString()}`}
+              value={`$${amount.toLocaleString()}`}
               className="mt-1"
             />
             <View className="h-px bg-slate-200 my-3" />
@@ -313,7 +327,7 @@ export default function Inbox() {
   return (
     <MainLayout
       title="對話收件匣"
-      teamName="甜點工作室 A"
+      teamName={currentTeam?.team_name || "載入中..."}
       centerContent={
         <SegmentedControl
           options={[
@@ -344,7 +358,22 @@ export default function Inbox() {
       onNotificationsPress={() => console.log("notifications")}
       onCreatePress={() => console.log("新建訊息")}
     >
-      <View className="px-4 pt-2 pb-24">
+      <ScrollView
+        className="px-4 pt-2 pb-24"
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              mode === "exception"
+                ? isCollectingRefetching
+                : isCompletedRefetching
+            }
+            onRefresh={() =>
+              mode === "exception" ? refetchCollecting() : refetchCompleted()
+            }
+            tintColor={brandTeal}
+          />
+        }
+      >
         <View className="flex-row flex-wrap gap-3 mb-5">
           {summaryCards.map((card) => renderSummaryCard(card))}
         </View>
@@ -358,16 +387,38 @@ export default function Inbox() {
                 快速回覆或手動建單，確保流程不中斷
               </Text>
             </View>
-            {exceptions.map((ticket) => renderExceptionCard(ticket))}
+            {isCollectingLoading ? (
+              <View className="py-10 items-center">
+                <ActivityIndicator color={brandTeal} />
+                <Text className="text-slate-500 mt-2">載入中...</Text>
+              </View>
+            ) : exceptions.length === 0 ? (
+              <Text className="text-xs text-slate-500 py-6 text-center">
+                目前沒有待補資料的對話
+              </Text>
+            ) : (
+              exceptions.map((ticket) => renderExceptionCard(ticket))
+            )}
           </>
         ) : (
           <View>
-            {autoRecords.map((record) => (
-              <AutoRecordCard key={record.id} record={record} />
-            ))}
+            {isCompletedLoading ? (
+              <View className="py-10 items-center">
+                <ActivityIndicator color={brandTeal} />
+                <Text className="text-slate-500 mt-2">載入中...</Text>
+              </View>
+            ) : autoRecords.length === 0 ? (
+              <Text className="text-xs text-slate-500 py-6 text-center">
+                目前沒有已完成的對話
+              </Text>
+            ) : (
+              autoRecords.map((record) => (
+                <AutoRecordCard key={record.id} record={record} />
+              ))
+            )}
           </View>
         )}
-      </View>
+      </ScrollView>
     </MainLayout>
   );
 }
