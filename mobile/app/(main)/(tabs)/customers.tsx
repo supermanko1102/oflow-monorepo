@@ -3,71 +3,62 @@ import { IconButton } from "@/components/Navbar";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
+import { useCurrentTeam } from "@/hooks/useCurrentTeam";
+import { useCustomers } from "@/hooks/queries/useCustomers";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-
-type Customer = {
-  id: string;
-  name: string;
-  phone?: string;
-  tags: string[];
-  totalOrders: number;
-  totalSpent: number;
-  lastOrderAt: string;
-  notes?: string;
-};
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 type Segment = "overview" | "list";
 
 export default function Customers() {
+  const { currentTeam, currentTeamId } = useCurrentTeam();
   const [segment, setSegment] = useState<Segment>("overview");
   const brandTeal = Palette.brand.primary;
   const brandSlate = Palette.brand.slate;
 
-  const customers = useMemo<Customer[]>(
-    () => [
-      {
-        id: "c1",
-        name: "王小明",
-        phone: "0912-345-678",
-        tags: ["VIP", "常客"],
-        totalOrders: 18,
-        totalSpent: 21580,
-        lastOrderAt: "2/12",
-        notes: "喜歡巴斯克，常提前 2 週預約",
-      },
-      {
-        id: "c2",
-        name: "陳小姐",
-        phone: "0987-223-456",
-        tags: ["高價值"],
-        totalOrders: 9,
-        totalSpent: 18320,
-        lastOrderAt: "2/10",
-        notes: "對 LINE 回覆快速；有企業訂單需求",
-      },
-      {
-        id: "c3",
-        name: "劉先生",
-        tags: ["待活絡"],
-        totalOrders: 3,
-        totalSpent: 3980,
-        lastOrderAt: "12/25",
-        notes: "喜歡客製禮盒，可以推新方案",
-      },
-    ],
-    []
-  );
+  const {
+    data: customers = [],
+    isLoading,
+    isRefetching,
+    refetch,
+  } = useCustomers(currentTeamId, undefined, !!currentTeamId);
 
-  const summary = useMemo(
-    () => ({
-      totalCustomers: 128,
-      newThisWeek: 6,
-      repeatRate: 0.74,
-      highValueCount: 15,
-    }),
-    []
-  );
+  const summary = useMemo(() => {
+    const totalCustomers = customers.length;
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // 週日為 0
+
+    const newThisWeek = customers.filter((c) => {
+      if (!c.created_at) return false;
+      const created = new Date(c.created_at);
+      return created >= startOfWeek;
+    }).length;
+
+    const repeatRate =
+      totalCustomers === 0
+        ? 0
+        : customers.filter((c) => c.total_orders >= 2).length /
+          totalCustomers;
+
+    const highValueCount = customers.filter(
+      (c) => (c.total_spent || 0) > 10000
+    ).length;
+
+    return {
+      totalCustomers,
+      newThisWeek,
+      repeatRate,
+      highValueCount,
+    };
+  }, [customers]);
 
   const summaryCards = useMemo(
     () => [
@@ -132,68 +123,96 @@ export default function Customers() {
   );
 
   const renderCustomerList = () => (
-    <View className="space-y-3">
-      {customers.map((customer) => (
-        <View
-          key={customer.id}
-          className="rounded-3xl border border-slate-100 bg-white p-4 flex-row items-center shadow-[0px_10px_25px_rgba(15,23,42,0.04)]"
-        >
-          {/* Left: Avatar */}
-          <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center mr-3">
-            <Text className="text-lg font-bold text-gray-600">
-              {customer.name[0]}
-            </Text>
+    <ScrollView
+      className="pb-20"
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={refetch}
+          tintColor={brandTeal}
+        />
+      }
+    >
+      <View className="space-y-3">
+        {isLoading ? (
+          <View className="py-12 items-center">
+            <ActivityIndicator color={brandTeal} />
+            <Text className="text-slate-500 mt-2">載入顧客中</Text>
           </View>
+        ) : customers.length === 0 ? (
+          <Text className="text-xs text-slate-500 text-center py-10">
+            目前尚無顧客資料
+          </Text>
+        ) : (
+          customers.map((customer) => (
+            <View
+              key={customer.id}
+              className="rounded-3xl border border-slate-100 bg-white p-4 flex-row items-center shadow-[0px_10px_25px_rgba(15,23,42,0.04)]"
+            >
+              {/* Left: Avatar */}
+              <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center mr-3">
+                <Text className="text-lg font-bold text-gray-600">
+                  {customer.name?.[0] || "客"}
+                </Text>
+              </View>
 
-          {/* Center: Info */}
-          <View className="flex-1 mr-2">
-            <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-base font-bold text-gray-900">
-                {customer.name}
-              </Text>
-              {!customer.phone && (
-                <View className="rounded-md bg-red-50 px-1.5 py-0.5">
-                  <Text className="text-[10px] text-red-600 font-medium">
-                    缺電話
+              {/* Center: Info */}
+              <View className="flex-1 mr-2">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Text className="text-base font-bold text-gray-900">
+                    {customer.name || "未命名顧客"}
                   </Text>
+                  {!customer.phone && (
+                    <View className="rounded-md bg-red-50 px-1.5 py-0.5">
+                      <Text className="text-[10px] text-red-600 font-medium">
+                        缺電話
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            {customer.phone && (
-              <Text className="text-xs text-gray-500 mb-1">
-                {customer.phone}
-              </Text>
-            )}
-            <View className="flex-row flex-wrap gap-1">
-              {customer.tags.map((tag) => (
-                <View
-                  key={tag}
-                  className="px-2 py-0.5 rounded-full bg-slate-100"
-                >
-                  <Text className="text-[10px] text-slate-600">{tag}</Text>
+                {customer.phone && (
+                  <Text className="text-xs text-gray-500 mb-1">
+                    {customer.phone}
+                  </Text>
+                )}
+                <View className="flex-row flex-wrap gap-1">
+                  {(customer.tags || []).map((tag) => (
+                    <View
+                      key={tag}
+                      className="px-2 py-0.5 rounded-full bg-slate-100"
+                    >
+                      <Text className="text-[10px] text-slate-600">{tag}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          </View>
+              </View>
 
-          {/* Right: Stats */}
-          <View className="items-end">
-            <Text className="text-sm font-bold" style={{ color: brandTeal }}>
-              ${customer.totalSpent.toLocaleString()}
-            </Text>
-            <Text className="text-[10px] text-gray-400">
-              最後消費 {customer.lastOrderAt}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
+              {/* Right: Stats */}
+              <View className="items-end">
+                <Text className="text-sm font-bold" style={{ color: brandTeal }}>
+                  ${(customer.total_spent || 0).toLocaleString()}
+                </Text>
+                <Text className="text-[10px] text-gray-400">
+                  最後消費{" "}
+                  {customer.last_order_at
+                    ? new Date(customer.last_order_at).toLocaleDateString(
+                        "zh-TW",
+                        { month: "numeric", day: "numeric" }
+                      )
+                    : "—"}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 
   return (
     <MainLayout
       title="顧客管理"
-      teamName="甜點工作室 A"
+      teamName={currentTeam?.team_name || "載入中..."}
       centerContent={
         <SegmentedControl
           options={[
@@ -228,7 +247,7 @@ export default function Customers() {
                     顧客概況
                   </Text>
                   <Text className="text-xs text-slate-400 mt-0.5">
-                    模擬資料 · 待串接 API
+                    即時資料
                   </Text>
                 </View>
                 <Pressable className="px-3 py-1.5 rounded-full border border-slate-200">
