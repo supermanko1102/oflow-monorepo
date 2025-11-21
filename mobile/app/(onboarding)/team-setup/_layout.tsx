@@ -20,11 +20,6 @@ export default function TeamSetupOnboardingLayout() {
       router.replace("/(main)/(tabs)/inbox");
       return;
     }
-
-    if (status === AuthStatus.NoWebhook) {
-      router.replace("/(onboarding)/line-setup");
-      return;
-    }
   }, [isHydrated, status, router]);
 
   useFocusEffect(checkAccessible);

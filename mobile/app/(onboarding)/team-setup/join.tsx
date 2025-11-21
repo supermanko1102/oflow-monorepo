@@ -15,10 +15,6 @@ import {
   View,
 } from "react-native";
 
-/**
- * Team Setup - 加入團隊頁面（Onboarding）
- * 讓使用者輸入邀請碼加入現有團隊
- */
 export default function JoinTeam() {
   const router = useRouter();
   const [inviteCode, setInviteCode] = useState("");
@@ -73,25 +69,33 @@ export default function JoinTeam() {
 
         <View className="rounded-3xl border border-gray-100 bg-white/95 p-4 space-y-3">
           <View className="flex-row items-center gap-2">
-            <Ionicons name="key-outline" size={18} color={Palette.brand.primary} />
+            <Ionicons
+              name="key-outline"
+              size={18}
+              color={Palette.brand.primary}
+            />
             <Text className="text-sm font-semibold text-gray-900">
               在哪裡拿到邀請碼？
             </Text>
           </View>
           <View className="space-y-2">
-            {["由團隊管理員於設定→邀請成員中產生", "多數邀請碼為 6-10 碼英文/數字", "若不確定可先聯繫分享邀請的人"].map(
-              (text) => (
-                <View key={text} className="flex-row items-start gap-2">
-                  <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2" />
-                  <Text className="text-xs text-gray-600 flex-1">{text}</Text>
-                </View>
-              )
-            )}
+            {[
+              "由團隊管理員於設定→邀請成員中產生",
+              "多數邀請碼為 6-10 碼英文/數字",
+              "若不確定可先聯繫分享邀請的人",
+            ].map((text) => (
+              <View key={text} className="flex-row items-start gap-2">
+                <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2" />
+                <Text className="text-xs text-gray-600 flex-1">{text}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
         <View className="space-y-3">
-          <Text className="text-sm font-semibold text-gray-700">輸入邀請碼</Text>
+          <Text className="text-sm font-semibold text-gray-700">
+            輸入邀請碼
+          </Text>
           <TextInput
             value={inviteCode}
             onChangeText={setInviteCode}
@@ -120,7 +124,9 @@ export default function JoinTeam() {
           {joinTeam.isPending ? (
             <View className="flex-row items-center">
               <ActivityIndicator color="#FFFFFF" className="mr-2" />
-              <Text className="text-white font-semibold text-base">加入中...</Text>
+              <Text className="text-white font-semibold text-base">
+                加入中...
+              </Text>
             </View>
           ) : (
             <Text className="text-white font-semibold text-base">加入團隊</Text>

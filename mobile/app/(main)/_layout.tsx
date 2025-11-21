@@ -3,11 +3,7 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { ActivityIndicator } from "react-native";
 
-const authenticatedStatuses = [
-  AuthStatus.NoTeam,
-  AuthStatus.NoWebhook,
-  AuthStatus.Active,
-];
+const authenticatedStatuses = [AuthStatus.NoTeam, AuthStatus.Active];
 
 export default function MainLayout() {
   const router = useRouter();

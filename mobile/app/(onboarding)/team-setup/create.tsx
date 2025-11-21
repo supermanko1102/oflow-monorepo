@@ -102,7 +102,7 @@ export default function CreateTeam() {
 
       useAuthStore.setState({
         currentTeamId: newTeam.id,
-        status: AuthStatus.NoWebhook, // 建立團隊後需要設定 webhook
+        status: AuthStatus.Active,
       });
 
       await refetchTeams();
@@ -152,7 +152,8 @@ export default function CreateTeam() {
           選擇團隊類別
         </Text>
         <Text className="text-xs text-gray-500">
-          類別會同步到 Supabase `teams.business_type`，AI 會依行業調整回覆語氣與欄位。
+          類別會同步到 Supabase `teams.business_type`，AI
+          會依行業調整回覆語氣與欄位。
         </Text>
         <View className="space-y-2">
           {categories.map((category) => {
@@ -213,7 +214,9 @@ export default function CreateTeam() {
         {createTeam.isPending ? (
           <View className="flex-row items-center">
             <ActivityIndicator color="#FFFFFF" className="mr-2" />
-            <Text className="text-white font-semibold text-base">建立中...</Text>
+            <Text className="text-white font-semibold text-base">
+              建立中...
+            </Text>
           </View>
         ) : (
           <Text className="text-white font-semibold text-base">建立團隊</Text>

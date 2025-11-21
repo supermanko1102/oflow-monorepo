@@ -3,11 +3,7 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { ActivityIndicator } from "react-native";
 
-const authenticatedStatuses = [
-  AuthStatus.NoTeam,
-  AuthStatus.NoWebhook,
-  AuthStatus.Active,
-];
+const authenticatedStatuses = [AuthStatus.NoTeam, AuthStatus.Active];
 export default function AuthLayout() {
   const router = useRouter();
   const isHydrated = useAuthStore((state) => state.isHydrated);
@@ -18,8 +14,6 @@ export default function AuthLayout() {
     if (isHydrated && isAuthenticated) {
       if (status === AuthStatus.NoTeam) {
         router.replace("/(onboarding)/team-setup");
-      } else if (status === AuthStatus.NoWebhook) {
-        router.replace("/(onboarding)/line-setup");
       } else {
         router.replace("/(main)/(tabs)/inbox");
       }

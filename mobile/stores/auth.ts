@@ -4,7 +4,6 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export enum AuthStatus {
   Unauthenticated = "unauthenticated",
   NoTeam = "noTeam",
-  NoWebhook = "noWebhook",
   Active = "active",
 }
 
