@@ -1,7 +1,13 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, View } from "react-native";
+import { useCurrentTeam } from "@/hooks/useCurrentTeam";
+import { useTeamMembers } from "@/hooks/queries/useTeams";
+import { logout } from "@/services/auth";
+import { useLeaveTeam } from "@/hooks/queries/useTeams";
+import { useRouter } from "expo-router";
+import { Alert, Pressable, Text, View } from "react-native";
+import { useState } from "react";
 
 type ActionVariant = "default" | "primary";
 type StatusTone = "success" | "muted";
@@ -29,110 +35,167 @@ type DangerAction = {
   destructive?: boolean;
 };
 
-const sections: SettingSection[] = [
-  {
-    title: "帳戶與團隊",
-    description: "調整個人資料、帳號安全與團隊權限",
-    items: [
-      {
-        icon: "person-circle-outline",
-        label: "帳戶資訊",
-        detail: "管理姓名、Email、密碼",
-        actionLabel: "編輯",
-        onPress: () => console.log("open account settings"),
-      },
-      {
-        icon: "people-outline",
-        label: "團隊與權限",
-        detail: "5 位成員 · 2 位管理者",
-        actionLabel: "管理",
-        onPress: () => console.log("open team settings"),
-      },
-    ],
-  },
-  {
-    title: "通知與提醒",
-    description: "設定推播、Email 摘要與提醒節奏",
-    items: [
-      {
-        icon: "notifications-outline",
-        label: "推播提醒",
-        detail: "訂單狀態、AI 例外通知",
-        actionLabel: "設定",
-        onPress: () => console.log("open push notifications"),
-      },
-      {
-        icon: "mail-outline",
-        label: "Email 摘要",
-        detail: "每週營運數據報告",
-        actionLabel: "已訂閱",
-        statusTone: "success",
-        onPress: () => console.log("open email digest"),
-      },
-    ],
-  },
-  {
-    title: "整合服務",
-    description: "掌握 LINE、日曆與其他外部工具的串接狀態",
-    items: [
-      {
-        icon: "chatbubble-ellipses-outline",
-        label: "LINE 官方帳號",
-        detail: "已連結 · 自動同步中",
-        actionLabel: "管理",
-        statusTone: "success",
-        onPress: () => console.log("manage LINE integration"),
-      },
-      {
-        icon: "calendar-outline",
-        label: "Google 日曆",
-        detail: "未連結 · 點擊進行授權",
-        actionLabel: "連結",
-        actionVariant: "primary",
-        statusTone: "muted",
-        onPress: () => console.log("connect Google Calendar"),
-        onActionPress: () => console.log("connect Google Calendar"),
-      },
-    ],
-  },
-  {
-    title: "資料與支援",
-    description: "資料備份、匯出與支援相關設定",
-    items: [
-      {
-        icon: "cloud-download-outline",
-        label: "匯出資料",
-        detail: "訂單、顧客 CSV 報表",
-        actionLabel: "匯出",
-        onPress: () => console.log("export data"),
-      },
-      {
-        icon: "help-circle-outline",
-        label: "取得協助",
-        detail: "聯絡客服或查看指南",
-        actionLabel: "開啟",
-        onPress: () => console.log("open support"),
-      },
-    ],
-  },
-];
-
-const dangerActions: DangerAction[] = [
-  { label: "登出帳號", onPress: () => console.log("logout") },
-  { label: "退出目前團隊", onPress: () => console.log("leave team") },
-  {
-    label: "刪除帳號與資料",
-    destructive: true,
-    onPress: () => console.log("delete account"),
-  },
-];
-
 export default function Settings() {
+  const router = useRouter();
+  const { currentTeam, currentTeamId } = useCurrentTeam();
+  const { data: members } = useTeamMembers(currentTeamId || "", !!currentTeamId);
+  const leaveTeam = useLeaveTeam();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  const memberCount = members?.length ?? 0;
+  const hasLine = !!currentTeam?.line_channel_id;
+
+  const sections: SettingSection[] = [
+    {
+      title: "帳戶與團隊",
+      description: "調整個人資料、帳號安全與團隊權限",
+      items: [
+        {
+          icon: "person-circle-outline",
+          label: "帳戶資訊",
+          detail: "管理姓名、Email、密碼",
+          actionLabel: "編輯",
+          onPress: () => console.log("open account settings"),
+        },
+        {
+          icon: "people-outline",
+          label: "團隊與權限",
+          detail:
+            memberCount > 0 ? `${memberCount} 位成員` : "載入成員中...",
+          actionLabel: "管理",
+          onPress: () => router.push("/(main)/(tabs)/overview"),
+        },
+      ],
+    },
+    {
+      title: "通知與提醒（待施工）",
+      description: "此區尚未串接後端",
+      items: [
+        {
+          icon: "notifications-outline",
+          label: "推播提醒",
+          detail: "訂單狀態、AI 例外通知",
+          actionLabel: "尚未開放",
+          onPress: () => console.log("open push notifications"),
+        },
+        {
+          icon: "mail-outline",
+          label: "Email 摘要",
+          detail: "每週營運數據報告",
+          actionLabel: "尚未開放",
+          statusTone: "muted",
+          onPress: () => console.log("open email digest"),
+        },
+      ],
+    },
+    {
+      title: "整合服務",
+      description: "掌握 LINE、日曆與其他外部工具的串接狀態",
+      items: [
+        {
+          icon: "chatbubble-ellipses-outline",
+          label: "LINE 官方帳號",
+          detail: hasLine ? "已連結 · 自動同步中" : "未連結 · 點擊設定",
+          actionLabel: hasLine ? "管理" : "連結",
+          actionVariant: hasLine ? "default" : "primary",
+          statusTone: hasLine ? "success" : "muted",
+          onPress: () => router.push("/(main)/lineConnect"),
+        },
+        {
+          icon: "calendar-outline",
+          label: "Google 日曆（待施工）",
+          detail: "未連結 · 即將開放",
+          actionLabel: "尚未開放",
+          actionVariant: "default",
+          statusTone: "muted",
+          onPress: () => console.log("connect Google Calendar"),
+          onActionPress: () => console.log("connect Google Calendar"),
+        },
+      ],
+    },
+    {
+      title: "資料與支援（待施工）",
+      description: "此區尚未串接後端",
+      items: [
+        {
+          icon: "cloud-download-outline",
+          label: "匯出資料",
+          detail: "訂單、顧客 CSV 報表",
+          actionLabel: "尚未開放",
+          onPress: () => console.log("export data"),
+        },
+        {
+          icon: "help-circle-outline",
+          label: "取得協助",
+          detail: "聯絡客服或查看指南",
+          actionLabel: "尚未開放",
+          onPress: () => console.log("open support"),
+        },
+      ],
+    },
+  ];
+
+  const handleLogout = async () => {
+    Alert.alert("確認登出", "確定要登出嗎？", [
+      { text: "取消", style: "cancel" },
+      {
+        text: "登出",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoggingOut(true);
+            await logout();
+            router.replace("/landing");
+          } catch (error) {
+            console.error("Logout failed:", error);
+            Alert.alert("登出失敗", "請稍後再試");
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleLeaveTeam = () => {
+    if (!currentTeamId) return;
+    Alert.alert(
+      "確認離隊",
+      "離開後需重新邀請才可回到此團隊，確定要離開嗎？",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "離開",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsLeaving(true);
+              await leaveTeam.mutateAsync(currentTeamId);
+              await logout();
+              router.replace("/landing");
+            } catch (error) {
+              console.error("Leave team failed:", error);
+              Alert.alert("離開失敗", "請稍後再試");
+            } finally {
+              setIsLeaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const dangerActions: DangerAction[] = [
+    { label: "登出帳號", onPress: handleLogout },
+    { label: "退出目前團隊", onPress: handleLeaveTeam },
+  ];
+
   return (
     <MainLayout
       title="設定"
       subtitle="帳戶、團隊、通知與整合管理"
-      teamName="甜點工作室 A"
+      teamName={currentTeam?.team_name || "載入中..."}
       teamStatus="open"
       showActions={false}
       showDangerTrigger
@@ -169,7 +232,12 @@ export default function Settings() {
           </View>
         ))}
 
-        <DangerZone actions={dangerActions} versionLabel="版本 1.0.2 (Build 20241120)" />
+        <DangerZone
+          actions={dangerActions}
+          versionLabel={`版本 1.0.2 (Build 20241120)${
+            isLoggingOut || isLeaving ? " · 進行中" : ""
+          }`}
+        />
       </View>
     </MainLayout>
   );
