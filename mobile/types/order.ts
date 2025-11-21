@@ -109,7 +109,7 @@ export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
  * 訂單查詢篩選條件
  */
 export interface OrderFilters {
-  status?: "all" | "pending" | "paid" | "completed" | "cancelled";
+  status?: OrderStatus | "all";
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string; // YYYY-MM-DD
   search?: string;
@@ -120,7 +120,7 @@ export interface OrderFilters {
  */
 export interface UpdateOrderStatusParams {
   order_id: string;
-  status: "pending" | "paid" | "completed" | "cancelled";
+  status: OrderStatus;
   payment_method?: PaymentMethod; // 完成訂單時的付款方式
 }
 
