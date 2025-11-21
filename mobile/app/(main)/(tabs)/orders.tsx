@@ -1,8 +1,11 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
+import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useMemo, useState, type ReactNode } from "react";
 import { Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
 
@@ -113,6 +116,8 @@ type ProductItem = {
 };
 
 export default function Orders() {
+  const { currentTeam } = useCurrentTeam();
+
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("orders");
   const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -191,61 +196,55 @@ export default function Orders() {
     );
   };
 
-  const summaryCards = useMemo(
-    () => {
-      const todaysOrders = orders.filter((order) => order.isToday);
-      const todaysRevenue = todaysOrders.reduce(
-        (sum, order) => sum + order.amount,
-        0
-      );
-      const pendingCount = todaysOrders.filter(
-        (order) => order.status === "pending"
-      ).length;
-      const processingCount = todaysOrders.filter(
-        (order) => order.status === "processing"
-      ).length;
-      const awaitingPayment = orders.filter(
-        (order) => order.status === "payment_pending"
-      ).length;
+  const summaryCards = useMemo(() => {
+    const todaysOrders = orders.filter((order) => order.isToday);
+    const todaysRevenue = todaysOrders.reduce(
+      (sum, order) => sum + order.amount,
+      0
+    );
+    const pendingCount = todaysOrders.filter(
+      (order) => order.status === "pending"
+    ).length;
+    const processingCount = todaysOrders.filter(
+      (order) => order.status === "processing"
+    ).length;
+    const awaitingPayment = orders.filter(
+      (order) => order.status === "payment_pending"
+    ).length;
 
-      return [
-        {
-          label: "今日訂單",
-          value: `${todaysOrders.length} 筆`,
-          description: `待確認 ${pendingCount} · 製作中 ${processingCount}`,
-          icon: (
-            <Ionicons name="reader-outline" size={16} color="#FFFFFF" />
-          ),
-          highlight: true,
-        },
-        {
-          label: "今日營收",
-          value: `$${todaysRevenue.toLocaleString()}`,
-          description: "含預約訂單 2 筆",
-          icon: (
-            <Ionicons
-              name="cash-outline"
-              size={16}
-              color={brandTeal}
-            />
-          ),
-        },
-        {
-          label: "待付款",
-          value: `${awaitingPayment} 筆`,
-          description: "提醒顧客完成付款",
-          icon: (
-            <Ionicons
-              name="card-outline"
-              size={16}
-              color={brandSlate}
-            />
-          ),
-        },
-      ];
-    },
-    [orders]
-  );
+    return [
+      {
+        label: "今日訂單",
+        value: `${todaysOrders.length} 筆`,
+        description: `待確認 ${pendingCount} · 製作中 ${processingCount}`,
+        icon: <Ionicons name="reader-outline" size={16} color="#FFFFFF" />,
+        highlight: true,
+      },
+      {
+        label: "今日營收",
+        value: `$${todaysRevenue.toLocaleString()}`,
+        description: "含預約訂單 2 筆",
+        icon: <Ionicons name="cash-outline" size={16} color={brandTeal} />,
+      },
+      {
+        label: "待付款",
+        value: `${awaitingPayment} 筆`,
+        description: "提醒顧客完成付款",
+        icon: <Ionicons name="card-outline" size={16} color={brandSlate} />,
+      },
+    ];
+  }, [orders]);
+
+  if (!currentTeam?.line_channel_id) {
+    return (
+      <MainLayout
+        title="訂單管理"
+        teamName={currentTeam?.team_name || "載入中..."}
+      >
+        <NoWebhookState />
+      </MainLayout>
+    );
+  }
 
   const renderStatusChip = (filter: (typeof statusFilters)[number]) => {
     const isActive = statusFilter === filter.key;
@@ -254,7 +253,7 @@ export default function Orders() {
     const backgroundColor = isActive ? meta.background : "#FFFFFF";
     const borderColor = isActive ? meta.border : "#E2E8F0";
     const textColor = isActive ? meta.color : "#475569";
-    const iconColor = isActive ? meta.icon ?? meta.color : "#94A3B8";
+    const iconColor = isActive ? (meta.icon ?? meta.color) : "#94A3B8";
 
     return (
       <Pressable
@@ -265,11 +264,7 @@ export default function Orders() {
       >
         <View className="flex-row items-center gap-1">
           {filter.key === "completed" && (
-            <Ionicons
-              name="checkmark-circle"
-              size={12}
-              color={iconColor}
-            />
+            <Ionicons name="checkmark-circle" size={12} color={iconColor} />
           )}
           <Text className="text-xs font-semibold" style={{ color: textColor }}>
             {filter.label}
@@ -319,8 +314,9 @@ export default function Orders() {
                 </Text>
               </View>
               <Text
-                className={`text-xs ${order.isToday ? "font-bold text-slate-700" : "text-slate-500"
-                  }`}
+                className={`text-xs ${
+                  order.isToday ? "font-bold text-slate-700" : "text-slate-500"
+                }`}
               >
                 {order.timeLabel}
               </Text>
@@ -375,8 +371,9 @@ export default function Orders() {
 
       <View className="flex-1">
         <Text
-          className={`text-base font-semibold ${product.isOn ? "text-slate-900" : "text-slate-400"
-            }`}
+          className={`text-base font-semibold ${
+            product.isOn ? "text-slate-900" : "text-slate-400"
+          }`}
         >
           {product.name}
         </Text>
@@ -540,10 +537,7 @@ function SummaryCard({
         {value}
       </Text>
       {description ? (
-        <Text
-          className="text-[11px] mt-1"
-          style={{ color: descriptionColor }}
-        >
+        <Text className="text-[11px] mt-1" style={{ color: descriptionColor }}>
           {description}
         </Text>
       ) : null}

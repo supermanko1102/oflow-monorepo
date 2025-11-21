@@ -1,8 +1,10 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
+import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -32,6 +34,8 @@ const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
 
 export default function Inbox() {
+  const { hasWebhook, isLoading } = useCurrentTeam();
+
   const [mode, setMode] = useState<InboxMode>("exception");
 
   const exceptions = useMemo<ExceptionTicket[]>(
@@ -122,6 +126,14 @@ export default function Inbox() {
     },
   };
 
+  if (!hasWebhook && !isLoading) {
+    return (
+      <MainLayout title="對話收件匣">
+        <NoWebhookState />
+      </MainLayout>
+    );
+  }
+
   const renderSummaryCard = (card: (typeof summaryCards)[number]) => {
     const tone = summaryToneStyles[card.tone];
     return (
@@ -133,10 +145,16 @@ export default function Inbox() {
           borderColor: tone.borderColor,
         }}
       >
-        <Text className="text-xs font-semibold uppercase" style={{ color: tone.textColor }}>
+        <Text
+          className="text-xs font-semibold uppercase"
+          style={{ color: tone.textColor }}
+        >
           {card.label}
         </Text>
-        <Text className="text-2xl font-bold mt-1" style={{ color: tone.textColor }}>
+        <Text
+          className="text-2xl font-bold mt-1"
+          style={{ color: tone.textColor }}
+        >
           {card.value}
         </Text>
         <Text className="text-xs text-slate-500 mt-1">{card.description}</Text>

@@ -228,7 +228,7 @@ export default function Landing() {
         )}
 
         {/* Dev Login */}
-        {__DEV__ && Platform.OS === "android" && (
+        {__DEV__ && (
           <View className="w-full mb-8 p-4 bg-gray-100 rounded-xl">
             <Text className="text-sm font-bold text-gray-500 mb-2">
               Developer Login

@@ -5,9 +5,9 @@ import {
   useDashboardSummary,
   useRevenueStats,
 } from "@/hooks/queries/useDashboard";
-import { useTeams, useUpdateAutoMode } from "@/hooks/queries/useTeams";
+import { useUpdateAutoMode } from "@/hooks/queries/useTeams";
 import { useUser } from "@/hooks/queries/useUser";
-import { useAuthStore } from "@/stores/auth";
+import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 type MetricCardProps = {
   label: string;
@@ -94,16 +95,14 @@ function MetricCard({
 type OperationMode = "auto" | "semi";
 
 export default function Overview() {
+  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const currentTeamId = useAuthStore((state) => state.currentTeamId);
+  const { currentTeam, currentTeamId } = useCurrentTeam();
 
   // Fetch User
   const { data: user } = useUser();
 
   // Fetch Teams
-  const { data: teams } = useTeams();
-  const currentTeam = teams?.find((t) => t.team_id === currentTeamId);
-
   // Auto Mode Mutation
   const { mutateAsync: mutateAutoMode, isPending: isUpdatingMode } =
     useUpdateAutoMode();
@@ -328,6 +327,29 @@ export default function Overview() {
           />
         }
       >
+        {/* Webhook Warning Banner */}
+        {!currentTeam?.line_channel_id && (
+          <Pressable
+            onPress={() => router.push("../settings/line-connection")}
+            className="mb-6 flex-row items-center justify-between rounded-2xl border border-yellow-200 bg-yellow-50 p-4"
+          >
+            <View className="flex-1 flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+                <Ionicons name="warning" size={24} color="#EAB308" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-yellow-800">
+                  尚未連接 LINE 官方帳號
+                </Text>
+                <Text className="text-xs text-yellow-600">
+                  點擊此處完成設定以接收訂單
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#EAB308" />
+          </Pressable>
+        )}
+
         {/* AI Mode Switcher */}
         <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
           <TouchableOpacity

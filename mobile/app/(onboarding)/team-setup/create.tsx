@@ -109,11 +109,19 @@ export default function CreateTeam() {
 
       Alert.alert(
         "建立成功",
-        `團隊「${teamName}」已建立，接下來請設定 LINE 官方帳號`,
-        [{ text: "確定" }]
+        "是否立即連接 LINE 官方帳號？\n(連接後才能使用 AI 自動接單功能)",
+        [
+          {
+            text: "稍後設定",
+            style: "cancel",
+            onPress: () => router.replace("/(main)/(tabs)/inbox"),
+          },
+          {
+            text: "立即連接",
+            onPress: () => router.replace("/(main)/lineConnect" as any),
+          },
+        ]
       );
-
-      router.replace("/(onboarding)/line-setup");
     } catch (error) {
       console.error("建立團隊失敗:", error);
       Alert.alert("建立失敗", "無法建立團隊，請稍後再試", [{ text: "確定" }]);
