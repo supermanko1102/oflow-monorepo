@@ -5,10 +5,15 @@ import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
-import { useConversations } from "@/hooks/queries/useConversations";
+import {
+  useConfirmConversation,
+  useConversations,
+  useIgnoreConversation,
+} from "@/hooks/queries/useConversations";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,12 +25,14 @@ type InboxMode = "exception" | "auto";
 
 type ExceptionTicket = {
   id: string;
+  status: string;
   customer: string;
   issue: string;
   hint: string;
   lastMessage: string;
   lastTime: string;
   missingFields: string[];
+  collectedData?: Record<string, any>;
 };
 
 type AutoRecord = {
@@ -57,11 +64,38 @@ export default function Inbox() {
   } = useConversations(currentTeamId, "collecting_info", 50, !!currentTeamId);
 
   const {
+    data: awaiting = [],
+    isLoading: isAwaitingLoading,
+    isRefetching: isAwaitingRefetching,
+    refetch: refetchAwaiting,
+  } = useConversations(
+    currentTeamId,
+    "awaiting_merchant_confirmation",
+    50,
+    !!currentTeamId
+  );
+
+  const {
+    data: manual = [],
+    isLoading: isManualLoading,
+    isRefetching: isManualRefetching,
+    refetch: refetchManual,
+  } = useConversations(
+    currentTeamId,
+    "requires_manual_handling",
+    50,
+    !!currentTeamId
+  );
+
+  const {
     data: completed = [],
     isLoading: isCompletedLoading,
     isRefetching: isCompletedRefetching,
     refetch: refetchCompleted,
   } = useConversations(currentTeamId, "completed", 50, !!currentTeamId);
+
+  const confirmConversation = useConfirmConversation();
+  const ignoreConversation = useIgnoreConversation();
 
   const [mode, setMode] = useState<InboxMode>("exception");
 
@@ -76,19 +110,28 @@ export default function Inbox() {
   };
 
   const exceptions = useMemo<ExceptionTicket[]>(() => {
-    return collecting.map((conv) => ({
-      id: conv.id,
-      customer: conv.line_user_id || "LINE 使用者",
-      issue:
-        conv.missing_fields && conv.missing_fields.length > 0
-          ? `缺少 ${conv.missing_fields.join("、")}`
-          : "需要補充資料",
-      hint: conv.collected_data ? "已擷取部分資訊，請補齊缺漏" : "",
-      lastMessage: conv.lastMessage?.message || "無最新訊息",
-      lastTime: formatTime(conv.last_message_at),
-      missingFields: conv.missing_fields || [],
-    }));
-  }, [collecting]);
+    const list = [...collecting, ...awaiting, ...manual];
+    return list
+      .map((conv) => ({
+        id: conv.id,
+        status: conv.status,
+        customer: conv.line_user_id || "LINE 使用者",
+        issue:
+          conv.missing_fields && conv.missing_fields.length > 0
+            ? `缺少 ${conv.missing_fields.join("、")}`
+            : "需要補充資料",
+        hint: conv.collected_data ? "已擷取部分資訊，請補齊缺漏" : "",
+        lastMessage: conv.lastMessage?.message || "無最新訊息",
+        lastTime: formatTime(conv.last_message_at),
+        missingFields: conv.missing_fields || [],
+        collectedData: conv.collected_data || {},
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.lastTime || "").getTime() -
+          new Date(a.lastTime || "").getTime()
+      );
+  }, [collecting, awaiting, manual]);
 
   const autoRecords = useMemo<AutoRecord[]>(() => {
     return completed.map((conv) => ({
@@ -169,6 +212,42 @@ export default function Inbox() {
     );
   };
 
+  const handleConfirm = async (ticket: ExceptionTicket) => {
+    if (ticket.missingFields.length > 0) {
+      Alert.alert("資料不足", "請先補齊缺少的欄位再建單");
+      return;
+    }
+    const data = ticket.collectedData || {};
+    const orderData = {
+      customerName: data.customer_name || "LINE 顧客",
+      customerPhone: data.customer_phone || "",
+      items: data.items || [],
+      totalAmount: data.total_amount || 0,
+      pickupDate: data.delivery_date || data.pickup_date || "",
+      pickupTime: data.delivery_time || data.pickup_time || "",
+      customerNotes: data.customer_notes || "",
+    };
+    try {
+      await confirmConversation.mutateAsync({
+        conversationId: ticket.id,
+        orderData,
+      });
+      Alert.alert("建立成功", "已為此對話建立訂單");
+    } catch (error) {
+      console.error("confirm conversation error", error);
+      Alert.alert("建立失敗", "請稍後再試");
+    }
+  };
+
+  const handleIgnore = async (id: string) => {
+    try {
+      await ignoreConversation.mutateAsync(id);
+    } catch (error) {
+      console.error("ignore conversation error", error);
+      Alert.alert("操作失敗", "請稍後再試");
+    }
+  };
+
   const renderExceptionCard = (ticket: ExceptionTicket) => (
     <View
       key={ticket.id}
@@ -192,7 +271,9 @@ export default function Inbox() {
         </View>
         <View className="px-3 py-1 rounded-full bg-red-50 border border-red-100">
           <Text className="text-[11px] font-semibold text-red-500">
-            例外處理
+            {ticket.status === "awaiting_merchant_confirmation"
+              ? "待確認"
+              : "需人工"}
           </Text>
         </View>
       </View>
@@ -237,20 +318,23 @@ export default function Inbox() {
 
       <View className="flex-row gap-3 mt-4">
         <Pressable
-          onPress={() => console.log("reply", ticket.id)}
+          onPress={() => handleIgnore(ticket.id)}
           className="flex-1 h-11 rounded-full border flex-row items-center justify-center gap-2 bg-white"
           style={{ borderColor: "#E2E8F0" }}
         >
           <Ionicons name="chatbubble-outline" size={16} color={brandSlate} />
-          <Text className="text-sm font-semibold text-slate-700">回覆</Text>
+          <Text className="text-sm font-semibold text-slate-700">忽略</Text>
         </Pressable>
         <Pressable
-          onPress={() => console.log("create order", ticket.id)}
+          onPress={() => handleConfirm(ticket)}
           className="flex-1 h-11 rounded-full flex-row items-center justify-center gap-2 shadow-sm"
           style={{ backgroundColor: brandTeal }}
+          disabled={confirmConversation.isPending}
         >
-          <Ionicons name="add-circle-outline" size={16} color="white" />
-          <Text className="text-sm font-semibold text-white">手動建單</Text>
+          <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+          <Text className="text-sm font-semibold text-white">
+            確認建單
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -364,12 +448,20 @@ export default function Inbox() {
           <RefreshControl
             refreshing={
               mode === "exception"
-                ? isCollectingRefetching
+                ? isCollectingRefetching ||
+                  isAwaitingRefetching ||
+                  isManualRefetching
                 : isCompletedRefetching
             }
-            onRefresh={() =>
-              mode === "exception" ? refetchCollecting() : refetchCompleted()
-            }
+            onRefresh={() => {
+              if (mode === "exception") {
+                refetchCollecting();
+                refetchAwaiting();
+                refetchManual();
+              } else {
+                refetchCompleted();
+              }
+            }}
             tintColor={brandTeal}
           />
         }
@@ -387,7 +479,7 @@ export default function Inbox() {
                 快速回覆或手動建單，確保流程不中斷
               </Text>
             </View>
-            {isCollectingLoading ? (
+            {isCollectingLoading || isAwaitingLoading || isManualLoading ? (
               <View className="py-10 items-center">
                 <ActivityIndicator color={brandTeal} />
                 <Text className="text-slate-500 mt-2">載入中...</Text>

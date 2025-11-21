@@ -87,7 +87,7 @@ export default function LineConnectionSettings() {
         [
           {
             text: "確定",
-            onPress: () => router.back(),
+            onPress: () => router.replace("/(main)/(tabs)/inbox"),
           },
         ]
       );
@@ -228,7 +228,7 @@ export default function LineConnectionSettings() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.replace("/(main)/(tabs)/overview")}
               className="mt-4 h-14 w-full items-center justify-center rounded-2xl border border-gray-200 bg-white"
             >
               <Text className="text-base font-semibold text-gray-700">

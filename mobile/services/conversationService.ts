@@ -21,7 +21,12 @@ const conversationApi = new ApiClient(
  */
 export async function getConversations(
   teamId: string,
-  status: "collecting_info" | "completed" | "abandoned" = "collecting_info",
+  status:
+    | "collecting_info"
+    | "completed"
+    | "abandoned"
+    | "awaiting_merchant_confirmation"
+    | "requires_manual_handling" = "collecting_info",
   limit: number = 20
 ): Promise<Conversation[]> {
   const response = await conversationApi.call<{

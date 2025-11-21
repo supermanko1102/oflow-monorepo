@@ -23,7 +23,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
  */
 export function useConversations(
   teamId: string | null,
-  status: "collecting_info" | "completed" | "abandoned" = "collecting_info",
+  status:
+    | "collecting_info"
+    | "completed"
+    | "abandoned"
+    | "awaiting_merchant_confirmation"
+    | "requires_manual_handling" = "collecting_info",
   limit: number = 20,
   enabled: boolean = true
 ) {

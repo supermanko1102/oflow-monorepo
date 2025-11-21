@@ -30,7 +30,6 @@ type StatusFilterKey = "all" | OrderStatus;
 const statusFilters = [
   { key: "all", label: "全部" },
   { key: "pending", label: "待確認" },
-  { key: "confirmed", label: "已確認" },
   { key: "paid", label: "已付款" },
   { key: "completed", label: "已完成" },
   { key: "cancelled", label: "已取消" },
