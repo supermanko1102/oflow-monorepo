@@ -8,6 +8,7 @@ import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import {
   useConfirmConversation,
   useConversations,
+  useConversationDetail,
   useIgnoreConversation,
 } from "@/hooks/queries/useConversations";
 import { useConversationsRealtime } from "@/hooks/queries/useConversations";
@@ -15,6 +16,7 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -48,6 +50,19 @@ type AutoRecord = {
 
 const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
+
+const missingFieldLabels: Record<string, string> = {
+  items: "商品品項",
+  delivery_method: "配送方式",
+  pickup_type: "取貨方式",
+  delivery_date: "交付日期",
+  delivery_time: "交付時間",
+  pickup_location: "面交地點",
+  store_info: "超商店號/店名",
+  shipping_address: "寄送地址",
+  customer_name: "顧客姓名",
+  customer_phone: "聯絡電話",
+};
 
 export default function Inbox() {
   const {
@@ -100,6 +115,8 @@ export default function Inbox() {
 
   const [mode, setMode] = useState<InboxMode>("exception");
   useConversationsRealtime(currentTeamId);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const conversationDetail = useConversationDetail(detailId, !!detailId);
 
   const formatTime = (timestamp?: string) => {
     if (!timestamp) return "--:--";
@@ -118,14 +135,13 @@ export default function Inbox() {
         id: conv.id,
         status: conv.status,
         customer: conv.line_user_id || "LINE 使用者",
-        issue:
-          conv.missing_fields && conv.missing_fields.length > 0
-            ? `缺少 ${conv.missing_fields.join("、")}`
-            : "需要補充資料",
+        issue: "待補資料",
         hint: conv.collected_data ? "已擷取部分資訊，請補齊缺漏" : "",
         lastMessage: conv.lastMessage?.message || "無最新訊息",
         lastTime: formatTime(conv.last_message_at),
-        missingFields: conv.missing_fields || [],
+        missingFields: (conv.missing_fields || []).map(
+          (f) => missingFieldLabels[f] || f
+        ),
         collectedData: conv.collected_data || {},
       }))
       .sort(
@@ -251,9 +267,10 @@ export default function Inbox() {
   };
 
   const renderExceptionCard = (ticket: ExceptionTicket) => (
-    <View
+    <Pressable
       key={ticket.id}
       className="rounded-3xl bg-white p-4 mb-4 border border-slate-100 shadow-[0px_10px_25px_rgba(15,23,42,0.04)]"
+      onPress={() => setDetailId(ticket.id)}
     >
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-3">
@@ -280,34 +297,28 @@ export default function Inbox() {
         </View>
       </View>
 
-      <View className="flex-row flex-wrap gap-2 mt-3">
-        {ticket.missingFields.map((field) => (
-          <View
-            key={field}
-            className="px-2 py-1 rounded-full"
-            style={{ backgroundColor: "rgba(248,113,113,0.12)" }}
-          >
-            <Text className="text-[11px] font-semibold text-red-500">
-              缺：{field}
-            </Text>
-          </View>
-        ))}
-      </View>
-
       <View
         className="rounded-2xl p-3 mt-4 border"
         style={{
-          backgroundColor: "rgba(251, 146, 60, 0.12)",
-          borderColor: "rgba(251, 146, 60, 0.35)",
+          backgroundColor: "rgba(14, 165, 233, 0.08)",
+          borderColor: "rgba(14, 165, 233, 0.25)",
         }}
       >
         <View className="flex-row items-center gap-2 mb-1">
-          <Ionicons name="alert-circle-outline" size={18} color="#EA580C" />
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={brandTeal}
+          />
           <Text className="text-sm font-semibold text-slate-900">
             {ticket.issue}
           </Text>
         </View>
-        <Text className="text-xs text-slate-600 ml-7">{ticket.hint}</Text>
+        <Text className="text-xs text-slate-600 ml-7">
+          {ticket.missingFields.length > 0
+            ? `待補：${ticket.missingFields.join("、")}`
+            : ticket.hint || "請確認資料"}
+        </Text>
       </View>
 
       <View
@@ -334,12 +345,10 @@ export default function Inbox() {
           disabled={confirmConversation.isPending}
         >
           <Ionicons name="checkmark-circle-outline" size={16} color="white" />
-          <Text className="text-sm font-semibold text-white">
-            確認建單
-          </Text>
+          <Text className="text-sm font-semibold text-white">確認建單</Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 
   const AutoRecordCard = ({ record }: { record: AutoRecord }) => {
@@ -513,6 +522,87 @@ export default function Inbox() {
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={!!detailId}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDetailId(null)}
+      >
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={() => setDetailId(null)}
+        />
+        <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-lg font-bold text-slate-900">對話詳情</Text>
+            <Pressable onPress={() => setDetailId(null)}>
+              <Ionicons name="close" size={20} color="#475569" />
+            </Pressable>
+          </View>
+          {conversationDetail.isLoading ? (
+            <View className="py-8 items-center">
+              <ActivityIndicator color={brandTeal} />
+              <Text className="text-slate-500 mt-2">載入對話...</Text>
+            </View>
+          ) : conversationDetail.data ? (
+            <ScrollView
+              className="max-h-[60vh]"
+              showsVerticalScrollIndicator={false}
+            >
+              <View className="mb-3">
+                <Text className="text-xs text-slate-500 mb-1">缺少欄位</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {(conversationDetail.data.conversation.missing_fields || [])
+                    .map((f: string) => missingFieldLabels[f] || f)
+                    .map((label: string) => (
+                      <View
+                        key={`${detailId}-${label}`}
+                        className="px-2 py-1 rounded-full"
+                        style={{ backgroundColor: "rgba(14,165,233,0.1)" }}
+                      >
+                        <Text className="text-[11px] font-semibold text-brand-slate">
+                          待補：{label}
+                        </Text>
+                      </View>
+                    ))}
+                  {(!conversationDetail.data.conversation.missing_fields ||
+                    conversationDetail.data.conversation.missing_fields
+                      .length === 0) && (
+                    <Text className="text-[11px] text-slate-500">無缺漏</Text>
+                  )}
+                </View>
+              </View>
+              <View className="gap-3">
+                {conversationDetail.data.history.map((msg, idx) => (
+                  <View
+                    key={`${detailId}-${idx}`}
+                    className="rounded-2xl border border-slate-100 p-3"
+                    style={{
+                      backgroundColor:
+                        msg.role === "ai" ? "rgba(14,165,233,0.05)" : "#FFFFFF",
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-xs font-semibold text-slate-500">
+                        {msg.role === "ai" ? "AI" : "客人"}
+                      </Text>
+                      <Text className="text-[11px] text-slate-400">
+                        {formatTime(msg.created_at)}
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-slate-800">
+                      {msg.message}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : (
+            <Text className="text-slate-500">沒有找到對話內容</Text>
+          )}
+        </View>
+      </Modal>
     </MainLayout>
   );
 }
