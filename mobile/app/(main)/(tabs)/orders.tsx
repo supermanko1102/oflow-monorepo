@@ -5,7 +5,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
-import { useOrders } from "@/hooks/queries/useOrders";
+import { useOrders, useOrdersRealtime } from "@/hooks/queries/useOrders";
 import {
   useCreateProduct,
   useProducts,
@@ -164,6 +164,7 @@ export default function Orders() {
     { status: statusFilter === "all" ? undefined : statusFilter },
     !!currentTeamId
   );
+  useOrdersRealtime(currentTeamId);
 
   const {
     data: products = [],

@@ -6,7 +6,9 @@
 
 import { queryKeys } from "@/hooks/queries/queryKeys";
 import * as conversationService from "@/services/conversationService";
+import { supabase } from "@/lib/supabase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 // ==================== Queries ====================
 
@@ -69,6 +71,41 @@ export function useConversationDetail(
     enabled: enabled && !!conversationId,
     staleTime: 1 * 60 * 1000, // 1 分鐘
   });
+}
+
+/**
+ * 對話 Realtime 訂閱
+ *
+ * 讓 Inbox 在有新增/更新/刪除時自動更新
+ */
+export function useConversationsRealtime(teamId: string | null) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!teamId) return;
+
+    const channel = supabase
+      .channel(`conversations-${teamId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+          filter: `team_id=eq.${teamId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.conversations.all(),
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [teamId, queryClient]);
 }
 
 // ==================== Mutations ====================

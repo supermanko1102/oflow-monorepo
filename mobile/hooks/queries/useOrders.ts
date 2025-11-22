@@ -11,8 +11,10 @@
 
 import { queryKeys } from "@/hooks/queries/queryKeys";
 import * as orderService from "@/services/orderService";
+import { supabase } from "@/lib/supabase";
 import type { OrderFilters } from "@/types/order";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 // ==================== Queries ====================
 
@@ -47,6 +49,41 @@ export function useOrders(
     enabled: enabled && !!teamId,
     staleTime: 1 * 60 * 1000, // 1 分鐘
   });
+}
+
+/**
+ * 訂單列表 Realtime 訂閱
+ *
+ * 讓列表/摘要在有新增、更新、刪除時自動更新，不需手動刷新
+ */
+export function useOrdersRealtime(teamId: string | null) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!teamId) return;
+
+    const channel = supabase
+      .channel(`orders-${teamId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `team_id=eq.${teamId}`,
+        },
+        () => {
+          // 重新載入訂單列表與 Dashboard 相關資料
+          queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [teamId, queryClient]);
 }
 
 /**

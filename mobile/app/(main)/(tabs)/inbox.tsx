@@ -10,6 +10,7 @@ import {
   useConversations,
   useIgnoreConversation,
 } from "@/hooks/queries/useConversations";
+import { useConversationsRealtime } from "@/hooks/queries/useConversations";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -98,6 +99,7 @@ export default function Inbox() {
   const ignoreConversation = useIgnoreConversation();
 
   const [mode, setMode] = useState<InboxMode>("exception");
+  useConversationsRealtime(currentTeamId);
 
   const formatTime = (timestamp?: string) => {
     if (!timestamp) return "--:--";
