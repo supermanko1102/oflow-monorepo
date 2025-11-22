@@ -320,29 +320,14 @@ serve(async (req) => {
         console.log("[LINE Webhook] 訊息內容:", messageText);
         console.log("[LINE Webhook] 使用者 ID:", lineUserId);
 
-        // ═══════════════════════════════════════════════════════
-        // Step 1: 取得或建立對話
-        // ═══════════════════════════════════════════════════════
-        console.log("[LINE Webhook] 取得或建立對話...");
-        const { data: conversation, error: convError } = await supabaseAdmin
-          .rpc("get_or_create_conversation", {
-            p_team_id: team.id,
-            p_line_user_id: lineUserId,
-          })
-          .single();
-
-        if (convError || !conversation) {
-          console.error("[LINE Webhook] 對話取得/建立失敗:", convError);
-          throw new Error("Failed to get or create conversation");
-        }
-
-        console.log("[LINE Webhook] 對話 ID:", conversation.id);
-        console.log("[LINE Webhook] 對話狀態:", conversation.status);
+        // 先解析 intent，非訂單 intent 就不建立/更新 conversation，僅保留訊息紀錄（避免塞爆收件匣）
+        let conversation: any = null;
+        let savedMessage: any = null;
 
         // ═══════════════════════════════════════════════════════
-        // Step 2: 儲存客人訊息到資料庫
+        // Step 1: 儲存訊息（不綁 conversation，先取得 message id）
         // ═══════════════════════════════════════════════════════
-        const { data: savedMessage, error: saveError } = await supabaseAdmin
+        const { data: tempMessage, error: tempSaveError } = await supabaseAdmin
           .from("line_messages")
           .insert({
             team_id: team.id,
@@ -351,21 +336,22 @@ serve(async (req) => {
             message_type: "text",
             message_text: messageText,
             role: "customer",
-            conversation_id: conversation.id,
             ai_parsed: false,
           })
           .select()
           .single();
 
-        if (saveError) {
-          console.error("[LINE Webhook] 訊息儲存失敗:", saveError);
-          throw saveError;
+        if (tempSaveError) {
+          console.error("[LINE Webhook] 訊息儲存失敗:", tempSaveError);
+          throw tempSaveError;
         }
 
-        console.log("[LINE Webhook] 客人訊息已儲存");
+        savedMessage = tempMessage;
+        console.log("[LINE Webhook] 客人訊息已儲存（未綁對話）");
 
         // ═══════════════════════════════════════════════════════
-        // Step 2.5: 檢查是否為半自動模式 + 商家觸發關鍵字
+        // Step 1.5: 檢查是否為半自動模式 + 商家觸發關鍵字
+        // （半自動需要強制建對話）
         // ═══════════════════════════════════════════════════════
         const triggerCheck = isOrderConfirmationTrigger(messageText);
         const isMerchant = await isMessageFromMerchant(
@@ -381,7 +367,29 @@ serve(async (req) => {
           );
           console.log("[LINE Webhook] 半自動模式：商家明確同意建單");
 
-          // 1. AI 解析整段對話歷史（取得最近 10 條訊息）
+          // 1. 取得或建立對話（半自動強制建）
+          const { data: convHalf, error: convErrorHalf } =
+            await supabaseAdmin
+              .rpc("get_or_create_conversation", {
+                p_team_id: team.id,
+                p_line_user_id: lineUserId,
+              })
+              .single();
+
+          if (convErrorHalf || !convHalf) {
+            console.error("[LINE Webhook] 對話取得/建立失敗:", convErrorHalf);
+            throw new Error("Failed to get or create conversation");
+          }
+
+          conversation = convHalf;
+
+          // 2. 更新訊息的 conversation_id
+          await supabaseAdmin
+            .from("line_messages")
+            .update({ conversation_id: conversation.id })
+            .eq("id", savedMessage.id);
+
+          // 3. AI 解析整段對話歷史（取得最近 10 條訊息）
           const { data: historyData } = await supabaseAdmin.rpc(
             "get_conversation_history",
             {
@@ -392,7 +400,7 @@ serve(async (req) => {
 
           const conversationHistory = historyData || [];
 
-          // 2. 呼叫 AI 解析對話
+          // 4. 呼叫 AI 解析對話
           const aiResult = await parseMessageWithAI(
             messageText,
             {
@@ -428,6 +436,9 @@ serve(async (req) => {
                   order.delivery_date || order.pickup_date || null;
                 const appointmentTime =
                   order.delivery_time || order.pickup_time || "00:00";
+                const orderStatus = order.delivery_date || order.pickup_date
+                  ? "pending"
+                  : "draft";
 
                 const { data: orderId, error: orderError } =
                   await supabaseAdmin.rpc("create_order_from_ai", {
@@ -440,6 +451,7 @@ serve(async (req) => {
                     p_original_message: `[半自動模式建單] 觸發關鍵字: ${triggerCheck.keyword}`,
                     p_appointment_date: appointmentDate,
                     p_appointment_time: appointmentTime,
+                    p_status: orderStatus,
                     p_delivery_method: order.delivery_method || "pickup",
                     p_requires_frozen: order.requires_frozen || false,
                     p_store_info: order.store_info || null,
@@ -538,6 +550,32 @@ serve(async (req) => {
         if (team.auto_mode === false) {
           console.log("[LINE Webhook] 半自動模式：解析並累積資訊");
 
+          // 半自動模式需要對話上下文，先確保 conversation 存在
+          if (!conversation) {
+            const { data: convHalfAuto, error: convErrHalfAuto } =
+              await supabaseAdmin
+                .rpc("get_or_create_conversation", {
+                  p_team_id: team.id,
+                  p_line_user_id: lineUserId,
+                })
+                .single();
+
+            if (convErrHalfAuto || !convHalfAuto) {
+              console.error(
+                "[LINE Webhook] 對話取得/建立失敗（半自動）：",
+                convErrHalfAuto
+              );
+              throw new Error("Failed to get or create conversation");
+            }
+            conversation = convHalfAuto;
+
+            // 更新訊息的 conversation_id
+            await supabaseAdmin
+              .from("line_messages")
+              .update({ conversation_id: conversation.id })
+              .eq("id", savedMessage.id);
+          }
+
           // 取得對話歷史供 AI 解析
           const { data: historyData } = await supabaseAdmin.rpc(
             "get_conversation_history",
@@ -604,6 +642,30 @@ serve(async (req) => {
         // ═══════════════════════════════════════════════════════
         // Step 3: 取得對話歷史（最近 5 條）- 全自動模式
         // ═══════════════════════════════════════════════════════
+        if (!conversation) {
+          // 只有 intent=order 才建立對話並進入全自動流程
+          const { data: convAuto, error: convAutoErr } = await supabaseAdmin
+            .rpc("get_or_create_conversation", {
+              p_team_id: team.id,
+              p_line_user_id: lineUserId,
+            })
+            .single();
+
+          if (convAutoErr || !convAuto) {
+            console.error(
+              "[LINE Webhook] 對話取得/建立失敗（全自動）：",
+              convAutoErr
+            );
+            throw new Error("Failed to get or create conversation");
+          }
+          conversation = convAuto;
+
+          await supabaseAdmin
+            .from("line_messages")
+            .update({ conversation_id: conversation.id })
+            .eq("id", savedMessage.id);
+        }
+
         const { data: historyData, error: historyError } =
           await supabaseAdmin.rpc("get_conversation_history", {
             p_conversation_id: conversation.id,
@@ -661,6 +723,7 @@ serve(async (req) => {
             const appointmentDate = order.delivery_date || order.pickup_date;
             const appointmentTime =
               order.delivery_time || order.pickup_time || "00:00";
+            const orderStatus = appointmentDate ? "pending" : "draft";
 
             // 計算總金額（如果 AI 沒有提供）
             let totalAmount = order.total_amount || 0;
@@ -680,6 +743,7 @@ serve(async (req) => {
                   // 通用參數（預約/交付日期時間）- 支援新舊欄位名稱（向後兼容）
                   p_appointment_date: appointmentDate,
                   p_appointment_time: appointmentTime,
+                  p_status: orderStatus,
                   // 可選參數（多行業支援）
                   p_delivery_method: order.delivery_method || "pickup",
                   p_pickup_type: order.pickup_type || null, // store 或 meetup

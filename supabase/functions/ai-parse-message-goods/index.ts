@@ -146,6 +146,7 @@ function generateGoodsUserPrompt(message: string): string {
 }
 
 說明：
+- 姓名/電話如果缺少，要列入 missing_fields，並視為未完成（is_complete=false），在 suggested_reply 裡禮貌詢問
 - is_complete 根據配送方式動態判斷：
   * 店取：items + delivery_method=pickup + pickup_type=store + delivery_date + delivery_time
   * 面交：items + delivery_method=pickup + pickup_type=meetup + pickup_location + delivery_date + delivery_time
