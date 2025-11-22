@@ -236,7 +236,7 @@ serve(async (req) => {
         // 先取得對話資訊
         const { data: conversation, error: fetchError } = await supabaseAdmin
           .from("conversations")
-          .select("team_id")
+          .select("team_id, line_user_id")
           .eq("id", conversation_id)
           .single();
 
@@ -250,6 +250,17 @@ serve(async (req) => {
           user.id,
           conversation.team_id
         );
+
+        // 清掉同 Line 使用者的舊 abandoned 對話，避免唯一約束衝突
+        if (conversation.line_user_id) {
+          await supabaseAdmin
+            .from("conversations")
+            .delete()
+            .eq("team_id", conversation.team_id)
+            .eq("line_user_id", conversation.line_user_id)
+            .eq("status", "abandoned")
+            .neq("id", conversation_id);
+        }
 
         // 更新狀態為 abandoned
         const { error: updateError } = await supabaseAdmin
