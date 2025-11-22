@@ -335,7 +335,7 @@ serve(async (req) => {
             p_items: order_data.items,
             p_total_amount: order_data.totalAmount,
             p_pickup_date: order_data.pickupDate,
-            p_pickup_time: order_data.pickupTime,
+            p_pickup_time: order_data.pickupTime || "00:00",
             p_line_message_id: lastMessage.id,
             p_original_message: lastMessage.message_text,
             p_customer_notes: order_data.customerNotes,

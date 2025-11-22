@@ -424,6 +424,11 @@ serve(async (req) => {
                 const order = aiResult.order;
                 const totalAmount = order.total_amount || 0;
 
+                const appointmentDate =
+                  order.delivery_date || order.pickup_date || null;
+                const appointmentTime =
+                  order.delivery_time || order.pickup_time || "00:00";
+
                 const { data: orderId, error: orderError } =
                   await supabaseAdmin.rpc("create_order_from_ai", {
                     p_team_id: team.id,
@@ -433,10 +438,8 @@ serve(async (req) => {
                     p_total_amount: totalAmount,
                     p_line_message_id: savedMessage.id,
                     p_original_message: `[半自動模式建單] 觸發關鍵字: ${triggerCheck.keyword}`,
-                    p_appointment_date:
-                      order.pickup_date || order.delivery_date,
-                    p_appointment_time:
-                      order.pickup_time || order.delivery_time,
+                    p_appointment_date: appointmentDate,
+                    p_appointment_time: appointmentTime,
                     p_delivery_method: order.delivery_method || "pickup",
                     p_requires_frozen: order.requires_frozen || false,
                     p_store_info: order.store_info || null,
@@ -465,8 +468,10 @@ serve(async (req) => {
                 const customerConfirmMessage =
                   `✅ 訂單已確認！\n\n` +
                   `訂單編號：${orderDetail?.order_number || "處理中"}\n` +
-                  `取貨時間：${order.pickup_date || order.delivery_date} ${
+                  `交付日期：${order.pickup_date || order.delivery_date || ""}${
                     order.pickup_time || order.delivery_time
+                      ? ` ${order.pickup_time || order.delivery_time}`
+                      : ""
                   }\n` +
                   (totalAmount > 0 ? `金額：NT$ ${totalAmount}\n\n` : "\n") +
                   `感謝您的訂購！`;
@@ -653,6 +658,9 @@ serve(async (req) => {
             console.log("[LINE Webhook] 資訊完整，建立訂單...");
 
             const order = aiResult.order;
+            const appointmentDate = order.delivery_date || order.pickup_date;
+            const appointmentTime =
+              order.delivery_time || order.pickup_time || "00:00";
 
             // 計算總金額（如果 AI 沒有提供）
             let totalAmount = order.total_amount || 0;
@@ -670,8 +678,8 @@ serve(async (req) => {
                   p_line_message_id: savedMessage.id,
                   p_original_message: messageText,
                   // 通用參數（預約/交付日期時間）- 支援新舊欄位名稱（向後兼容）
-                  p_appointment_date: order.delivery_date || order.pickup_date,
-                  p_appointment_time: order.delivery_time || order.pickup_time,
+                  p_appointment_date: appointmentDate,
+                  p_appointment_time: appointmentTime,
                   // 可選參數（多行業支援）
                   p_delivery_method: order.delivery_method || "pickup",
                   p_pickup_type: order.pickup_type || null, // store 或 meetup

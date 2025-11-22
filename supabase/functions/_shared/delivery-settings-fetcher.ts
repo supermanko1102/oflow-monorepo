@@ -64,10 +64,12 @@ export function generateDeliveryMethodsPrompt(
     return `
 配送方式（全部可用）：
 1. **自取（pickup）**：
-   - 「自取」「到店」「店取」→ pickup_type=store
-   - 「面交」「當面交」「約面交」→ pickup_type=meetup
+   - 「自取」「到店」「店取」→ pickup_type=store（需要日期+時間）
+   - 「面交」「當面交」「約面交」→ pickup_type=meetup（需要日期+時間+地點）
 2. **超商取貨（convenience_store）**：「超商」「7-11」「全家」「萊爾富」「OK」
-3. **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」`;
+   （只需要日期與店號/店名，不需要時間）
+3. **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」
+   （只需要日期與寄送地址，不需要時間）`;
   }
 
   const availableMethods: string[] = [];
@@ -81,7 +83,7 @@ export function generateDeliveryMethodsPrompt(
     pickupTypes.push(
       `   - 店取（store）：到店取貨，地址：${address}${
         hours ? `，${hours}` : ""
-      }`
+      }（需要日期與時間）`
     );
   }
 
@@ -95,7 +97,9 @@ export function generateDeliveryMethodsPrompt(
     const note = settings.pickup_settings.meetup.note
       ? ` (${settings.pickup_settings.meetup.note})`
       : "";
-    pickupTypes.push(`   - 面交（meetup）：約定地點面交${areas}${note}`);
+    pickupTypes.push(
+      `   - 面交（meetup）：約定地點面交${areas}${note}（需要日期、時間、面交地點）`
+    );
   }
 
   // 如果有任一種取貨方式
@@ -110,14 +114,14 @@ export function generateDeliveryMethodsPrompt(
   // 檢查超商
   if (settings.enable_convenience_store) {
     availableMethods.push(
-      `2. **超商取貨（convenience_store）**：\n   同義詞：「超商」「7-11」「全家」「萊爾富」「OK」「超商取貨」`
+      `2. **超商取貨（convenience_store）**：\n   同義詞：「超商」「7-11」「全家」「萊爾富」「OK」「超商取貨」\n   需要：日期 + 店號/店名（時間不需要）`
     );
   }
 
   // 檢查宅配
   if (settings.enable_black_cat) {
     availableMethods.push(
-      `3. **宅配（black_cat）**：\n   同義詞：「宅配」「黑貓」「寄送」「配送」「送到家」`
+      `3. **宅配（black_cat）**：\n   同義詞：「宅配」「黑貓」「寄送」「配送」「送到家」\n   需要：日期 + 寄送地址（時間不需要）`
     );
   }
 

@@ -69,13 +69,13 @@ ${deliveryMethodsPrompt}
    - 有商品目錄時：從目錄推薦 2-5 個熱門商品，自動匹配價格
    - 無商品目錄時：引導客人描述需求，不推薦假商品
 
-4. **配送方式理解**（區分店取/面交）：
-   - **店取（store）**：「自取」「到店」「店取」→ 到商家固定地點取貨
-   - **面交（meetup）**：「面交」「當面交」「約面交」→ 約定地點面交
-   - **超商（convenience_store）**：「超商」「7-11」「全家」「萊爾富」
-   - **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」
+4. **配送方式理解與時間需求**：
+   - **店取（pickup + pickup_type=store）**：「自取」「到店」「店取」→ 需要日期 + 時間（如 14:00）
+   - **面交（pickup + pickup_type=meetup）**：「面交」「當面交」「約面交」→ 需要日期 + 時間 + 面交地點
+   - **超商（convenience_store）**：「超商」「7-11」「全家」「萊爾富」→ 只需要日期（不需要時間），需要店號/店名
+   - **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」→ 只需要日期（不需要時間），需要寄送地址
    
-   注意：pickup_type 只有在 delivery_method=pickup 時才填入（store 或 meetup）
+   注意：pickup_type 只有在 delivery_method=pickup 時才填入（store 或 meetup），且**只有店取/面交需要 delivery_time，超商/宅配不需要時間**。
 
 5. **提取完整訂單資訊**：
    - 顧客姓名（如果有）
@@ -132,7 +132,7 @@ function generateGoodsUserPrompt(message: string): string {
       }
     ],
     "delivery_date": "YYYY-MM-DD（如果有）",
-    "delivery_time": "HH:MM（如果有）",
+    "delivery_time": "HH:MM（只有店取/面交需要，超商/宅配不需要）",
     "delivery_method": "pickup|convenience_store|black_cat（如果有）",
     "pickup_type": "store|meetup（僅當 delivery_method=pickup 時）",
     "pickup_location": "取貨/面交地點（如果有）",
@@ -141,7 +141,7 @@ function generateGoodsUserPrompt(message: string): string {
     "shipping_address": "寄送地址（如果宅配）",
     "total_amount": 金額（如果有）
   },
-  "missing_fields": ["items", "delivery_date", "delivery_time", "delivery_method", "pickup_type", "pickup_location", "store_info", "shipping_address"] 中缺少的,
+  "missing_fields": ["items", "delivery_date", "delivery_time", "delivery_method", "pickup_type", "pickup_location", "store_info", "shipping_address"] 中缺少的（超商/宅配不要把時間當成缺失）,
   "suggested_reply": "給客人的回覆訊息"
 }
 
@@ -149,8 +149,8 @@ function generateGoodsUserPrompt(message: string): string {
 - is_complete 根據配送方式動態判斷：
   * 店取：items + delivery_method=pickup + pickup_type=store + delivery_date + delivery_time
   * 面交：items + delivery_method=pickup + pickup_type=meetup + pickup_location + delivery_date + delivery_time
-  * 超商：items + delivery_method=convenience_store + store_info
-  * 宅配：items + delivery_method=black_cat + shipping_address
+  * 超商：items + delivery_method=convenience_store + store_info（時間不必填）
+  * 宅配：items + delivery_method=black_cat + shipping_address（時間不必填）
 - suggested_reply 根據對話階段調整：
   * 打招呼：「您好！請問需要什麼商品呢？」（不要一次問太多）
   * 詢問商品：列出商品或引導描述
@@ -368,4 +368,3 @@ serve(async (req) => {
     );
   }
 });
-
