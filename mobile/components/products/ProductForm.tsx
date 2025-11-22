@@ -12,6 +12,7 @@ import {
   Switch,
   Text,
   TextInput,
+  type KeyboardTypeOptions,
   View,
 } from "react-native";
 
@@ -20,6 +21,7 @@ type ProductFormProps = {
   onCancel: () => void;
   isSubmitting?: boolean;
   defaultValues?: Partial<ProductFormValues>;
+  mode?: "create" | "edit";
 };
 
 const brandTeal = Palette.brand.primary;
@@ -36,7 +38,9 @@ export default function ProductForm({
   onCancel,
   isSubmitting = false,
   defaultValues,
+  mode = "create",
 }: ProductFormProps) {
+  const isEdit = mode === "edit";
   const {
     control,
     handleSubmit,
@@ -46,10 +50,10 @@ export default function ProductForm({
   } = useForm<ProductFormValues>({
     defaultValues: {
       name: "",
-      price: 0,
+      price: "",
       category: "",
       description: "",
-      stock: undefined,
+      stock: "",
       is_available: true,
       useTeamDeliveryDefault: true,
       methods: ["pickup", "meetup", "convenience_store", "black_cat"],
@@ -72,9 +76,11 @@ export default function ProductForm({
     <>
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-1 pr-3">
-          <Text className="text-lg font-bold text-slate-900">新增商品</Text>
+          <Text className="text-lg font-bold text-slate-900">
+            {isEdit ? "編輯商品" : "新增商品"}
+          </Text>
           <Text className="text-[12px] text-slate-500">
-            商品會直接影響 AI 建單推薦與前台可售方式
+            商品設定會直接影響 AI 建單推薦與前台可售方式
           </Text>
         </View>
         <Pressable onPress={onCancel}>
@@ -116,7 +122,7 @@ export default function ProductForm({
                 label="價格 (元)"
                 placeholder="例：350"
                 keyboardType="numeric"
-                value={value?.toString() || ""}
+                value={value || ""}
                 onChangeText={onChange}
                 error={errors.price?.message}
               />
@@ -144,7 +150,7 @@ export default function ProductForm({
                 label="庫存 (選填)"
                 placeholder="數字"
                 keyboardType="numeric"
-                value={value?.toString() || ""}
+                value={value || ""}
                 onChangeText={onChange}
               />
             )}
@@ -249,7 +255,7 @@ export default function ProductForm({
             )}
             {!isSubmitting && (
               <Text className="text-white text-base font-semibold">
-                建立商品
+                {isEdit ? "更新商品" : "建立商品"}
               </Text>
             )}
           </View>
@@ -281,7 +287,7 @@ function InputField({
   placeholder?: string;
   value: string;
   onChangeText: (text: string) => void;
-  keyboardType?: "default" | "numeric";
+  keyboardType?: KeyboardTypeOptions;
   multiline?: boolean;
   error?: string;
 }) {

@@ -152,6 +152,7 @@ export default function Orders() {
   const [useTeamDeliveryDefault, setUseTeamDeliveryDefault] = useState(true);
   const [selectedMethods, setSelectedMethods] = useState<DeliveryMethod[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const {
     data: orders = [],
@@ -172,7 +173,8 @@ export default function Orders() {
   } = useProducts(currentTeamId, !!currentTeamId);
 
   const createProduct = useCreateProduct();
-  const updateProduct = useUpdateProduct();
+  const updateProductDelivery = useUpdateProduct();
+  const updateProductInfo = useUpdateProduct();
   const toggleProductAvailability = useToggleProductAvailability();
   const deliveryOptions: { key: DeliveryMethod; label: string }[] = [
     { key: "pickup", label: deliveryMethodLabels.pickup },
@@ -260,7 +262,7 @@ export default function Orders() {
     }
 
     try {
-      await updateProduct.mutateAsync({
+      await updateProductDelivery.mutateAsync({
         productId: deliveryModalProduct.id,
         data: {
           delivery_override: useTeamDeliveryDefault
@@ -286,9 +288,21 @@ export default function Orders() {
     setShowCreateModal(false);
   };
 
+  const openEditModal = (product: Product) => {
+    setEditingProduct(product);
+  };
+
+  const closeEditModal = () => {
+    setEditingProduct(null);
+  };
+
   const submitCreateProduct = async (values: ProductFormValues) => {
     if (!currentTeamId) {
       Alert.alert("錯誤", "尚未選擇團隊");
+      return;
+    }
+    if (!values.useTeamDeliveryDefault && values.methods.length === 0) {
+      Alert.alert("請選擇配送方式", "自訂配送時至少需選擇一種方式");
       return;
     }
 
@@ -312,6 +326,38 @@ export default function Orders() {
     } catch (error) {
       console.error("[Product] 建立商品失敗", error);
       Alert.alert("建立失敗", "請稍後再試");
+    }
+  };
+
+  const submitUpdateProduct = async (values: ProductFormValues) => {
+    if (!editingProduct) return;
+    if (!values.useTeamDeliveryDefault && values.methods.length === 0) {
+      Alert.alert("請選擇配送方式", "自訂配送時至少需選擇一種方式");
+      return;
+    }
+
+    try {
+      await updateProductInfo.mutateAsync({
+        productId: editingProduct.id,
+        data: {
+          name: values.name.trim(),
+          price: Number(values.price),
+          description: values.description?.trim() || undefined,
+          category: values.category?.trim() || undefined,
+          stock: values.stock ? Number(values.stock) : undefined,
+          is_available: values.is_available,
+          delivery_override: values.useTeamDeliveryDefault
+            ? { use_team_default: true }
+            : {
+                use_team_default: false,
+                methods: values.methods,
+              },
+        },
+      });
+      closeEditModal();
+    } catch (error) {
+      console.error("[Product] 更新商品失敗", error);
+      Alert.alert("更新失敗", "請稍後再試");
     }
   };
 
@@ -520,15 +566,26 @@ export default function Orders() {
             </Text>
           )}
 
-          <Pressable
-            onPress={() => openDeliveryModal(product)}
-            className="flex-row items-center gap-1 mt-2"
-          >
-            <Ionicons name="bicycle-outline" size={14} color={brandSlate} />
-            <Text className="text-[12px] font-semibold text-brand-slate">
-              配送設定
-            </Text>
-          </Pressable>
+          <View className="flex-row items-center gap-3 mt-2">
+            <Pressable
+              onPress={() => openEditModal(product)}
+              className="flex-row items-center gap-1"
+            >
+              <Ionicons name="create-outline" size={14} color={brandSlate} />
+              <Text className="text-[12px] font-semibold text-brand-slate">
+                編輯
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => openDeliveryModal(product)}
+              className="flex-row items-center gap-1"
+            >
+              <Ionicons name="bicycle-outline" size={14} color={brandSlate} />
+              <Text className="text-[12px] font-semibold text-brand-slate">
+                配送設定
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <Switch
@@ -566,6 +623,27 @@ export default function Orders() {
       )}
     </ScrollView>
   );
+
+  const editingProductDefaults: Partial<ProductFormValues> | undefined =
+    editingProduct
+      ? {
+          name: editingProduct.name,
+          price: editingProduct.price.toString(),
+          category: editingProduct.category || "",
+          description: editingProduct.description || "",
+          stock:
+            editingProduct.stock !== undefined
+              ? editingProduct.stock.toString()
+              : "",
+          is_available: editingProduct.is_available,
+          useTeamDeliveryDefault:
+            editingProduct.delivery_override?.use_team_default ?? true,
+          methods:
+            editingProduct.delivery_override?.methods ||
+            editingProduct.effective_delivery_methods ||
+            [],
+        }
+      : undefined;
 
   return (
     <>
@@ -697,6 +775,25 @@ export default function Orders() {
       </Modal>
 
       <Modal
+        visible={!!editingProduct}
+        transparent
+        animationType="slide"
+        onRequestClose={closeEditModal}
+      >
+        <Pressable className="flex-1 bg-black/30" onPress={closeEditModal} />
+        <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
+          <ProductForm
+            key={editingProduct?.id || "edit-product"}
+            mode="edit"
+            defaultValues={editingProductDefaults}
+            onSubmit={submitUpdateProduct}
+            onCancel={closeEditModal}
+            isSubmitting={updateProductInfo.isPending}
+          />
+        </View>
+      </Modal>
+
+      <Modal
         visible={!!deliveryModalProduct}
         transparent
         animationType="slide"
@@ -782,16 +879,16 @@ export default function Orders() {
             <View className="gap-3 mt-4">
               <Pressable
                 onPress={saveProductDelivery}
-                disabled={updateProduct.isPending}
+                disabled={updateProductDelivery.isPending}
                 className="rounded-2xl"
                 style={{
-                  backgroundColor: updateProduct.isPending
+                  backgroundColor: updateProductDelivery.isPending
                     ? "#94A3B8"
                     : brandTeal,
                 }}
               >
                 <View className="py-3 flex-row items-center justify-center gap-2">
-                  {updateProduct.isPending && (
+                  {updateProductDelivery.isPending && (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   )}
                   <Text className="text-white text-base font-semibold">
@@ -801,7 +898,7 @@ export default function Orders() {
               </Pressable>
               <Pressable
                 onPress={closeDeliveryModal}
-                disabled={updateProduct.isPending}
+                disabled={updateProductDelivery.isPending}
                 className="rounded-2xl border border-slate-200"
               >
                 <View className="py-3 flex-row items-center justify-center gap-2">

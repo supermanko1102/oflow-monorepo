@@ -65,8 +65,17 @@ export interface ProductDeliveryOverride {
 // 商品表單用到的欄位格式
 export type ProductFormValues = Omit<
   Product,
-  "id" | "team_id" | "created_at" | "updated_at"
+  | "id"
+  | "team_id"
+  | "created_at"
+  | "updated_at"
+  | "price"
+  | "stock"
+  | "delivery_override"
+  | "effective_delivery_methods"
 > & {
   price: string;
-  stock: string;
+  stock?: string;
+  useTeamDeliveryDefault: boolean;
+  methods: DeliveryMethod[];
 };
