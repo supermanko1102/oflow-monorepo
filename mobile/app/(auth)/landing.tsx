@@ -16,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AuthStatus, useAuthStore } from "@/stores/auth";
 
 export default function Landing() {
   const [isLoading, setIsLoading] = useState(false);
@@ -71,11 +72,18 @@ export default function Landing() {
     }
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data } = await supabase.auth.signInWithPassword({
         email: devEmail,
         password: "Dev1234!",
       });
-      if (error) throw error;
+      await supabase.auth.setSession({
+        access_token: data?.session?.access_token ?? "",
+        refresh_token: data?.session?.refresh_token ?? "",
+      });
+      console.log("authStore", useAuthStore.getState());
+      useAuthStore.setState({
+        status: AuthStatus.Active,
+      });
       await syncAuthStatus();
     } catch (e) {
       if (e instanceof Error) {

@@ -17,10 +17,8 @@ export async function syncAuthStatus(): Promise<void> {
     } else {
       const primaryTeam = teams[0];
 
-      const hasWebhook = !!primaryTeam.line_channel_id;
-
       useAuthStore.setState({
-        status: hasWebhook ? AuthStatus.Active : AuthStatus.NoWebhook,
+        status: AuthStatus.Active,
         currentTeamId: primaryTeam.team_id,
       });
     }
