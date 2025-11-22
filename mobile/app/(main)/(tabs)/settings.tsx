@@ -38,7 +38,10 @@ type DangerAction = {
 export default function Settings() {
   const router = useRouter();
   const { currentTeam, currentTeamId } = useCurrentTeam();
-  const { data: members } = useTeamMembers(currentTeamId || "", !!currentTeamId);
+  const { data: members } = useTeamMembers(
+    currentTeamId || "",
+    !!currentTeamId
+  );
   const leaveTeam = useLeaveTeam();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -61,8 +64,7 @@ export default function Settings() {
         {
           icon: "people-outline",
           label: "團隊與權限",
-          detail:
-            memberCount > 0 ? `${memberCount} 位成員` : "載入成員中...",
+          detail: memberCount > 0 ? `${memberCount} 位成員` : "載入成員中...",
           actionLabel: "管理",
           onPress: () => router.push("/(main)/(tabs)/overview"),
         },
@@ -86,6 +88,20 @@ export default function Settings() {
           actionLabel: "尚未開放",
           statusTone: "muted",
           onPress: () => console.log("open email digest"),
+        },
+      ],
+    },
+    {
+      title: "營運設定",
+      description: "配送方式會同步影響 AI 建單與商品可售方式",
+      items: [
+        {
+          icon: "bicycle-outline",
+          label: "配送設定",
+          detail: "店取、面交、超商、宅配",
+          actionLabel: "設定",
+          actionVariant: "primary",
+          onPress: () => router.push("/(main)/delivery"),
         },
       ],
     },
@@ -160,30 +176,26 @@ export default function Settings() {
 
   const handleLeaveTeam = () => {
     if (!currentTeamId) return;
-    Alert.alert(
-      "確認離隊",
-      "離開後需重新邀請才可回到此團隊，確定要離開嗎？",
-      [
-        { text: "取消", style: "cancel" },
-        {
-          text: "離開",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLeaving(true);
-              await leaveTeam.mutateAsync(currentTeamId);
-              await logout();
-              router.replace("/landing");
-            } catch (error) {
-              console.error("Leave team failed:", error);
-              Alert.alert("離開失敗", "請稍後再試");
-            } finally {
-              setIsLeaving(false);
-            }
-          },
+    Alert.alert("確認離隊", "離開後需重新邀請才可回到此團隊，確定要離開嗎？", [
+      { text: "取消", style: "cancel" },
+      {
+        text: "離開",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLeaving(true);
+            await leaveTeam.mutateAsync(currentTeamId);
+            await logout();
+            router.replace("/landing");
+          } catch (error) {
+            console.error("Leave team failed:", error);
+            Alert.alert("離開失敗", "請稍後再試");
+          } finally {
+            setIsLeaving(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const dangerActions: DangerAction[] = [
@@ -320,7 +332,9 @@ function SettingRow({
             onPress={onActionPress ?? onPress}
             className="px-3 py-1.5 rounded-full border"
             style={{
-              backgroundColor: isPrimaryAction ? Palette.brand.primary : "#FFFFFF",
+              backgroundColor: isPrimaryAction
+                ? Palette.brand.primary
+                : "#FFFFFF",
               borderColor: isPrimaryAction ? Palette.brand.primary : "#E2E8F0",
             }}
           >

@@ -9,13 +9,20 @@ import { useOrders } from "@/hooks/queries/useOrders";
 import {
   useToggleProductAvailability,
   useProducts,
+  useUpdateProduct,
 } from "@/hooks/queries/useProducts";
+import {
+  deliveryMethodLabels,
+  type DeliveryMethod,
+} from "@/types/delivery-settings";
 import type { Order, OrderStatus } from "@/types/order";
 import type { Product } from "@/types/product";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -138,6 +145,9 @@ export default function Orders() {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("orders");
   const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [deliveryModalProduct, setDeliveryModalProduct] = useState<Product | null>(null);
+  const [useTeamDeliveryDefault, setUseTeamDeliveryDefault] = useState(true);
+  const [selectedMethods, setSelectedMethods] = useState<DeliveryMethod[]>([]);
 
   const {
     data: orders = [],
@@ -157,7 +167,17 @@ export default function Orders() {
     refetch: refetchProducts,
   } = useProducts(currentTeamId, !!currentTeamId);
 
+  const updateProduct = useUpdateProduct();
   const toggleProductAvailability = useToggleProductAvailability();
+  const deliveryOptions: { key: DeliveryMethod; label: string }[] = [
+    { key: "pickup", label: deliveryMethodLabels.pickup },
+    { key: "meetup", label: deliveryMethodLabels.meetup },
+    {
+      key: "convenience_store",
+      label: deliveryMethodLabels.convenience_store,
+    },
+    { key: "black_cat", label: deliveryMethodLabels.black_cat },
+  ];
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -201,6 +221,57 @@ export default function Orders() {
       },
     ];
   }, [orders, todayStr]);
+
+  const openDeliveryModal = (product: Product) => {
+    setDeliveryModalProduct(product);
+    const override = product.delivery_override;
+    setUseTeamDeliveryDefault(override?.use_team_default ?? true);
+    if (override?.use_team_default === false && override.methods) {
+      setSelectedMethods(override.methods);
+    } else {
+      setSelectedMethods(product.effective_delivery_methods || []);
+    }
+  };
+
+  const closeDeliveryModal = () => {
+    setDeliveryModalProduct(null);
+    setSelectedMethods([]);
+    setUseTeamDeliveryDefault(true);
+  };
+
+  const toggleMethod = (method: DeliveryMethod) => {
+    setSelectedMethods((prev) =>
+      prev.includes(method)
+        ? prev.filter((m) => m !== method)
+        : [...prev, method]
+    );
+  };
+
+  const saveProductDelivery = async () => {
+    if (!deliveryModalProduct) return;
+    if (!useTeamDeliveryDefault && selectedMethods.length === 0) {
+      Alert.alert("請選擇配送方式", "自訂配送時至少需選擇一種方式");
+      return;
+    }
+
+    try {
+      await updateProduct.mutateAsync({
+        productId: deliveryModalProduct.id,
+        data: {
+          delivery_override: useTeamDeliveryDefault
+            ? { use_team_default: true }
+            : {
+                use_team_default: false,
+                methods: selectedMethods,
+              },
+        },
+      });
+      closeDeliveryModal();
+    } catch (error) {
+      console.error("[Product] 更新配送設定失敗", error);
+      Alert.alert("更新失敗", "請稍後再試");
+    }
+  };
 
   if (!currentTeam?.line_channel_id) {
     return (
@@ -388,6 +459,35 @@ export default function Orders() {
               {product.category}
             </Text>
           ) : null}
+          {product.effective_delivery_methods &&
+          product.effective_delivery_methods.length > 0 ? (
+            <View className="flex-row flex-wrap gap-2 mt-2">
+              {product.effective_delivery_methods.map((method) => (
+                <View
+                  key={`${product.id}-${method}`}
+                  className="px-2 py-1 rounded-full bg-slate-100"
+                >
+                  <Text className="text-[11px] font-semibold text-slate-600">
+                    {deliveryMethodLabels[method]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text className="text-[11px] text-slate-400 mt-2">
+              沿用全店配送設定
+            </Text>
+          )}
+
+          <Pressable
+            onPress={() => openDeliveryModal(product)}
+            className="flex-row items-center gap-1 mt-2"
+          >
+            <Ionicons name="bicycle-outline" size={14} color={brandSlate} />
+            <Text className="text-[12px] font-semibold text-brand-slate">
+              配送設定
+            </Text>
+          </Pressable>
         </View>
 
         <Switch
@@ -427,114 +527,239 @@ export default function Orders() {
   );
 
   return (
-    <MainLayout
-      title="訂單管理"
-      teamName={currentTeam?.team_name || "載入中..."}
-      centerContent={
-        <SegmentedControl
-          options={[
-            { label: "訂單管理", value: "orders" },
-            { label: "商品管理", value: "products" },
-          ]}
-          value={primaryTab}
-          onChange={(val) => setPrimaryTab(val as PrimaryTab)}
-          theme="brand"
-        />
-      }
-      rightContent={
-        <View className="flex-row items-center gap-2">
-          {primaryTab === "orders" ? (
-            <IconButton
-              icon="add"
-              ariaLabel="新增訂單"
-              onPress={() => console.log("create order")}
-              isDark={false}
-            />
-          ) : (
-            <View />
-          )}
-        </View>
-      }
-    >
-      {primaryTab === "orders" ? (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={brandTeal}
-            />
-          }
-        >
-          <View className="mb-6">
-            <View className="flex-row items-center justify-between mb-3 px-1">
-              <Text className="text-lg font-bold text-brand-slate">
-                今日概況
-              </Text>
-              <Text className="text-xs text-slate-400">即時資料</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="pl-1"
-              contentContainerStyle={{ gap: 12, paddingRight: 16 }}
-            >
-              {summaryCards.map((card) => (
-                <SummaryCard key={card.label} {...card} />
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Sub-Header Tools */}
-          <View className="flex-row items-center justify-between mb-4">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-1 mr-2"
-            >
-              {statusFilters.map((filter) => renderStatusChip(filter))}
-            </ScrollView>
-            <View className="border-l border-gray-200 pl-2">
+    <>
+      <MainLayout
+        title="訂單管理"
+        teamName={currentTeam?.team_name || "載入中..."}
+        centerContent={
+          <SegmentedControl
+            options={[
+              { label: "訂單管理", value: "orders" },
+              { label: "商品管理", value: "products" },
+            ]}
+            value={primaryTab}
+            onChange={(val) => setPrimaryTab(val as PrimaryTab)}
+            theme="brand"
+          />
+        }
+        rightContent={
+          <View className="flex-row items-center gap-2">
+            {primaryTab === "orders" ? (
               <IconButton
-                icon={viewMode === "list" ? "list-outline" : "calendar-outline"}
-                ariaLabel="切換檢視"
-                onPress={() =>
-                  setViewMode((v) => (v === "list" ? "calendar" : "list"))
-                }
+                icon="add"
+                ariaLabel="新增訂單"
+                onPress={() => console.log("create order")}
                 isDark={false}
               />
-            </View>
-          </View>
-
-          {/* Order List */}
-          <View className="pb-20">
-            {isLoading ? (
-              <View className="py-16 items-center justify-center">
-                <ActivityIndicator size="large" color={brandTeal} />
-                <Text className="text-slate-500 mt-2">載入訂單中</Text>
-              </View>
-            ) : orders.length === 0 ? (
-              <Text className="text-slate-500">尚無訂單</Text>
             ) : (
-              orders.map((order) => renderOrderCard(order))
+              <View />
             )}
           </View>
-        </ScrollView>
-      ) : (
-        <View className="relative h-full">
-          {renderProductList()}
-
-          {/* FAB */}
-          <Pressable
-            className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-brand-teal items-center justify-center "
-            onPress={() => console.log("add product")}
+        }
+      >
+        {primaryTab === "orders" ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={refetch}
+                tintColor={brandTeal}
+              />
+            }
           >
-            <Ionicons name="add" size={30} color="white" />
-          </Pressable>
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3 px-1">
+                <Text className="text-lg font-bold text-brand-slate">
+                  今日概況
+                </Text>
+                <Text className="text-xs text-slate-400">即時資料</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="pl-1"
+                contentContainerStyle={{ gap: 12, paddingRight: 16 }}
+              >
+                {summaryCards.map((card) => (
+                  <SummaryCard key={card.label} {...card} />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Sub-Header Tools */}
+            <View className="flex-row items-center justify-between mb-4">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="flex-1 mr-2"
+              >
+                {statusFilters.map((filter) => renderStatusChip(filter))}
+              </ScrollView>
+              <View className="border-l border-gray-200 pl-2">
+                <IconButton
+                  icon={
+                    viewMode === "list" ? "list-outline" : "calendar-outline"
+                  }
+                  ariaLabel="切換檢視"
+                  onPress={() =>
+                    setViewMode((v) => (v === "list" ? "calendar" : "list"))
+                  }
+                  isDark={false}
+                />
+              </View>
+            </View>
+
+            {/* Order List */}
+            <View className="pb-20">
+              {isLoading ? (
+                <View className="py-16 items-center justify-center">
+                  <ActivityIndicator size="large" color={brandTeal} />
+                  <Text className="text-slate-500 mt-2">載入訂單中</Text>
+                </View>
+              ) : orders.length === 0 ? (
+                <Text className="text-slate-500">尚無訂單</Text>
+              ) : (
+                orders.map((order) => renderOrderCard(order))
+              )}
+            </View>
+          </ScrollView>
+        ) : (
+          <View className="relative h-full">
+            {renderProductList()}
+
+            {/* FAB */}
+            <Pressable
+              className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-brand-teal items-center justify-center "
+              onPress={() => console.log("add product")}
+            >
+              <Ionicons name="add" size={30} color="white" />
+            </Pressable>
+          </View>
+        )}
+      </MainLayout>
+
+      <Modal
+        visible={!!deliveryModalProduct}
+        transparent
+        animationType="slide"
+        onRequestClose={closeDeliveryModal}
+      >
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={closeDeliveryModal}
+        />
+        <View className="bg-white rounded-t-3xl p-6">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-lg font-bold text-slate-900">
+              {deliveryModalProduct?.name || "配送設定"}
+            </Text>
+            <Pressable onPress={closeDeliveryModal}>
+              <Ionicons name="close" size={20} color="#475569" />
+            </Pressable>
+          </View>
+          <View className="gap-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="text-sm font-semibold text-slate-800">
+                  沿用全店設定
+                </Text>
+                <Text className="text-[12px] text-slate-500">
+                  依照「設定」中的配送方式，不另做限制
+                </Text>
+              </View>
+              <Switch
+                value={useTeamDeliveryDefault}
+                onValueChange={setUseTeamDeliveryDefault}
+                trackColor={{ false: "#CBD5E1", true: brandTeal }}
+              />
+            </View>
+
+            {!useTeamDeliveryDefault && (
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-slate-800">
+                  自訂配送方式
+                </Text>
+                <Text className="text-[12px] text-slate-500">
+                  至少選一種，未勾選的方式將不可用
+                </Text>
+                <View className="flex-row flex-wrap gap-2 mt-2">
+                  {deliveryOptions.map((opt) => {
+                    const isActive = selectedMethods.includes(opt.key);
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        onPress={() => toggleMethod(opt.key)}
+                        className="px-3 py-2 rounded-full border"
+                        style={{
+                          borderColor: isActive ? brandTeal : "#CBD5E1",
+                          backgroundColor: isActive
+                            ? "rgba(14,165,233,0.08)"
+                            : "#FFFFFF",
+                        }}
+                      >
+                        <View className="flex-row items-center gap-1">
+                          <Ionicons
+                            name={
+                              isActive
+                                ? "checkbox-outline"
+                                : "square-outline"
+                            }
+                            size={16}
+                            color={isActive ? brandTeal : "#94A3B8"}
+                          />
+                          <Text
+                            className="text-sm font-semibold"
+                            style={{
+                              color: isActive ? brandTeal : "#475569",
+                            }}
+                          >
+                            {opt.label}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            <View className="gap-3 mt-4">
+              <Pressable
+                onPress={saveProductDelivery}
+                disabled={updateProduct.isPending}
+                className="rounded-2xl"
+                style={{
+                  backgroundColor: updateProduct.isPending
+                    ? "#94A3B8"
+                    : brandTeal,
+                }}
+              >
+                <View className="py-3 flex-row items-center justify-center gap-2">
+                  {updateProduct.isPending && (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  )}
+                  <Text className="text-white text-base font-semibold">
+                    儲存
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={closeDeliveryModal}
+                disabled={updateProduct.isPending}
+                className="rounded-2xl border border-slate-200"
+              >
+                <View className="py-3 flex-row items-center justify-center gap-2">
+                  <Text className="text-slate-700 text-base font-semibold">
+                    取消
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      )}
-    </MainLayout>
+      </Modal>
+    </>
   );
 }
 

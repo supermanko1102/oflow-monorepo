@@ -44,8 +44,8 @@ export async function updateDeliverySettings(
     await deliverySettingsApi.call(
       "POST",
       "delivery-settings/update",
-      { team_id: teamId },
-      settings
+      undefined,
+      { team_id: teamId, ...settings }
     );
 
     return true;
