@@ -1,14 +1,15 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
+import ProductForm from "@/components/products/ProductForm";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
-import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useOrders } from "@/hooks/queries/useOrders";
 import {
-  useToggleProductAvailability,
+  useCreateProduct,
   useProducts,
+  useToggleProductAvailability,
   useUpdateProduct,
 } from "@/hooks/queries/useProducts";
 import {
@@ -16,7 +17,8 @@ import {
   type DeliveryMethod,
 } from "@/types/delivery-settings";
 import type { Order, OrderStatus } from "@/types/order";
-import type { Product } from "@/types/product";
+import type { Product, ProductFormValues } from "@/types/product";
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -145,9 +147,11 @@ export default function Orders() {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("orders");
   const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
-  const [deliveryModalProduct, setDeliveryModalProduct] = useState<Product | null>(null);
+  const [deliveryModalProduct, setDeliveryModalProduct] =
+    useState<Product | null>(null);
   const [useTeamDeliveryDefault, setUseTeamDeliveryDefault] = useState(true);
   const [selectedMethods, setSelectedMethods] = useState<DeliveryMethod[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const {
     data: orders = [],
@@ -167,6 +171,7 @@ export default function Orders() {
     refetch: refetchProducts,
   } = useProducts(currentTeamId, !!currentTeamId);
 
+  const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const toggleProductAvailability = useToggleProductAvailability();
   const deliveryOptions: { key: DeliveryMethod; label: string }[] = [
@@ -270,6 +275,43 @@ export default function Orders() {
     } catch (error) {
       console.error("[Product] 更新配送設定失敗", error);
       Alert.alert("更新失敗", "請稍後再試");
+    }
+  };
+
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+  };
+
+  const submitCreateProduct = async (values: ProductFormValues) => {
+    if (!currentTeamId) {
+      Alert.alert("錯誤", "尚未選擇團隊");
+      return;
+    }
+
+    try {
+      await createProduct.mutateAsync({
+        team_id: currentTeamId,
+        name: values.name.trim(),
+        price: Number(values.price),
+        description: values.description?.trim() || undefined,
+        category: values.category?.trim() || undefined,
+        stock: values.stock ? Number(values.stock) : undefined,
+        is_available: values.is_available,
+        delivery_override: values.useTeamDeliveryDefault
+          ? { use_team_default: true }
+          : {
+              use_team_default: false,
+              methods: values.methods,
+            },
+      });
+      closeCreateModal();
+    } catch (error) {
+      console.error("[Product] 建立商品失敗", error);
+      Alert.alert("建立失敗", "請稍後再試");
     }
   };
 
@@ -452,7 +494,6 @@ export default function Orders() {
           <Text className="text-sm text-slate-500">
             ${product.price}
             {product.stock !== undefined && ` · 剩餘: ${product.stock}`}
-            {product.unit ? ` /${product.unit}` : ""}
           </Text>
           {product.category ? (
             <Text className="text-[11px] text-slate-400 mt-1">
@@ -631,13 +672,29 @@ export default function Orders() {
             {/* FAB */}
             <Pressable
               className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-brand-teal items-center justify-center "
-              onPress={() => console.log("add product")}
+              onPress={openCreateModal}
             >
               <Ionicons name="add" size={30} color="white" />
             </Pressable>
           </View>
         )}
       </MainLayout>
+
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeCreateModal}
+      >
+        <Pressable className="flex-1 bg-black/30" onPress={closeCreateModal} />
+        <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
+          <ProductForm
+            onSubmit={submitCreateProduct}
+            onCancel={closeCreateModal}
+            isSubmitting={createProduct.isPending}
+          />
+        </View>
+      </Modal>
 
       <Modal
         visible={!!deliveryModalProduct}
@@ -701,9 +758,7 @@ export default function Orders() {
                         <View className="flex-row items-center gap-1">
                           <Ionicons
                             name={
-                              isActive
-                                ? "checkbox-outline"
-                                : "square-outline"
+                              isActive ? "checkbox-outline" : "square-outline"
                             }
                             size={16}
                             color={isActive ? brandTeal : "#94A3B8"}

@@ -13,7 +13,6 @@ export interface Product {
   image_url?: string;
   is_available: boolean;
   stock?: number;
-  unit?: string; // 單位（個、份、杯等）
   created_at: string;
   updated_at: string;
   // 配送設定
@@ -31,7 +30,6 @@ export interface CreateProductRequest {
   image_url?: string;
   is_available?: boolean;
   stock?: number;
-  unit?: string;
   delivery_override?: ProductDeliveryOverride;
 }
 
@@ -44,7 +42,6 @@ export interface UpdateProductRequest {
   image_url?: string;
   is_available?: boolean;
   stock?: number;
-  unit?: string;
   delivery_override?: ProductDeliveryOverride;
 }
 
@@ -60,21 +57,16 @@ export const PRODUCT_CATEGORIES = [
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
-// 商品單位選項
-export const PRODUCT_UNITS = [
-  "個",
-  "份",
-  "杯",
-  "盒",
-  "條",
-  "片",
-  "包",
-  "瓶",
-] as const;
-
-export type ProductUnit = (typeof PRODUCT_UNITS)[number];
-
 export interface ProductDeliveryOverride {
   use_team_default: boolean;
   methods?: DeliveryMethod[];
 }
+
+// 商品表單用到的欄位格式
+export type ProductFormValues = Omit<
+  Product,
+  "id" | "team_id" | "created_at" | "updated_at"
+> & {
+  price: string;
+  stock: string;
+};
