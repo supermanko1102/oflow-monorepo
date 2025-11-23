@@ -1,6 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
-import ProductForm from "@/components/products/ProductForm";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
@@ -32,6 +31,7 @@ import {
   Text,
   View,
 } from "react-native";
+import ProductForm from "@/components/form/ProductForm";
 
 type PrimaryTab = "orders" | "products";
 type StatusFilterKey = "all" | OrderStatus;

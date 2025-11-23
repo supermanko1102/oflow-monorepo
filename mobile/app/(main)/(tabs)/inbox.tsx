@@ -1,5 +1,9 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
+import {
+  ConfirmOrderData,
+  ConversationConfirmForm,
+} from "@/components/form/ConversationConfirmForm";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
@@ -116,7 +120,31 @@ export default function Inbox() {
   const [mode, setMode] = useState<InboxMode>("exception");
   useConversationsRealtime(currentTeamId);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [formConversationId, setFormConversationId] = useState<string | null>(
+    null
+  );
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const conversationDetail = useConversationDetail(detailId, !!detailId);
+  const formConversationDetail = useConversationDetail(
+    formConversationId,
+    !!formConversationId
+  );
+  const submitDetailForm = async (orderData: ConfirmOrderData) => {
+    if (!formConversationId) return;
+    try {
+      await confirmConversation.mutateAsync({
+        conversationId: formConversationId,
+        orderData,
+      });
+      Alert.alert("建立成功", "已為此對話建立訂單");
+      setDetailId(null);
+      setFormConversationId(null);
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("confirm conversation error", error);
+      Alert.alert("建立失敗", "請稍後再試");
+    }
+  };
 
   const formatTime = (timestamp?: string) => {
     if (!timestamp) return "--:--";
@@ -231,10 +259,6 @@ export default function Inbox() {
   };
 
   const handleConfirm = async (ticket: ExceptionTicket) => {
-    if (ticket.missingFields.length > 0) {
-      Alert.alert("資料不足", "請先補齊缺少的欄位再建單");
-      return;
-    }
     const data = ticket.collectedData || {};
     const orderData = {
       customerName: data.customer_name || "LINE 顧客",
@@ -267,10 +291,9 @@ export default function Inbox() {
   };
 
   const renderExceptionCard = (ticket: ExceptionTicket) => (
-    <Pressable
+    <View
       key={ticket.id}
       className="rounded-3xl bg-white p-4 mb-4 border border-slate-100 shadow-[0px_10px_25px_rgba(15,23,42,0.04)]"
-      onPress={() => setDetailId(ticket.id)}
     >
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-3">
@@ -295,6 +318,17 @@ export default function Inbox() {
               : "需人工"}
           </Text>
         </View>
+      </View>
+      <View className="flex-row justify-end mt-2">
+        <Pressable
+          onPress={() => setDetailId(ticket.id)}
+          className="flex-row items-center gap-1 px-3 py-1 rounded-full bg-slate-100"
+        >
+          <Ionicons name="eye-outline" size={14} color={brandSlate} />
+          <Text className="text-[12px] font-semibold text-slate-700">
+            查看對話
+          </Text>
+        </Pressable>
       </View>
 
       <View
@@ -339,7 +373,10 @@ export default function Inbox() {
           <Text className="text-sm font-semibold text-slate-700">忽略</Text>
         </Pressable>
         <Pressable
-          onPress={() => handleConfirm(ticket)}
+          onPress={() => {
+            setFormConversationId(ticket.id);
+            setIsFormOpen(true);
+          }}
           className="flex-1 h-11 rounded-full flex-row items-center justify-center gap-2 shadow-sm"
           style={{ backgroundColor: brandTeal }}
           disabled={confirmConversation.isPending}
@@ -348,7 +385,7 @@ export default function Inbox() {
           <Text className="text-sm font-semibold text-white">確認建單</Text>
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 
   const AutoRecordCard = ({ record }: { record: AutoRecord }) => {
@@ -597,9 +634,96 @@ export default function Inbox() {
                   </View>
                 ))}
               </View>
+
+              <View className="gap-3 mt-4 mb-6">
+                <Pressable
+                  onPress={() => {
+                    setFormConversationId(detailId);
+                    setIsFormOpen(true);
+                  }}
+                  className="rounded-2xl"
+                  style={{ backgroundColor: brandTeal }}
+                >
+                  <View className="py-3 flex-row items-center justify-center gap-2">
+                    <Ionicons
+                      name="create-outline"
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                    <Text className="text-white text-base font-semibold">
+                      補齊資料 / 確認建單
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => setDetailId(null)}
+                  className="rounded-2xl border border-slate-200"
+                  disabled={confirmConversation.isPending}
+                >
+                  <View className="py-3 flex-row items-center justify-center gap-2">
+                    <Text className="text-slate-700 text-base font-semibold">
+                      關閉
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
             </ScrollView>
           ) : (
             <Text className="text-slate-500">沒有找到對話內容</Text>
+          )}
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isFormOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setIsFormOpen(false);
+          setFormConversationId(null);
+        }}
+      >
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={() => {
+            setIsFormOpen(false);
+            setFormConversationId(null);
+          }}
+        />
+        <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-lg font-bold text-slate-900">補齊資料</Text>
+            <Pressable
+              onPress={() => {
+                setIsFormOpen(false);
+                setFormConversationId(null);
+              }}
+            >
+              <Ionicons name="close" size={20} color="#475569" />
+            </Pressable>
+          </View>
+          {formConversationDetail.isLoading || !formConversationDetail.data ? (
+            <View className="py-8 items-center">
+              <ActivityIndicator color={brandTeal} />
+              <Text className="text-slate-500 mt-2">載入資料...</Text>
+            </View>
+          ) : (
+            <ScrollView
+              className="max-h-[60vh]"
+              showsVerticalScrollIndicator={false}
+            >
+              <ConversationConfirmForm
+                collectedData={
+                  formConversationDetail.data.conversation.collected_data
+                }
+                isSubmitting={confirmConversation.isPending}
+                onSubmit={submitDetailForm}
+                onCancel={() => {
+                  setIsFormOpen(false);
+                  setFormConversationId(null);
+                }}
+              />
+            </ScrollView>
           )}
         </View>
       </Modal>
