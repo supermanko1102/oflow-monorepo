@@ -51,6 +51,7 @@ export function ConversationConfirmForm({
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<ConfirmFormValues>({
     defaultValues: {
@@ -80,6 +81,19 @@ export function ConversationConfirmForm({
       customerNotes: data.customer_notes || "",
     });
   }, [collectedData, reset]);
+
+  const deliveryMethod = collectedData?.delivery_method || "pickup";
+  const pickupTypeValue =
+    watch("pickupType") || collectedData?.pickup_type || "";
+  const isPickup = deliveryMethod === "pickup";
+  const isConvenience = deliveryMethod === "convenience_store";
+  const isBlackCat = deliveryMethod === "black_cat";
+  const showDeliveryDate = isPickup || isConvenience || isBlackCat;
+  const showDeliveryTime = isPickup;
+  const showPickupType = isPickup;
+  const showPickupLocation = isPickup && pickupTypeValue === "meetup";
+  const showStoreInfo = isConvenience;
+  const showShippingAddress = isBlackCat;
 
   const handleFormSubmit = async (values: ConfirmFormValues) => {
     const convData = collectedData || {};
@@ -175,78 +189,90 @@ export function ConversationConfirmForm({
             />
           )}
         />
-        <Controller
-          control={control}
-          name="deliveryDate"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="交付日期"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="YYYY-MM-DD"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="deliveryTime"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="交付時間（店取/面交需要）"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="HH:MM"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="pickupType"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="取貨方式（store=店取，meetup=面交）"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="store / meetup"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="pickupLocation"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="面交地點"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="例：台北車站大廳"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="storeInfo"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="超商店號/店名（超商取貨）"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="7-11 XX門市"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="shippingAddress"
-          render={({ field: { onChange, value } }) => (
-            <InputField
-              label="寄送地址（宅配）"
-              value={value || ""}
-              onChangeText={onChange}
-              placeholder="地址"
-            />
-          )}
-        />
+        {showDeliveryDate && (
+          <Controller
+            control={control}
+            name="deliveryDate"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="交付日期"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="YYYY-MM-DD"
+              />
+            )}
+          />
+        )}
+        {showDeliveryTime && (
+          <Controller
+            control={control}
+            name="deliveryTime"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="交付時間（店取/面交需要）"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="HH:MM"
+              />
+            )}
+          />
+        )}
+        {showPickupType && (
+          <Controller
+            control={control}
+            name="pickupType"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="取貨方式（store=店取，meetup=面交）"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="store / meetup"
+              />
+            )}
+          />
+        )}
+        {showPickupLocation && (
+          <Controller
+            control={control}
+            name="pickupLocation"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="面交地點"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="例：台北車站大廳"
+              />
+            )}
+          />
+        )}
+        {showStoreInfo && (
+          <Controller
+            control={control}
+            name="storeInfo"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="超商店號/店名（超商取貨）"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="7-11 XX門市"
+              />
+            )}
+          />
+        )}
+        {showShippingAddress && (
+          <Controller
+            control={control}
+            name="shippingAddress"
+            render={({ field: { onChange, value } }) => (
+              <InputField
+                label="寄送地址（宅配）"
+                value={value || ""}
+                onChangeText={onChange}
+                placeholder="地址"
+              />
+            )}
+          />
+        )}
         <Controller
           control={control}
           name="customerNotes"

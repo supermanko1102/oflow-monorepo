@@ -12,6 +12,7 @@ export interface AIParseResult {
   confidence: number;
   is_continuation: boolean; // 是否延續之前的對話
   is_complete: boolean; // 資訊是否完整可建單
+  stage?: "inquiry" | "ordering" | "delivery" | "contact" | "done"; // 甜點 4 階段（附上完成態）
   order?: {
     customer_name?: string;
     customer_phone?: string;
@@ -61,4 +62,3 @@ export interface TeamContext {
   name: string;
   business_type: string;
 }
-

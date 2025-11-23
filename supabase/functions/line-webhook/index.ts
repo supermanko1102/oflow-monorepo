@@ -436,9 +436,11 @@ serve(async (req) => {
                   order.delivery_date || order.pickup_date || null;
                 const appointmentTime =
                   order.delivery_time || order.pickup_time || "00:00";
-                const orderStatus = order.delivery_date || order.pickup_date
-                  ? "pending"
-                  : "draft";
+                const stage = aiResult.stage || (aiResult.is_complete ? "done" : undefined);
+                const orderStatus =
+                  stage === "done" && (order.delivery_date || order.pickup_date)
+                    ? "pending"
+                    : "draft";
 
                 const { data: orderId, error: orderError } =
                   await supabaseAdmin.rpc("create_order_from_ai", {
@@ -723,7 +725,9 @@ serve(async (req) => {
             const appointmentDate = order.delivery_date || order.pickup_date;
             const appointmentTime =
               order.delivery_time || order.pickup_time || "00:00";
-            const orderStatus = appointmentDate ? "pending" : "draft";
+            const stage = aiResult.stage || (aiResult.is_complete ? "done" : undefined);
+            const orderStatus =
+              stage === "done" && appointmentDate ? "pending" : "draft";
 
             // 計算總金額（如果 AI 沒有提供）
             let totalAmount = order.total_amount || 0;

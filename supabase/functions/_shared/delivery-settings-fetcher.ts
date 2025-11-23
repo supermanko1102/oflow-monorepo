@@ -60,16 +60,12 @@ export function generateDeliveryMethodsPrompt(
   settings: DeliverySettings | null
 ): string {
   if (!settings) {
-    // 預設：全部開啟
     return `
-配送方式（全部可用）：
-1. **自取（pickup）**：
-   - 「自取」「到店」「店取」→ pickup_type=store（需要日期+時間）
-   - 「面交」「當面交」「約面交」→ pickup_type=meetup（需要日期+時間+地點）
-2. **超商取貨（convenience_store）**：「超商」「7-11」「全家」「萊爾富」「OK」
-   （只需要日期與店號/店名，不需要時間）
-3. **宅配（black_cat）**：「宅配」「黑貓」「寄送」「配送」
-   （只需要日期與寄送地址，不需要時間）`;
+配送方式：商家尚未提供設定。
+
+- 請先詢問客人偏好，不要預設提供店取/面交。
+- 若客人詢問配送，優先引導常見的「宅配（black_cat）」或「超商取貨（convenience_store）」；確認後再詢問需要的欄位。
+- 如果客人要求店取/面交，請說明目前未開放該方式並引導改用可用方式。`;
   }
 
   const availableMethods: string[] = [];
@@ -127,10 +123,10 @@ export function generateDeliveryMethodsPrompt(
 
   if (availableMethods.length === 0) {
     return `
-配送方式：商家尚未設定配送方式，請引導客人提供需求。`;
+配送方式：商家尚未啟用任何配送方式，請詢問客人期望並說明目前暫不提供店取/面交。`;
   }
 
   return `
-配送方式（商家已啟用以下方式）：
+配送方式（商家已啟用以下方式，僅能使用列表內的選項，其他請禮貌告知未開放）：
 ${availableMethods.join("\n\n")}`;
 }

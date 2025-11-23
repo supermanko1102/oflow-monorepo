@@ -9,6 +9,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import type {
   AIParseResult,
   ConversationMessage,
+  Product,
   TeamContext,
 } from "../_shared/types.ts";
 import {
@@ -16,6 +17,7 @@ import {
   generateProductCatalog,
 } from "../_shared/product-fetcher.ts";
 import {
+  DeliverySettings,
   fetchTeamDeliverySettings,
   generateDeliveryMethodsPrompt,
 } from "../_shared/delivery-settings-fetcher.ts";
@@ -43,7 +45,7 @@ function generateGoodsPrompt(
   productCatalog: string,
   deliveryMethodsPrompt: string
 ): string {
-  return `你是專業的訂單解析助手，專門處理 ${
+ return `你是專業的訂單解析助手，專門處理 ${
     teamContext?.name || "商家"
   }（${businessLabel}）的訂單。
 
@@ -53,11 +55,12 @@ ${conversationContext}${collectedDataContext}
 ${deliveryMethodsPrompt}
 
 你的任務：
-1. **判斷客人意圖和對話階段**：
-   - greeting（打招呼）：「你好」「在嗎」「想問一下」
-   - inquiry（詢問商品）：「有什麼」「菜單」「價目表」
-   - ordering（明確訂購）：「我要XX」「訂XX」
-   - supplementing（補充資訊）：延續之前的對話，補充細節
+1. **判斷客人意圖 intent**：order / inquiry / other
+2. **判斷對話階段 stage（甜點 4 階段）**：
+   - inquiry：詢問商品或尚未提供商品內容
+   - ordering：已表達下單意圖，但商品細節/數量尚需確認
+   - delivery：商品已明確，正在確認配送方式/取貨資訊
+   - contact：配送已決定，補齊姓名/電話/備註等聯絡資料
 
 2. **循序漸進回覆策略**：
    - **打招呼階段**：簡短友善回應，例如「您好！請問需要什麼商品呢？」
@@ -104,6 +107,7 @@ ${deliveryMethodsPrompt}
 - **價格處理**：有目錄就自動填入，沒目錄就不填或填 null
 - **日期時間解析**：「明天下午2點」→ 計算實際日期 + 14:00
 - **延續對話**：補充資訊時設 is_continuation = true
+- **配送方式守則**：只能使用「商家已啟用」的配送方式；客人要求未啟用的方式時，請禮貌說明不可用並引導改用可用選項
 
 回傳格式：嚴格遵守 JSON 格式，不要有其他文字。`;
 }
@@ -117,6 +121,7 @@ function generateGoodsUserPrompt(message: string): string {
 回傳 JSON 格式（不要有其他文字）：
 {
   "intent": "order" | "inquiry" | "other",
+  "stage": "inquiry" | "ordering" | "delivery" | "contact",
   "confidence": 0.0-1.0,
   "is_continuation": true/false,
   "is_complete": true/false,
@@ -146,17 +151,47 @@ function generateGoodsUserPrompt(message: string): string {
 }
 
 說明：
+- stage 定義（依甜點 4 階段）：inquiry(詢問商品/尚未下單)、ordering(已表達下單但商品細節待確認)、delivery(商品確定後補配送方式/取貨資訊)、contact(配送確定後補姓名/電話/備註)
 - 姓名/電話如果缺少，要列入 missing_fields，並視為未完成（is_complete=false），在 suggested_reply 裡禮貌詢問
 - is_complete 根據配送方式動態判斷：
   * 店取：items + delivery_method=pickup + pickup_type=store + delivery_date + delivery_time
   * 面交：items + delivery_method=pickup + pickup_type=meetup + pickup_location + delivery_date + delivery_time
   * 超商：items + delivery_method=convenience_store + store_info（時間不必填）
   * 宅配：items + delivery_method=black_cat + shipping_address（時間不必填）
-- suggested_reply 根據對話階段調整：
-  * 打招呼：「您好！請問需要什麼商品呢？」（不要一次問太多）
-  * 詢問商品：列出商品或引導描述
-  * 明確訂購：確認商品並合併詢問缺失資訊
-  * 補充資訊：只問還缺的，不重複問`;
+- suggested_reply 根據 stage 調整：
+  * inquiry：招呼 + 提供菜單/引導描述，避免一次問太多
+  * ordering：確認商品/數量/價格，合併詢問缺的配送方式
+  * delivery：只問配送/取貨相關（不要再問商品）
+  * contact：配送已定，補齊姓名/電話/備註；缺哪問哪，不重複`;
+}
+
+const deliveryMissingFields = new Set([
+  "delivery_method",
+  "pickup_type",
+  "pickup_location",
+  "delivery_date",
+  "delivery_time",
+  "store_info",
+  "shipping_address",
+]);
+
+const contactMissingFields = new Set(["customer_name", "customer_phone"]);
+
+function inferStageFromResult(result: AIParseResult): AIParseResult["stage"] {
+  if (result.is_complete) return "done";
+  const missing = result.missing_fields || [];
+  const hasItems =
+    Array.isArray(result.order?.items) && result.order?.items.length > 0;
+
+  if (!hasItems) return "inquiry";
+
+  const needsDelivery = missing.some((f) => deliveryMissingFields.has(f));
+  if (needsDelivery) return "delivery";
+
+  const needsContact = missing.some((f) => contactMissingFields.has(f));
+  if (needsContact) return "contact";
+
+  return "ordering";
 }
 
 // OpenAI API 請求
@@ -172,7 +207,7 @@ async function callOpenAI(
   }
 
   // 查詢商品目錄
-  let products = [];
+  let products: Product[] = [];
   if (teamContext?.team_id) {
     console.log("[AI Parse Goods] 查詢團隊商品:", teamContext.team_id);
     products = await fetchTeamProducts(teamContext.team_id);
@@ -180,7 +215,7 @@ async function callOpenAI(
   }
 
   // 查詢配送設定
-  let deliverySettings = null;
+  let deliverySettings: DeliverySettings | null = null;
   if (teamContext?.team_id) {
     console.log("[AI Parse Goods] 查詢配送設定:", teamContext.team_id);
     deliverySettings = await fetchTeamDeliverySettings(teamContext.team_id);
@@ -277,6 +312,9 @@ async function callOpenAI(
       if (typeof result.is_complete !== "boolean") {
         result.is_complete = false;
       }
+      if (!result.stage) {
+        result.stage = inferStageFromResult(result);
+      }
 
       return result;
     } catch (parseError) {
@@ -287,6 +325,12 @@ async function callOpenAI(
         confidence: 0.0,
         is_continuation: false,
         is_complete: false,
+        stage: inferStageFromResult({
+          intent: "other",
+          confidence: 0,
+          is_continuation: false,
+          is_complete: false,
+        }),
         raw_response: rawResponse,
       };
     }
@@ -338,6 +382,7 @@ serve(async (req) => {
       confidence: result.confidence,
       is_continuation: result.is_continuation,
       is_complete: result.is_complete,
+      stage: result.stage,
       hasOrder: !!result.order,
       missing_fields: result.missing_fields,
     });
