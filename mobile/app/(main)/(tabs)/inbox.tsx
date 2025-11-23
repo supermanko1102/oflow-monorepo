@@ -161,8 +161,11 @@ export default function Inbox() {
     return list
       .map((conv) => ({
         id: conv.id,
+        customer:
+          conv.collected_data?.line_display_name?.trim() ||
+          conv.line_user_id ||
+          "LINE 使用者",
         status: conv.status,
-        customer: conv.line_user_id || "LINE 使用者",
         issue: "待補資料",
         hint: conv.collected_data ? "已擷取部分資訊，請補齊缺漏" : "",
         lastMessage: conv.lastMessage?.message || "無最新訊息",
@@ -182,7 +185,10 @@ export default function Inbox() {
   const autoRecords = useMemo<AutoRecord[]>(() => {
     return completed.map((conv) => ({
       id: conv.id,
-      customer: conv.line_user_id || "LINE 使用者",
+      customer:
+        conv.collected_data?.line_display_name?.trim() ||
+        conv.line_user_id ||
+        "LINE 使用者",
       orderNo: conv.order_id ? `#${conv.order_id}` : undefined,
       pickup: "",
       amount: conv.collected_data?.total_amount ?? 0,

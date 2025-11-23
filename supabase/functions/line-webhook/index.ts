@@ -144,6 +144,54 @@ async function isMessageFromMerchant(
   return !!data;
 }
 
+async function fetchLineProfile(
+  userId: string,
+  channelAccessToken: string
+): Promise<{ displayName?: string; pictureUrl?: string } | null> {
+  try {
+    const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${channelAccessToken}`,
+      },
+    });
+    if (!res.ok) {
+      console.warn("[LINE Webhook] 取得 LINE Profile 失敗:", res.status);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn("[LINE Webhook] 取得 LINE Profile 例外:", err);
+    return null;
+  }
+}
+
+async function ensureConversationDisplayName(
+  supabaseAdmin: any,
+  conversation: any,
+  displayName?: string
+) {
+  if (!conversation || !displayName) return conversation;
+  const existing =
+    conversation.collected_data?.line_display_name ||
+    conversation.line_display_name;
+  if (existing === displayName) return conversation;
+
+  const newCollected = {
+    ...(conversation.collected_data || {}),
+    line_display_name: displayName,
+  };
+
+  await supabaseAdmin
+    .from("conversations")
+    .update({
+      collected_data: newCollected,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", conversation.id);
+
+  return { ...conversation, collected_data: newCollected };
+}
+
 // 判斷業務類型（商品型 vs 服務型）
 function isProductBasedBusiness(businessType: string): boolean {
   return ["bakery", "flower", "craft", "other"].includes(businessType);
@@ -313,12 +361,16 @@ serve(async (req) => {
           continue;
         }
 
-        const messageText = event.message.text || "";
-        const lineUserId = event.source.userId;
-        const lineMessageId = event.message.id;
+    const messageText = event.message.text || "";
+    const lineUserId = event.source.userId;
+    const lineMessageId = event.message.id;
+    const lineProfile = await fetchLineProfile(
+      lineUserId,
+      team.line_channel_access_token
+    );
 
-        console.log("[LINE Webhook] 訊息內容:", messageText);
-        console.log("[LINE Webhook] 使用者 ID:", lineUserId);
+    console.log("[LINE Webhook] 訊息內容:", messageText);
+    console.log("[LINE Webhook] 使用者 ID:", lineUserId);
 
         // 先解析 intent，非訂單 intent 就不建立/更新 conversation，僅保留訊息紀錄（避免塞爆收件匣）
         let conversation: any = null;
@@ -337,6 +389,7 @@ serve(async (req) => {
             message_text: messageText,
             role: "customer",
             ai_parsed: false,
+            message_data: lineProfile ? { line_profile: lineProfile } : null,
           })
           .select()
           .single();
@@ -368,25 +421,35 @@ serve(async (req) => {
           console.log("[LINE Webhook] 半自動模式：商家明確同意建單");
 
           // 1. 取得或建立對話（半自動強制建）
-          const { data: convHalf, error: convErrorHalf } =
-            await supabaseAdmin
-              .rpc("get_or_create_conversation", {
-                p_team_id: team.id,
-                p_line_user_id: lineUserId,
-              })
-              .single();
+        const { data: convHalf, error: convErrorHalf } =
+          await supabaseAdmin
+            .rpc("get_or_create_conversation", {
+              p_team_id: team.id,
+              p_line_user_id: lineUserId,
+            })
+            .single();
 
           if (convErrorHalf || !convHalf) {
             console.error("[LINE Webhook] 對話取得/建立失敗:", convErrorHalf);
             throw new Error("Failed to get or create conversation");
           }
 
-          conversation = convHalf;
+        conversation = convHalf;
+        conversation = await ensureConversationDisplayName(
+          supabaseAdmin,
+          conversation,
+          lineProfile?.displayName
+        );
 
           // 2. 更新訊息的 conversation_id
           await supabaseAdmin
             .from("line_messages")
-            .update({ conversation_id: conversation.id })
+            .update({
+              conversation_id: conversation.id,
+              message_data: lineProfile
+                ? { ...(savedMessage?.message_data || {}), line_profile: lineProfile }
+                : savedMessage?.message_data || null,
+            })
             .eq("id", savedMessage.id);
 
           // 3. AI 解析整段對話歷史（取得最近 10 條訊息）
@@ -570,11 +633,21 @@ serve(async (req) => {
               throw new Error("Failed to get or create conversation");
             }
             conversation = convHalfAuto;
+            conversation = await ensureConversationDisplayName(
+              supabaseAdmin,
+              conversation,
+              lineProfile?.displayName
+            );
 
             // 更新訊息的 conversation_id
             await supabaseAdmin
               .from("line_messages")
-              .update({ conversation_id: conversation.id })
+              .update({
+                conversation_id: conversation.id,
+                message_data: lineProfile
+                  ? { ...(savedMessage?.message_data || {}), line_profile: lineProfile }
+                  : savedMessage?.message_data || null,
+              })
               .eq("id", savedMessage.id);
           }
 
@@ -661,10 +734,20 @@ serve(async (req) => {
             throw new Error("Failed to get or create conversation");
           }
           conversation = convAuto;
+          conversation = await ensureConversationDisplayName(
+            supabaseAdmin,
+            conversation,
+            lineProfile?.displayName
+          );
 
           await supabaseAdmin
             .from("line_messages")
-            .update({ conversation_id: conversation.id })
+            .update({
+              conversation_id: conversation.id,
+              message_data: lineProfile
+                ? { ...(savedMessage?.message_data || {}), line_profile: lineProfile }
+                : savedMessage?.message_data || null,
+            })
             .eq("id", savedMessage.id);
         }
 
