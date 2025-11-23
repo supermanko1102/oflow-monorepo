@@ -25,11 +25,14 @@ export interface AIParseResult {
     delivery_date?: string; // YYYY-MM-DD (通用：交付/預約日期)
     delivery_time?: string; // HH:MM (通用：交付/預約時間)
     delivery_method?: "pickup" | "convenience_store" | "black_cat" | "onsite";
+    pickup_type?: "store" | "meetup";
+    pickup_location?: string;
 
     // 商品型專屬
     requires_frozen?: boolean;
     store_info?: string;
     shipping_address?: string;
+    customer_notes?: string;
 
     // 服務型專屬
     service_duration?: number;
