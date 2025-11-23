@@ -45,7 +45,7 @@ function generateGoodsPrompt(
   productCatalog: string,
   deliveryMethodsPrompt: string
 ): string {
- return `你是專業的訂單解析助手，專門處理 ${
+  return `你是專業的訂單解析助手，專門處理 ${
     teamContext?.name || "商家"
   }（${businessLabel}）的訂單。
 
@@ -194,6 +194,59 @@ function inferStageFromResult(result: AIParseResult): AIParseResult["stage"] {
   return "ordering";
 }
 
+function getAllowedDeliveryMethods(
+  settings: DeliverySettings | null
+): string[] {
+  const allowed = new Set<string>();
+
+  if (
+    settings?.pickup_settings?.store_pickup?.enabled ||
+    settings?.pickup_settings?.meetup?.enabled
+  ) {
+    allowed.add("pickup");
+  }
+  if (settings?.enable_convenience_store) {
+    allowed.add("convenience_store");
+  }
+  if (settings?.enable_black_cat) {
+    allowed.add("black_cat");
+  }
+
+  return Array.from(allowed);
+}
+
+function enforceAllowedDeliveryMethod(
+  result: AIParseResult,
+  allowed: string[]
+): AIParseResult {
+  if (!result.order || allowed.length === 0) return result;
+  const deliveryMethod = result.order.delivery_method;
+  if (!deliveryMethod) return result;
+  if (allowed.includes(deliveryMethod)) return result;
+
+  // 移除不允許的配送方式，要求重新選擇
+  result.order.delivery_method = undefined;
+  (result.order as any).pickup_type = undefined;
+  (result.order as any).pickup_location = undefined;
+  (result.order as any).store_info = undefined;
+  (result.order as any).shipping_address = undefined;
+  (result.order as any).delivery_time = undefined;
+
+  result.is_complete = false;
+  result.missing_fields = Array.from(
+    new Set([...(result.missing_fields || []), "delivery_method"])
+  );
+
+  const methodLabelMap: Record<string, string> = {
+    pickup: "店取/面交",
+    convenience_store: "超商取貨",
+    black_cat: "宅配",
+  };
+  const allowedText = allowed.map((m) => methodLabelMap[m] || m).join("、");
+  result.suggested_reply = `目前提供的配送方式：${allowedText}。請問您要選擇哪一種呢？`;
+  return result;
+}
+
 // OpenAI API 請求
 async function callOpenAI(
   message: string,
@@ -315,24 +368,15 @@ async function callOpenAI(
       if (!result.stage) {
         result.stage = inferStageFromResult(result);
       }
-
-      return result;
+      const allowedMethods = getAllowedDeliveryMethods(deliverySettings);
+      const updatedResult = enforceAllowedDeliveryMethod(
+        result,
+        allowedMethods
+      );
+      return updatedResult;
     } catch (parseError) {
       console.error("[AI Parse Goods] JSON 解析失敗:", parseError);
-      // 如果 JSON 解析失敗，回傳低信心度的結果
-      return {
-        intent: "other",
-        confidence: 0.0,
-        is_continuation: false,
-        is_complete: false,
-        stage: inferStageFromResult({
-          intent: "other",
-          confidence: 0,
-          is_continuation: false,
-          is_complete: false,
-        }),
-        raw_response: rawResponse,
-      };
+      throw parseError;
     }
   } catch (error) {
     console.error("[AI Parse Goods] OpenAI 呼叫失敗:", error);
@@ -364,10 +408,7 @@ serve(async (req) => {
       "[AI Parse Goods] 對話歷史數量:",
       conversation_history?.length || 0
     );
-    console.log(
-      "[AI Parse Goods] 已收集資訊:",
-      collected_data ? "有" : "無"
-    );
+    console.log("[AI Parse Goods] 已收集資訊:", collected_data ? "有" : "無");
 
     // 呼叫 OpenAI 解析
     const result = await callOpenAI(
