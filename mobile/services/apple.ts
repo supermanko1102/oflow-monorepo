@@ -45,12 +45,35 @@ export const initiateAppleLogin = async (): Promise<AppleSession> => {
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Apple 登入失敗");
+    // Supabase 可能在錯誤時回傳純文字（例如 Invalid API key），避免 JSON 解析失敗
+    const rawBody = await response.text();
+    let data: any = null;
+
+    if (rawBody) {
+      try {
+        data = JSON.parse(rawBody);
+      } catch (parseError) {
+        console.warn(
+          "[Apple Auth] 無法將回應解析為 JSON，回傳原始文字:",
+          rawBody
+        );
+      }
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      const errorMessage =
+        data?.error ||
+        data?.message ||
+        rawBody ||
+        `Apple 登入失敗 (${response.status})`;
+      throw new Error(errorMessage);
+    }
+
+    if (!data || !data.session) {
+      throw new Error(
+        "Invalid response from auth-apple-callback: missing session data"
+      );
+    }
 
     // 後端返回的格式是 { session: { access_token, refresh_token }, user, teams }
     if (!data.session?.access_token || !data.session?.refresh_token) {
