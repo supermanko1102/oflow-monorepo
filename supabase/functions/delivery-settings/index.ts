@@ -34,7 +34,8 @@ async function authenticateUser(req: Request, supabaseAdmin: any) {
     .from("users")
     .select("id, auth_user_id, line_display_name")
     .eq("auth_user_id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (publicUserError || !publicUser) {
     throw new Error("User not found in database");
@@ -49,14 +50,20 @@ async function verifyTeamMember(
   userId: string,
   teamId: string
 ) {
-  const { data: member, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("team_members")
     .select("role, can_manage_settings")
     .eq("team_id", teamId)
     .eq("user_id", userId)
-    .single();
+    .limit(1);
 
-  if (error || !member) {
+  if (error) {
+    throw error;
+  }
+
+  const member = data?.[0];
+
+  if (!member) {
     throw new Error("You are not a member of this team");
   }
 
@@ -129,7 +136,8 @@ serve(async (req) => {
         .from("team_settings")
         .select("pickup_settings, enable_convenience_store, enable_black_cat")
         .eq("team_id", teamId)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error("[Delivery Settings] 查詢設定失敗:", error);

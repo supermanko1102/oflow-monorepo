@@ -35,7 +35,8 @@ async function authenticateUser(req: Request, supabaseAdmin: any) {
     .from("users")
     .select("id, line_user_id, apple_user_id, line_display_name, auth_provider")
     .eq("auth_user_id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (publicUserError || !publicUser) {
     throw new Error("User not found in database");
@@ -50,14 +51,20 @@ async function verifyTeamMembership(
   userId: string,
   teamId: string
 ) {
-  const { data: member, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("team_members")
     .select("role, can_manage_orders")
     .eq("team_id", teamId)
     .eq("user_id", userId)
-    .single();
+    .limit(1);
 
-  if (error || !member) {
+  if (error) {
+    throw error;
+  }
+
+  const member = data?.[0];
+
+  if (!member) {
     throw new Error("You are not a member of this team");
   }
 
@@ -66,6 +73,8 @@ async function verifyTeamMembership(
 
 // 將資料庫商品格式轉換為前端格式
 function transformProductToClient(product: any) {
+  const deliveryOverride = product.metadata?.delivery_override;
+
   return {
     id: product.id,
     team_id: product.team_id,
@@ -81,6 +90,9 @@ function transformProductToClient(product: any) {
     sort_order: product.sort_order,
     image_url: product.image_url,
     total_sold: product.total_sold,
+    // 配送設定（存放在 metadata.delivery_override）
+    delivery_override: deliveryOverride || null,
+    effective_delivery_methods: product.effective_delivery_methods || null,
     created_at: product.created_at,
     updated_at: product.updated_at,
   };
@@ -205,7 +217,8 @@ serve(async (req) => {
           .from("products")
           .select("*")
           .eq("id", productId)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (error) {
           throw error;
@@ -255,6 +268,7 @@ serve(async (req) => {
           is_available,
           metadata,
           sort_order,
+          delivery_override,
         } = body;
 
         if (!team_id || !name || price === undefined) {
@@ -279,6 +293,11 @@ serve(async (req) => {
         console.log("[Product Operations] 新增商品:", name);
 
         // 插入商品（category 和 unit 使用預設值）
+        const insertMetadata = metadata || {};
+        if (delivery_override !== undefined) {
+          insertMetadata.delivery_override = delivery_override;
+        }
+
         const { data: product, error } = await supabaseAdmin
           .from("products")
           .insert({
@@ -294,14 +313,19 @@ serve(async (req) => {
                 ? Number(low_stock_threshold)
                 : null,
             is_available: is_available !== undefined ? is_available : true,
-            metadata: metadata || {},
+            metadata: insertMetadata,
             sort_order: sort_order !== undefined ? Number(sort_order) : 0,
           })
           .select()
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (error) {
           throw error;
+        }
+
+        if (!product) {
+          throw new Error("Failed to create product");
         }
 
         return new Response(
@@ -337,11 +361,16 @@ serve(async (req) => {
         // 先取得商品資訊以驗證權限
         const { data: product, error: fetchError } = await supabaseAdmin
           .from("products")
-          .select("team_id")
+          .select("team_id, metadata")
           .eq("id", product_id)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (fetchError || !product) {
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        if (!product) {
           throw new Error("Product not found");
         }
 
@@ -363,6 +392,8 @@ serve(async (req) => {
         // 準備更新資料
         const updateData: any = {};
 
+        const currentMetadata = product.metadata || {};
+
         if (updates.name !== undefined) updateData.name = updates.name;
         if (updates.price !== undefined)
           updateData.price = Number(updates.price);
@@ -382,19 +413,34 @@ serve(async (req) => {
         if (updates.is_available !== undefined)
           updateData.is_available = updates.is_available;
         if (updates.metadata !== undefined)
-          updateData.metadata = updates.metadata;
+          updateData.metadata = { ...currentMetadata, ...updates.metadata };
+        if (updates.delivery_override !== undefined) {
+          updateData.metadata = {
+            ...(updateData.metadata || currentMetadata),
+            delivery_override: updates.delivery_override,
+          };
+        }
         if (updates.sort_order !== undefined)
           updateData.sort_order = Number(updates.sort_order);
+
+        if (Object.keys(updateData).length === 0) {
+          throw new Error("No fields to update");
+        }
 
         const { data: updatedProduct, error: updateError } = await supabaseAdmin
           .from("products")
           .update(updateData)
           .eq("id", product_id)
           .select()
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (updateError) {
           throw updateError;
+        }
+
+        if (!updatedProduct) {
+          throw new Error("Product not found or not updated");
         }
 
         return new Response(
@@ -427,9 +473,14 @@ serve(async (req) => {
           .from("products")
           .select("team_id")
           .eq("id", product_id)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (fetchError || !product) {
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        if (!product) {
           throw new Error("Product not found");
         }
 
@@ -453,10 +504,15 @@ serve(async (req) => {
           .update({ is_available })
           .eq("id", product_id)
           .select()
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (updateError) {
           throw updateError;
+        }
+
+        if (!updatedProduct) {
+          throw new Error("Product not found or not updated");
         }
 
         return new Response(
@@ -491,9 +547,14 @@ serve(async (req) => {
         .from("products")
         .select("team_id, name")
         .eq("id", productId)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
-      if (fetchError || !product) {
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (!product) {
         throw new Error("Product not found");
       }
 

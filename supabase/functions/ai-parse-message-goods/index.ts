@@ -108,6 +108,7 @@ ${deliveryMethodsPrompt}
 - **日期時間解析**：「明天下午2點」→ 計算實際日期 + 14:00
 - **延續對話**：補充資訊時設 is_continuation = true
 - **配送方式守則**：只能使用「商家已啟用」的配送方式；客人要求未啟用的方式時，請禮貌說明不可用並引導改用可用選項
+- **自動結單**：當所有「必要資訊」都已收集（missing_fields 為空）時，**請直接**將 is_complete 設為 true，intent 設為 order。**不要**為了詢問「備註」或「其他需求」而中斷結單流程。如果客人沒說備註，就留空。
 
 回傳格式：嚴格遵守 JSON 格式，不要有其他文字。`;
 }
@@ -162,7 +163,9 @@ function generateGoodsUserPrompt(message: string): string {
   * inquiry：招呼 + 提供菜單/引導描述，避免一次問太多
   * ordering：確認商品/數量/價格，合併詢問缺的配送方式
   * delivery：只問配送/取貨相關（不要再問商品）
-  * contact：配送已定，補齊姓名/電話/備註；缺哪問哪，不重複`;
+  * delivery：只問配送/取貨相關（不要再問商品）
+  * contact：配送已定，補齊姓名/電話/備註；缺哪問哪，不重複
+- **重要**：一旦所有必要欄位（missing_fields）都已填寫，**立即**回傳 is_complete=true，intent=order。**不要**詢問備註，除非客人主動提及。直接讓系統建立訂單。`;
 }
 
 const deliveryMissingFields = new Set([
@@ -369,10 +372,25 @@ async function callOpenAI(
         result.stage = inferStageFromResult(result);
       }
       const allowedMethods = getAllowedDeliveryMethods(deliverySettings);
-      const updatedResult = enforceAllowedDeliveryMethod(
-        result,
-        allowedMethods
-      );
+      let updatedResult = enforceAllowedDeliveryMethod(result, allowedMethods);
+
+      // Post-processing: Double check completion
+      // 如果 missing_fields 為空，且有商品，強制設為 complete
+      if (
+        updatedResult.order &&
+        updatedResult.order.items &&
+        updatedResult.order.items.length > 0 &&
+        (!updatedResult.missing_fields ||
+          updatedResult.missing_fields.length === 0)
+      ) {
+        console.log(
+          "[AI Parse Goods] 檢測到無缺失欄位，強制設定 is_complete = true"
+        );
+        updatedResult.is_complete = true;
+        updatedResult.intent = "order";
+        updatedResult.stage = "done";
+      }
+
       return updatedResult;
     } catch (parseError) {
       console.error("[AI Parse Goods] JSON 解析失敗:", parseError);
