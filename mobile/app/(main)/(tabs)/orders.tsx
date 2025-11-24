@@ -1,24 +1,35 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
-import { useOrders, useOrdersRealtime } from "@/hooks/queries/useOrders";
+import {
+  useOrders,
+  useOrdersRealtime,
+  useUpdateOrderStatus,
+} from "@/hooks/queries/useOrders";
 import {
   useCreateProduct,
   useProducts,
   useToggleProductAvailability,
   useUpdateProduct,
 } from "@/hooks/queries/useProducts";
+import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
+import { OrderFilters } from "@/components/orders/OrderFilters";
 import {
-  deliveryMethodLabels,
-  type DeliveryMethod,
+  deliveryMethodLabels as productDeliveryMethodLabels,
+  type DeliveryMethod as ProductDeliveryMethod,
 } from "@/types/delivery-settings";
-import type { Order, OrderStatus } from "@/types/order";
+import {
+  DELIVERY_METHOD_LABELS,
+  type Order,
+  type OrderStatus,
+  type DeliveryMethod as OrderDeliveryMethod,
+} from "@/types/order";
 import type { Product, ProductFormValues } from "@/types/product";
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +38,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  SectionList,
   Switch,
   Text,
   View,
@@ -35,10 +47,11 @@ import ProductForm from "@/components/form/ProductForm";
 
 type PrimaryTab = "orders" | "products";
 type StatusFilterKey = "all" | OrderStatus;
+type ViewScope = "pendingFocus" | "today" | "all";
 
 const statusFilters = [
   { key: "all", label: "全部" },
-  { key: "pending", label: "待確認" },
+  { key: "pending", label: "待付款" },
   { key: "paid", label: "已付款" },
   { key: "completed", label: "已完成" },
   { key: "cancelled", label: "已取消" },
@@ -46,6 +59,9 @@ const statusFilters = [
 
 const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
+const brandWarning = Palette.status.warning;
+const brandDanger = Palette.status.danger;
+const brandSuccess = Palette.status.success;
 
 const statusChipMeta: Record<
   StatusFilterKey,
@@ -58,27 +74,27 @@ const statusChipMeta: Record<
   },
   pending: {
     background: "rgba(248, 113, 113, 0.15)",
-    border: "rgba(248, 113, 113, 0.4)",
-    color: "#DC2626",
-    icon: "#DC2626",
+    border: "rgba(239, 68, 68, 0.4)",
+    color: brandDanger,
+    icon: brandDanger,
   },
   confirmed: {
-    background: "rgba(251, 146, 60, 0.15)",
-    border: "rgba(251, 146, 60, 0.4)",
-    color: "#EA580C",
-    icon: "#EA580C",
+    background: "rgba(249, 115, 22, 0.15)",
+    border: "rgba(249, 115, 22, 0.35)",
+    color: brandWarning,
+    icon: brandWarning,
   },
   paid: {
     background: "rgba(59, 130, 246, 0.12)",
     border: "rgba(59, 130, 246, 0.35)",
-    color: "#2563EB",
-    icon: "#2563EB",
+    color: brandTeal,
+    icon: brandTeal,
   },
   completed: {
     background: "rgba(34, 197, 94, 0.15)",
     border: "rgba(34, 197, 94, 0.35)",
-    color: "#16A34A",
-    icon: "#16A34A",
+    color: brandSuccess,
+    icon: brandSuccess,
   },
   cancelled: {
     background: "rgba(148, 163, 184, 0.2)",
@@ -98,28 +114,28 @@ const orderStatusMeta: Record<
   }
 > = {
   pending: {
-    label: "待確認",
-    strip: "#DC2626",
-    badgeBackground: "rgba(248, 113, 113, 0.15)",
-    badgeColor: "#DC2626",
+    label: "待付款",
+    strip: brandDanger,
+    badgeBackground: "rgba(239, 68, 68, 0.12)",
+    badgeColor: brandDanger,
   },
   confirmed: {
-    label: "已確認",
-    strip: "#F97316",
-    badgeBackground: "rgba(251, 146, 60, 0.15)",
-    badgeColor: "#EA580C",
+    label: "待付款",
+    strip: brandDanger,
+    badgeBackground: "rgba(239, 68, 68, 0.12)",
+    badgeColor: brandDanger,
   },
   paid: {
     label: "已付款",
-    strip: "#3B82F6",
-    badgeBackground: "rgba(59, 130, 246, 0.12)",
-    badgeColor: "#2563EB",
+    strip: brandTeal,
+    badgeBackground: "rgba(0, 128, 128, 0.12)",
+    badgeColor: brandTeal,
   },
   completed: {
     label: "已完成",
-    strip: "#22C55E",
-    badgeBackground: "rgba(34, 197, 94, 0.15)",
-    badgeColor: "#16A34A",
+    strip: brandSuccess,
+    badgeBackground: "rgba(34, 197, 94, 0.12)",
+    badgeColor: brandSuccess,
   },
   cancelled: {
     label: "已取消",
@@ -129,41 +145,36 @@ const orderStatusMeta: Record<
   },
 };
 
-type OrderItem = {
-  id: string;
-  orderNo: string;
-  timeLabel: string;
-  isToday: boolean;
-  customer: string;
-  summary: string;
-  itemCount: number;
-  amount: number;
-  status: OrderStatus;
-};
-
 export default function Orders() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
 
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>("orders");
   const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [viewScope, setViewScope] = useState<ViewScope>("pendingFocus");
   const [deliveryModalProduct, setDeliveryModalProduct] =
     useState<Product | null>(null);
   const [useTeamDeliveryDefault, setUseTeamDeliveryDefault] = useState(true);
-  const [selectedMethods, setSelectedMethods] = useState<DeliveryMethod[]>([]);
+  const [selectedMethods, setSelectedMethods] = useState<
+    ProductDeliveryMethod[]
+  >([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const updateOrderStatus = useUpdateOrderStatus();
+  const statusLabelMap: Record<OrderStatus, string> = {
+    pending: "待付款",
+    paid: "已付款",
+    confirmed: "待付款",
+    completed: "已完成",
+    cancelled: "已取消",
+  };
 
   const {
     data: orders = [],
     isLoading,
     isRefetching,
     refetch,
-  } = useOrders(
-    currentTeamId,
-    { status: statusFilter === "all" ? undefined : statusFilter },
-    !!currentTeamId
-  );
+  } = useOrders(currentTeamId, undefined, !!currentTeamId);
   useOrdersRealtime(currentTeamId);
 
   const {
@@ -177,58 +188,211 @@ export default function Orders() {
   const updateProductDelivery = useUpdateProduct();
   const updateProductInfo = useUpdateProduct();
   const toggleProductAvailability = useToggleProductAvailability();
-  const deliveryOptions: { key: DeliveryMethod; label: string }[] = [
-    { key: "pickup", label: deliveryMethodLabels.pickup },
-    { key: "meetup", label: deliveryMethodLabels.meetup },
+  const deliveryOptions: { key: ProductDeliveryMethod; label: string }[] = [
+    { key: "pickup", label: productDeliveryMethodLabels.pickup },
+    { key: "meetup", label: productDeliveryMethodLabels.meetup },
     {
       key: "convenience_store",
-      label: deliveryMethodLabels.convenience_store,
+      label: productDeliveryMethodLabels.convenience_store,
     },
-    { key: "black_cat", label: deliveryMethodLabels.black_cat },
+    { key: "black_cat", label: productDeliveryMethodLabels.black_cat },
   ];
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const now = new Date();
 
-  const summaryCards = useMemo(() => {
-    const todaysOrders = orders.filter(
-      (order) => order.appointmentDate === todayStr
-    );
-    const todaysRevenue = todaysOrders.reduce(
-      (sum, order) => sum + (order.totalAmount || 0),
-      0
-    );
-    const pendingCount = todaysOrders.filter(
-      (order) => order.status === "pending"
-    ).length;
-    const confirmedCount = todaysOrders.filter(
-      (order) => order.status === "confirmed"
-    ).length;
-    const awaitingPayment = orders.filter(
-      (order) => order.status === "paid"
-    ).length;
+  const getOrderTimestamp = (order: Order) => {
+    const baseDate = order.appointmentDate
+      ? new Date(order.appointmentDate)
+      : null;
+    if (!baseDate) return null;
+    if (order.appointmentTime) {
+      const [h, m] = order.appointmentTime.split(":").map(Number);
+      baseDate.setHours(h || 0);
+      baseDate.setMinutes(m || 0);
+      baseDate.setSeconds(0);
+      baseDate.setMilliseconds(0);
+    }
+    return baseDate;
+  };
 
-    return [
+  const isUrgent = (order: Order) => {
+    const ts = getOrderTimestamp(order);
+    if (!ts) return false;
+    const diffMs = ts.getTime() - now.getTime();
+    const oneHour = 60 * 60 * 1000;
+    if (diffMs < 0) return true; // 逾期
+    return diffMs <= oneHour && order.appointmentDate === todayStr;
+  };
+
+  const scopeFilteredOrders = useMemo(() => {
+    const isPendingLike = (status: OrderStatus) =>
+      status === "pending" || status === "confirmed";
+
+    const base = orders.filter((order) => {
+      // 狀態篩選：pending 代表「未付款」含 confirmed
+      if (statusFilter !== "all") {
+        if (statusFilter === "pending" && !isPendingLike(order.status)) {
+          return false;
+        }
+        if (statusFilter !== "pending" && order.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      if (viewScope === "pendingFocus") {
+        return isPendingLike(order.status) || order.status === "paid";
+      }
+
+      if (viewScope === "today") {
+        return order.appointmentDate === todayStr;
+      }
+
+      return true;
+    });
+
+    // 排序：緊急 > 今天 > 明天 > 其他，且時間近在上；狀態優先序
+    const statusPriority: Record<OrderStatus, number> = {
+      pending: 1,
+      confirmed: 1, // 視為待付款
+      paid: 2,
+      completed: 3,
+      cancelled: 4,
+    };
+
+    return [...base].sort((a, b) => {
+      const tsA = getOrderTimestamp(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const tsB = getOrderTimestamp(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+
+      const urgencyA = isUrgent(a) ? 1 : 0;
+      const urgencyB = isUrgent(b) ? 1 : 0;
+      if (urgencyA !== urgencyB) return urgencyB - urgencyA;
+
+      if (a.appointmentDate === todayStr && b.appointmentDate !== todayStr)
+        return -1;
+      if (b.appointmentDate === todayStr && a.appointmentDate !== todayStr)
+        return 1;
+
+      if (tsA !== tsB) return tsA - tsB;
+      return statusPriority[a.status] - statusPriority[b.status];
+    });
+  }, [orders, statusFilter, viewScope, todayStr, now]);
+
+  const sectionedOrders = useMemo(() => {
+    const sections: { title: string; data: Order[] }[] = [];
+    const urgent = scopeFilteredOrders.filter((o) => isUrgent(o));
+    const todayOrders = scopeFilteredOrders.filter(
+      (o) => o.appointmentDate === todayStr && !isUrgent(o)
+    );
+    const tomorrowStr = (() => {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      return t.toISOString().split("T")[0];
+    })();
+    const tomorrow = scopeFilteredOrders.filter(
+      (o) => o.appointmentDate === tomorrowStr && !isUrgent(o)
+    );
+    const later = scopeFilteredOrders.filter(
+      (o) =>
+        o.appointmentDate !== todayStr &&
+        o.appointmentDate !== tomorrowStr &&
+        o.appointmentDate
+    );
+    const noDate = scopeFilteredOrders.filter((o) => !o.appointmentDate);
+
+    if (urgent.length > 0) sections.push({ title: "緊急/逾期", data: urgent });
+    if (todayOrders.length > 0)
+      sections.push({ title: "今天", data: todayOrders });
+    if (tomorrow.length > 0) sections.push({ title: "明天", data: tomorrow });
+    if (later.length > 0) sections.push({ title: "更晚", data: later });
+    if (noDate.length > 0) sections.push({ title: "未指定時間", data: noDate });
+    return sections;
+  }, [scopeFilteredOrders, todayStr]);
+
+  const pendingCount = orders.filter(
+    (o) =>
+      o.status === "pending" || o.status === "confirmed" || o.status === "paid"
+  ).length;
+  const todayCount = orders.filter(
+    (o) => o.appointmentDate === todayStr
+  ).length;
+
+  const getNextStatus = (status: OrderStatus): OrderStatus | null => {
+    if (status === "pending" || status === "confirmed") return "paid";
+    if (status === "paid") return "completed";
+    return null;
+  };
+
+  const getActionLabel = (status: OrderStatus) => {
+    if (status === "pending" || status === "confirmed") return "收款";
+    if (status === "paid") return "完成";
+    return "查看詳情";
+  };
+
+  const handleStatusAction = async (order: Order) => {
+    const next = getNextStatus(order.status);
+    if (!next) {
+      Alert.alert("提醒", "此狀態無需操作");
+      return;
+    }
+    try {
+      await updateOrderStatus.mutateAsync({
+        order_id: order.id,
+        status: next,
+      });
+      Alert.alert("成功", `已更新為${getActionLabel(order.status)}`);
+    } catch (error) {
+      console.error("[Order] update status failed", error);
+      Alert.alert("更新失敗", "請稍後再試");
+    }
+  };
+
+  const handleCancel = (order: Order) => {
+    Alert.alert("取消訂單", "確定要將此訂單標記為取消嗎？", [
+      { text: "保留", style: "cancel" },
       {
-        label: "今日訂單",
-        value: `${todaysOrders.length} 筆`,
-        description: `待確認 ${pendingCount} · 已確認 ${confirmedCount}`,
-        icon: <Ionicons name="reader-outline" size={16} color="#FFFFFF" />,
-        highlight: true,
+        text: "取消訂單",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await updateOrderStatus.mutateAsync({
+              order_id: order.id,
+              status: "cancelled",
+            });
+          } catch (error) {
+            console.error("[Order] cancel failed", error);
+            Alert.alert("取消失敗", "請稍後再試");
+          }
+        },
       },
-      {
-        label: "今日營收",
-        value: `$${todaysRevenue.toLocaleString()}`,
-        description: "以訂單金額統計",
-        icon: <Ionicons name="cash-outline" size={16} color={brandTeal} />,
-      },
-      {
-        label: "已付款",
-        value: `${awaitingPayment} 筆`,
-        description: "收款已確認",
-        icon: <Ionicons name="card-outline" size={16} color={brandSlate} />,
-      },
-    ];
-  }, [orders, todayStr]);
+    ]);
+  };
+
+  const handleDirectStatusChange = (order: Order, newStatus: OrderStatus) => {
+    if (newStatus === order.status) return;
+    Alert.alert(
+      "變更狀態",
+      `確定將訂單變更為「${statusLabelMap[newStatus]}」嗎？`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "確定",
+          onPress: async () => {
+            try {
+              await updateOrderStatus.mutateAsync({
+                order_id: order.id,
+                status: newStatus,
+              });
+              setSelectedOrder({ ...order, status: newStatus });
+            } catch (error) {
+              console.error("[Order] change status failed", error);
+              Alert.alert("更新失敗", "請稍後再試");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const openDeliveryModal = (product: Product) => {
     setDeliveryModalProduct(product);
@@ -247,7 +411,7 @@ export default function Orders() {
     setUseTeamDeliveryDefault(true);
   };
 
-  const toggleMethod = (method: DeliveryMethod) => {
+  const toggleMethod = (method: ProductDeliveryMethod) => {
     setSelectedMethods((prev) =>
       prev.includes(method)
         ? prev.filter((m) => m !== method)
@@ -406,6 +570,8 @@ export default function Orders() {
       orderStatusMeta[order.status] || orderStatusMeta.pending;
     const isToday = order.appointmentDate === todayStr;
     const amount = order.totalAmount ?? 0;
+    const actionLabel = getActionLabel(order.status);
+    const isActionable = actionLabel !== "查看詳情";
 
     const timeLabel = (() => {
       const date = order.appointmentDate
@@ -428,10 +594,11 @@ export default function Orders() {
         : "未填寫品項";
 
     return (
-      <View
+      <Pressable
         key={order.id}
+        onPress={() => setSelectedOrder(order)}
         className="flex-row rounded-3xl bg-white overflow-hidden mb-3 border border-slate-100 "
-        style={{ minHeight: 100 }}
+        style={{ minHeight: 110 }}
       >
         {/* Status Strip */}
         <View
@@ -442,16 +609,16 @@ export default function Orders() {
         {/* Content */}
         <View className="flex-1 p-4">
           {/* Header */}
-          <View className="flex-row justify-between items-start mb-1">
+          <View className="flex-row justify-between items-start mb-2">
             <View className="flex-row items-center gap-2">
-              <Text className="text-lg font-bold text-slate-900">
+              <Text className="text-base font-bold text-slate-900">
                 {order.customerName}
               </Text>
-              <Text className="text-xs text-slate-400">
+              <Text className="text-[11px] text-slate-400">
                 {order.orderNumber || order.id}
               </Text>
             </View>
-            <View className="flex-row items-center gap-1">
+            <View className="flex-row items-center gap-2">
               <View
                 className="px-2 py-0.5 rounded-full"
                 style={{
@@ -472,34 +639,68 @@ export default function Orders() {
               >
                 {timeLabel}
               </Text>
-              <Ionicons name="chevron-forward" size={14} color="#CBD5E1" />
             </View>
           </View>
 
           {/* Summary */}
-          <Text className="text-sm text-slate-600 mb-3">{summary}</Text>
+          <Text className="text-sm text-slate-600 mb-2">{summary}</Text>
 
           {/* Price */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-bold" style={{ color: brandTeal }}>
-              ${amount.toLocaleString()}
-            </Text>
-            <Pressable
-              onPress={() => console.log("open order detail")}
-              className="flex-row items-center gap-1"
-            >
-              <Text className="text-xs font-semibold text-brand-slate">
-                查看詳情
+            <View className="flex-row items-center gap-2">
+              <Text
+                className="text-base font-bold"
+                style={{ color: brandTeal }}
+              >
+                ${amount.toLocaleString()}
               </Text>
-              <Ionicons
-                name="arrow-forward-circle"
-                size={16}
-                color={brandSlate}
-              />
+            </View>
+            <Pressable
+              onPress={() =>
+                isActionable
+                  ? handleStatusAction(order)
+                  : console.log("open order detail")
+              }
+              disabled={updateOrderStatus.isPending}
+              className="flex-row items-center gap-2 rounded-full px-3 py-1"
+              style={{
+                backgroundColor: isActionable ? brandTeal : "#E2E8F0",
+                opacity: updateOrderStatus.isPending ? 0.6 : 1,
+              }}
+            >
+              {updateOrderStatus.isPending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons
+                  name={isActionable ? "checkmark" : "arrow-forward"}
+                  size={14}
+                  color={isActionable ? "#FFFFFF" : brandSlate}
+                />
+              )}
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: isActionable ? "#FFFFFF" : brandSlate }}
+              >
+                {actionLabel}
+              </Text>
             </Pressable>
           </View>
+
+          {order.status === "pending" ||
+          order.status === "confirmed" ||
+          order.status === "paid" ? (
+            <Pressable
+              onPress={() => handleCancel(order)}
+              disabled={updateOrderStatus.isPending}
+              className="mt-2 self-end"
+            >
+              <Text className="text-[11px] font-semibold text-slate-400 underline">
+                取消訂單
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -556,7 +757,7 @@ export default function Orders() {
                   className="px-2 py-1 rounded-full bg-slate-100"
                 >
                   <Text className="text-[11px] font-semibold text-slate-600">
-                    {deliveryMethodLabels[method]}
+                    {productDeliveryMethodLabels[method]}
                   </Text>
                 </View>
               ))}
@@ -651,17 +852,8 @@ export default function Orders() {
       <MainLayout
         title="訂單管理"
         teamName={currentTeam?.team_name || "載入中..."}
-        centerContent={
-          <SegmentedControl
-            options={[
-              { label: "訂單管理", value: "orders" },
-              { label: "商品管理", value: "products" },
-            ]}
-            value={primaryTab}
-            onChange={(val) => setPrimaryTab(val as PrimaryTab)}
-            theme="brand"
-          />
-        }
+        scrollable={false}
+        centerContent={<View />}
         rightContent={
           <View className="flex-row items-center gap-2">
             {primaryTab === "orders" ? (
@@ -678,72 +870,87 @@ export default function Orders() {
         }
       >
         {primaryTab === "orders" ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefetching}
-                onRefresh={refetch}
-                tintColor={brandTeal}
-              />
-            }
-          >
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-lg font-bold text-brand-slate">
-                  今日概況
-                </Text>
-                <Text className="text-xs text-slate-400">即時資料</Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="pl-1"
-                contentContainerStyle={{ gap: 12, paddingRight: 16 }}
-              >
-                {summaryCards.map((card) => (
-                  <SummaryCard key={card.label} {...card} />
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Sub-Header Tools */}
-            <View className="flex-row items-center justify-between mb-4">
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="flex-1 mr-2"
-              >
-                {statusFilters.map((filter) => renderStatusChip(filter))}
-              </ScrollView>
-              <View className="border-l border-gray-200 pl-2">
-                <IconButton
-                  icon={
-                    viewMode === "list" ? "list-outline" : "calendar-outline"
-                  }
-                  ariaLabel="切換檢視"
-                  onPress={() =>
-                    setViewMode((v) => (v === "list" ? "calendar" : "list"))
-                  }
-                  isDark={false}
+          <View className="flex-1">
+            <SectionList
+              sections={sectionedOrders}
+              keyExtractor={(item) => item.id}
+              stickySectionHeadersEnabled={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefetching}
+                  onRefresh={refetch}
+                  tintColor={brandTeal}
                 />
-              </View>
-            </View>
-
-            {/* Order List */}
-            <View className="pb-20">
-              {isLoading ? (
-                <View className="py-16 items-center justify-center">
-                  <ActivityIndicator size="large" color={brandTeal} />
-                  <Text className="text-slate-500 mt-2">載入訂單中</Text>
+              }
+              ListHeaderComponent={
+                <OrderFilters
+                  pendingCount={pendingCount}
+                  todayCount={todayCount}
+                  viewScope={viewScope}
+                  onChangeScope={setViewScope}
+                  statusFilter={statusFilter}
+                  onChangeStatus={setStatusFilter}
+                  statusFilters={statusFilters}
+                  statusChipMeta={statusChipMeta}
+                />
+              }
+              renderSectionHeader={({ section }) => (
+                <View className="flex-row items-center justify-between px-1 py-2">
+                  <Text className="text-xs font-semibold text-slate-600 uppercase">
+                    {section.title}
+                  </Text>
+                  <Text className="text-[11px] text-slate-400">
+                    {section.data.length} 筆
+                  </Text>
                 </View>
-              ) : orders.length === 0 ? (
-                <Text className="text-slate-500">尚無訂單</Text>
-              ) : (
-                orders.map((order) => renderOrderCard(order))
               )}
-            </View>
-          </ScrollView>
+              renderItem={({ item }) => {
+                const actionLabel = getActionLabel(item.status);
+                const isActionable = actionLabel !== "查看詳情";
+                return (
+                  <OrderCard
+                    order={item}
+                    todayStr={todayStr}
+                    statusMeta={orderStatusMeta}
+                    actionLabel={actionLabel}
+                    isActionable={isActionable}
+                    loading={updateOrderStatus.isPending}
+                    onPress={(order) => setSelectedOrder(order)}
+                    onAction={(order) => (isActionable ? handleStatusAction(order) : setSelectedOrder(order))}
+                    onCancel={(order) => handleCancel(order)}
+                  />
+                );
+              }}
+              ListEmptyComponent={
+                isLoading ? (
+                  <View className="py-16 items-center justify-center">
+                    <ActivityIndicator size="large" color={brandTeal} />
+                    <Text className="text-slate-500 mt-2">載入訂單中</Text>
+                  </View>
+                ) : (
+                  <View className="py-16 items-center justify-center">
+                    <Text className="text-slate-600">沒有符合篩選的訂單</Text>
+                    <Pressable
+                      className="mt-3 px-4 py-2 rounded-full border border-slate-200"
+                      onPress={() => {
+                        setViewScope("all");
+                        setStatusFilter("all");
+                      }}
+                    >
+                      <Text className="text-slate-700 text-sm font-semibold">
+                        清除篩選
+                      </Text>
+                    </Pressable>
+                  </View>
+                )
+              }
+              contentContainerStyle={{
+                paddingBottom: 28,
+                paddingHorizontal: 4,
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
         ) : (
           <View className="relative h-full">
             {renderProductList()}
@@ -912,59 +1119,22 @@ export default function Orders() {
           </View>
         </View>
       </Modal>
+
+      <OrderDetailModal
+        order={selectedOrder}
+        visible={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        statusMeta={orderStatusMeta}
+        statusLabelMap={statusLabelMap}
+        loading={updateOrderStatus.isPending}
+        onPrimaryAction={(order) => handleStatusAction(order)}
+        getActionLabel={getActionLabel}
+        getNextStatus={getNextStatus}
+        onCancel={(order) => handleCancel(order)}
+        onDirectStatusChange={(order, status) =>
+          handleDirectStatusChange(order, status)
+        }
+      />
     </>
-  );
-}
-
-type SummaryCardProps = {
-  label: string;
-  value: string;
-  description?: string;
-  icon: ReactNode;
-  highlight?: boolean;
-};
-
-function SummaryCard({
-  label,
-  value,
-  description,
-  icon,
-  highlight,
-}: SummaryCardProps) {
-  const backgroundColor = highlight ? brandTeal : "#FFFFFF";
-  const textColor = highlight ? "#FFFFFF" : "#0F172A";
-  const descriptionColor = highlight ? "rgba(255,255,255,0.7)" : "#64748B";
-
-  return (
-    <View
-      className="w-48 rounded-3xl border p-4"
-      style={{
-        backgroundColor,
-        borderColor: highlight ? "transparent" : "#E2E8F0",
-      }}
-    >
-      <View
-        className="w-10 h-10 rounded-2xl items-center justify-center mb-3"
-        style={{
-          backgroundColor: highlight ? "rgba(255,255,255,0.2)" : "#F1F5F9",
-        }}
-      >
-        {icon}
-      </View>
-      <Text
-        className="text-xs font-semibold uppercase tracking-wide"
-        style={{ color: descriptionColor }}
-      >
-        {label}
-      </Text>
-      <Text className="text-2xl font-bold mt-1" style={{ color: textColor }}>
-        {value}
-      </Text>
-      {description ? (
-        <Text className="text-[11px] mt-1" style={{ color: descriptionColor }}>
-          {description}
-        </Text>
-      ) : null}
-    </View>
   );
 }
