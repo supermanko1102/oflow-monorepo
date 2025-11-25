@@ -1,7 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import ProductForm from "@/components/form/ProductForm";
-import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import {
@@ -55,25 +54,6 @@ export default function Production() {
   const updateProductDelivery = useUpdateProduct();
   const updateProductInfo = useUpdateProduct();
   const toggleProductAvailability = useToggleProductAvailability();
-
-  if (!currentTeam?.line_channel_id) {
-    return (
-      <MainLayout
-        title="商品管理"
-        teamName={currentTeam?.team_name || "載入中..."}
-        rightContent={
-          <IconButton
-            icon={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
-            ariaLabel="返回訂單"
-            onPress={() => router.back()}
-            isDark={false}
-          />
-        }
-      >
-        <NoWebhookState />
-      </MainLayout>
-    );
-  }
 
   const openDeliveryModal = (product: Product) => {
     setDeliveryModalProduct(product);
@@ -302,7 +282,7 @@ export default function Production() {
   };
 
   return (
-    <>
+    <View className="flex-1 relative">
       <MainLayout
         title="商品管理"
         teamName={currentTeam?.team_name || "載入中..."}
@@ -505,6 +485,6 @@ export default function Production() {
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 }

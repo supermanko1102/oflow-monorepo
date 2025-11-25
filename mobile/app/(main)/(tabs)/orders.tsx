@@ -1,6 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
-import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import {
@@ -330,19 +329,8 @@ export default function Orders() {
     );
   };
 
-  if (!currentTeam?.line_channel_id) {
-    return (
-      <MainLayout
-        title="訂單管理"
-        teamName={currentTeam?.team_name || "載入中..."}
-      >
-        <NoWebhookState />
-      </MainLayout>
-    );
-  }
-
   return (
-    <>
+    <View className="flex-1 relative">
       <MainLayout
         title="訂單管理"
         teamName={currentTeam?.team_name || "載入中..."}
@@ -488,6 +476,6 @@ export default function Orders() {
           handleDirectStatusChange(order, status)
         }
       />
-    </>
+    </View>
   );
 }

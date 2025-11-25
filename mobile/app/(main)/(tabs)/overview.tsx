@@ -327,29 +327,6 @@ export default function Overview() {
           />
         }
       >
-        {/* Webhook Warning Banner */}
-        {!currentTeam?.line_channel_id && (
-          <Pressable
-            onPress={() => router.push("../settings/line-connection")}
-            className="mb-6 flex-row items-center justify-between rounded-2xl border border-yellow-200 bg-yellow-50 p-4"
-          >
-            <View className="flex-1 flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-                <Ionicons name="warning" size={24} color="#EAB308" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-bold text-yellow-800">
-                  尚未連接 LINE 官方帳號
-                </Text>
-                <Text className="text-xs text-yellow-600">
-                  點擊此處完成設定以接收訂單
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#EAB308" />
-          </Pressable>
-        )}
-
         {/* AI Mode Switcher */}
         <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
           <TouchableOpacity

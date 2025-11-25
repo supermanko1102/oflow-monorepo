@@ -5,7 +5,6 @@ import {
   ConversationConfirmForm,
 } from "@/components/form/ConversationConfirmForm";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { NoWebhookState } from "@/components/ui/NoWebhookState";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
@@ -14,8 +13,8 @@ import {
   useConversations,
   useConversationDetail,
   useIgnoreConversation,
+  useConversationsRealtime,
 } from "@/hooks/queries/useConversations";
-import { useConversationsRealtime } from "@/hooks/queries/useConversations";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -72,8 +71,6 @@ export default function Inbox() {
   const {
     currentTeam,
     currentTeamId,
-    hasWebhook,
-    isLoading: isTeamLoading,
   } = useCurrentTeam();
 
   const {
@@ -227,14 +224,6 @@ export default function Inbox() {
       textColor: brandTeal,
     },
   };
-
-  if (!hasWebhook && !isTeamLoading) {
-    return (
-      <MainLayout title="對話收件匣">
-        <NoWebhookState />
-      </MainLayout>
-    );
-  }
 
   const renderSummaryCard = (card: (typeof summaryCards)[number]) => {
     const tone = summaryToneStyles[card.tone];
@@ -463,73 +452,74 @@ export default function Inbox() {
   };
 
   return (
-    <MainLayout
-      title="對話收件匣"
-      teamName={currentTeam?.team_name || "載入中..."}
-      centerContent={
-        <View>
-          <Text className="text-sm font-semibold text-slate-900">
-            收件匣視圖
-          </Text>
-          <Text className="text-[12px] text-slate-500 mt-1">
-            切換例外處理與 AI 自動紀錄
-          </Text>
-          <View className="mt-2">
-            <SegmentedControl
-              options={[
-                {
-                  label: "例外處理",
-                  value: "exception",
-                  badge: exceptions.length,
-                },
-                { label: "自動紀錄", value: "auto", badge: autoRecords.length },
-              ]}
-              value={mode}
-              onChange={(val) => setMode(val as InboxMode)}
-              theme="brand"
+    <View className="flex-1 relative">
+      <MainLayout
+        title="對話收件匣"
+        teamName={currentTeam?.team_name || "載入中..."}
+        centerContent={
+          <View>
+            <Text className="text-sm font-semibold text-slate-900">
+              收件匣視圖
+            </Text>
+            <Text className="text-[12px] text-slate-500 mt-1">
+              切換例外處理與 AI 自動紀錄
+            </Text>
+            <View className="mt-2">
+              <SegmentedControl
+                options={[
+                  {
+                    label: "例外處理",
+                    value: "exception",
+                    badge: exceptions.length,
+                  },
+                  { label: "自動紀錄", value: "auto", badge: autoRecords.length },
+                ]}
+                value={mode}
+                onChange={(val) => setMode(val as InboxMode)}
+                theme="brand"
+              />
+            </View>
+          </View>
+        }
+        rightContent={
+          <View className="flex-row items-center gap-2">
+            <IconButton
+              icon="checkmark-done-outline"
+              ariaLabel="批次處理"
+              onPress={() => console.log("batch")}
+              isDark={false}
             />
           </View>
-        </View>
-      }
-      rightContent={
-        <View className="flex-row items-center gap-2">
-          <IconButton
-            icon="checkmark-done-outline"
-            ariaLabel="批次處理"
-            onPress={() => console.log("batch")}
-            isDark={false}
-          />
-        </View>
-      }
-      onTeamPress={() => console.log("team picker")}
-      onSearchPress={() => console.log("search inbox")}
-      onNotificationsPress={() => console.log("notifications")}
-      onCreatePress={() => console.log("新建訊息")}
-    >
-      <ScrollView
-        className="px-4 pt-2 pb-24"
-        refreshControl={
-          <RefreshControl
-            refreshing={
-              mode === "exception"
-                ? isCollectingRefetching ||
-                  isAwaitingRefetching ||
-                  isManualRefetching
-                : isCompletedRefetching
-            }
-            onRefresh={() => {
-              if (mode === "exception") {
-                refetchCollecting();
-                refetchAwaiting();
-                refetchManual();
-              } else {
-                refetchCompleted();
-              }
-            }}
-            tintColor={brandTeal}
-          />
         }
+        onTeamPress={() => console.log("team picker")}
+        onSearchPress={() => console.log("search inbox")}
+        onNotificationsPress={() => console.log("notifications")}
+        onCreatePress={() => console.log("新建訊息")}
       >
+        <ScrollView
+          className="px-4 pt-2 pb-24"
+          refreshControl={
+            <RefreshControl
+              refreshing={
+                mode === "exception"
+                  ? isCollectingRefetching ||
+                    isAwaitingRefetching ||
+                    isManualRefetching
+                  : isCompletedRefetching
+              }
+              onRefresh={() => {
+                if (mode === "exception") {
+                  refetchCollecting();
+                  refetchAwaiting();
+                  refetchManual();
+                } else {
+                  refetchCompleted();
+                }
+              }}
+              tintColor={brandTeal}
+            />
+          }
+        >
         <View className="mb-3">
           <View className="flex-row flex-wrap gap-3 mb-5">
             {summaryCards.map((card) => renderSummaryCard(card))}
@@ -741,7 +731,8 @@ export default function Inbox() {
           )}
         </View>
       </Modal>
-    </MainLayout>
+      </MainLayout>
+    </View>
   );
 }
 

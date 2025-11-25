@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Palette } from "@/constants/palette";
+import { WebhookGuard } from "@/components/ui/WebhookGuard";
 import {
   Icon,
   Label,
@@ -17,17 +18,18 @@ export default function TabLayout() {
   ] as const;
 
   return (
-    <NativeTabs>
-      {tabConfigs.map(({ name, icon, label }) => (
-        <NativeTabs.Trigger key={name} name={name}>
-          <Icon
-            selectedColor={activeColor}
-            src={<VectorIcon family={MaterialCommunityIcons} name={icon} />}
-          />
-          <Label selectedStyle={{ color: activeColor }}>{label}</Label>
-        </NativeTabs.Trigger>
-      ))}
-    </NativeTabs>
+    <WebhookGuard>
+      <NativeTabs>
+        {tabConfigs.map(({ name, icon, label }) => (
+          <NativeTabs.Trigger key={name} name={name}>
+            <Icon
+              selectedColor={activeColor}
+              src={<VectorIcon family={MaterialCommunityIcons} name={icon} />}
+            />
+            <Label selectedStyle={{ color: activeColor }}>{label}</Label>
+          </NativeTabs.Trigger>
+        ))}
+      </NativeTabs>
+    </WebhookGuard>
   );
-  
 }

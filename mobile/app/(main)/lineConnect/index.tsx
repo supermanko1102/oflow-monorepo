@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Palette } from "@/constants/palette";
+import { IconButton } from "@/components/Navbar";
 import {
   updateLineSettings,
   validateLineChannel,
@@ -100,56 +101,50 @@ export default function LineConnectionSettings() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <MainLayout
+      title="LINE 串接"
+      teamName={currentTeam?.team_name || "載入中..."}
+      showActions={false}
+      rightContent={
+        <IconButton
+          icon="chevron-back"
+          ariaLabel="返回"
+          onPress={() => router.back()}
+          isDark={false}
+        />
+      }
+    >
       <KeyboardAwareScrollView
         bottomOffset={50}
         contentContainerStyle={{ paddingBottom: 100 }}
         className="flex-1"
       >
-        <View className="p-6">
-          {/* Header Section */}
-          <View className="mb-8 items-center">
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-sm">
-              <Ionicons name="logo-android" size={40} color="#06C755" />
-            </View>
+        <View className="p-4">
+          <View className="mb-6">
             <Text className="mb-2 text-2xl font-bold text-gray-900">
               連接 LINE 官方帳號
             </Text>
-            <Text className="text-center text-sm text-gray-500">
+            <Text className="text-sm text-gray-500">
               連接後，AI 將自動讀取訊息並為您整理訂單
             </Text>
+            <View className="mt-3 self-start">
+              {currentTeam?.line_channel_id ? (
+                <View className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-green-100 bg-green-50">
+                  <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                  <Text className="text-[12px] font-semibold text-green-700">
+                    已連接 · {currentTeam.line_channel_id}
+                  </Text>
+                </View>
+              ) : (
+                <View className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-amber-100 bg-amber-50">
+                  <Ionicons name="alert-circle" size={14} color="#D97706" />
+                  <Text className="text-[12px] font-semibold text-amber-700">
+                    尚未連接 · 填寫下方資訊啟用功能
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-
-          {/* Current Status Card */}
-          {currentTeam?.line_channel_id ? (
-            <View className="mb-8 overflow-hidden rounded-2xl border border-green-100 bg-green-50 p-4">
-              <View className="flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-green-500">
-                  <Ionicons name="checkmark" size={24} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="font-bold text-green-800">已連接</Text>
-                  <Text className="text-xs text-green-600">
-                    Channel ID: {currentTeam.line_channel_id}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <View className="mb-8 overflow-hidden rounded-2xl border border-orange-100 bg-orange-50 p-4">
-              <View className="flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-orange-500">
-                  <Ionicons name="alert" size={24} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="font-bold text-orange-800">尚未連接</Text>
-                  <Text className="text-xs text-orange-600">
-                    請填寫下方資訊以啟用功能
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
 
           {/* Form Section */}
           <View className="space-y-6 rounded-3xl bg-white p-6 shadow-sm">
@@ -238,6 +233,6 @@ export default function LineConnectionSettings() {
           </View>
         </View>
       </KeyboardAwareScrollView>
-    </View>
+    </MainLayout>
   );
 }
