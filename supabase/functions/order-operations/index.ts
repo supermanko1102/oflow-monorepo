@@ -143,6 +143,8 @@ serve(async (req) => {
     // 解析請求
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+    const cursor = url.searchParams.get("cursor");
+    const limit = Number(url.searchParams.get("limit") || "20");
 
     // ═══════════════════════════════════════════════════════════════════
     // GET 操作
@@ -275,10 +277,23 @@ serve(async (req) => {
           throw error3;
         }
 
+        // 近期訂單（依建立時間，包含各狀態）
+        const { data: recentOrders, error: error4 } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("team_id", teamId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error4) {
+          throw error4;
+        }
+
         console.log("[Order Operations] Dashboard 摘要查詢完成:", {
           todayPending: todayPending?.length || 0,
           todayCompleted: todayCompleted?.length || 0,
           future: future?.length || 0,
+          recentOrders: recentOrders?.length || 0,
         });
 
         // 轉換為前端格式
@@ -288,6 +303,52 @@ serve(async (req) => {
             todayPending: (todayPending || []).map(transformOrderToClient),
             todayCompleted: (todayCompleted || []).map(transformOrderToClient),
             future: (future || []).map(transformOrderToClient),
+            recentOrders: (recentOrders || []).map(transformOrderToClient),
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // 動態時間軸（cursor 分頁，依建立時間）
+      if (action === "dashboard-activity") {
+        const teamId = url.searchParams.get("team_id");
+
+        if (!teamId) {
+          throw new Error("Missing team_id parameter");
+        }
+
+        // 驗證團隊成員身份
+        await verifyTeamMembership(supabaseAdmin, user.id, teamId);
+
+        const pageSize = Number.isFinite(limit) ? Math.min(limit, 50) : 20;
+
+        let query = supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("team_id", teamId)
+          .order("created_at", { ascending: false })
+          .limit(pageSize + 1); // 多抓一筆判斷下一頁
+
+        if (cursor) {
+          query = query.lt("created_at", cursor);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const items = (data || []).slice(0, pageSize);
+        const nextCursor =
+          data && data.length > pageSize
+            ? data[pageSize - 1]?.created_at || null
+            : null;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            items: items.map(transformOrderToClient),
+            nextCursor,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -5,10 +5,12 @@ import {
   useDashboardSummary,
   useRevenueStats,
 } from "@/hooks/queries/useDashboard";
+import { useDashboardActivity } from "@/hooks/queries/useDashboardActivity";
 import { useUpdateAutoMode } from "@/hooks/queries/useTeams";
 import { useUser } from "@/hooks/queries/useUser";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useMemo, useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   ActivityIndicator,
   Alert,
@@ -20,7 +22,6 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 
 type MetricCardProps = {
   label: string;
@@ -95,8 +96,6 @@ function MetricCard({
 type OperationMode = "auto" | "semi";
 
 export default function Overview() {
-  const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { currentTeam, currentTeamId } = useCurrentTeam();
 
   // Fetch User
@@ -114,7 +113,7 @@ export default function Overview() {
     if (currentTeam) {
       setMode(currentTeam.auto_mode ? "auto" : "semi");
     }
-  }, [currentTeam?.auto_mode]);
+  }, [currentTeam?.auto_mode, currentTeam]);
 
   const handleModeChange = async (newMode: OperationMode) => {
     if (!currentTeamId || isUpdatingMode) return;
@@ -146,6 +145,19 @@ export default function Overview() {
     refetch: refetchRevenue,
   } = useRevenueStats(currentTeamId, "day");
 
+  const {
+    data: activityPages,
+    isLoading: isActivityLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch: refetchActivity,
+  } = useDashboardActivity({
+    teamId: currentTeamId,
+    enabled: !!currentTeamId,
+    pageSize: 20,
+  });
+
   const isLoading = isDashboardLoading || isRevenueLoading;
   const isRefreshing = isDashboardRefetching;
 
@@ -170,103 +182,68 @@ export default function Overview() {
     };
   }, [dashboardData, revenueData]);
 
-  // Generate Reminders from real data
-  const reminders = useMemo(() => {
-    if (!dashboardData) return [];
-
-    const items = [];
-
-    // Pending orders reminder
-    if (dashboardData.todayPending.length > 0) {
-      items.push({
-        id: "pending-orders",
-        title: `今天還有 ${dashboardData.todayPending.length} 筆訂單需處理`,
-        time: "現在",
-        type: "alert",
-      });
-    }
-
-    // Future orders reminder
-    if (dashboardData.future.length > 0) {
-      const tomorrowOrders = dashboardData.future.filter((o) => {
-        const date = new Date(o.appointmentDate);
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return date.getDate() === tomorrow.getDate();
-      });
-
-      if (tomorrowOrders.length > 0) {
-        items.push({
-          id: "tomorrow-orders",
-          title: `明天有 ${tomorrowOrders.length} 筆預約/訂單`,
-          time: "明天",
-          type: "warning",
-        });
-      }
-    }
-
-    if (items.length === 0) {
-      items.push({
-        id: "no-reminders",
-        title: "目前沒有緊急待辦事項",
-        time: "現在",
-        type: "success",
-      });
-    }
-
-    return items;
-  }, [dashboardData]);
-
   // Generate Activities from real data
   const activities = useMemo(() => {
-    if (!dashboardData) return [];
+    const pageItems = activityPages?.pages.flatMap((p) => p.items || []) || [];
 
-    const items = [];
-
-    // Recent completed orders
-    dashboardData.todayCompleted.slice(0, 5).forEach((order) => {
-      items.push({
-        id: `completed-${order.id}`,
-        content: `${order.customerName || "客戶"} 的訂單已完成`,
-        time: order.completedAt
-          ? new Date(order.completedAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "剛剛",
-        type: "success",
-      });
-    });
-
-    // Recent pending orders (newly created)
-    dashboardData.todayPending.slice(0, 3).forEach((order) => {
-      items.push({
-        id: `new-${order.id}`,
-        content: `新訂單：${order.customerName || "客戶"} (${order.items?.length || 1}項商品)`,
-        time: order.createdAt
-          ? new Date(order.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "剛剛",
-        type: "auto",
-      });
-    });
-
-    if (items.length === 0) {
-      items.push({
-        id: "no-activity",
-        content: "尚無今日動態",
-        time: "現在",
-        type: "neutral",
+    if (pageItems.length > 0) {
+      return pageItems.map((order) => {
+        const date = order.createdAt || order.completedAt || order.updatedAt;
+        const displayDate = date ? new Date(date) : new Date();
+        const isNew =
+          order.status === "pending" || order.status === "confirmed";
+        const content = isNew
+          ? `新訂單：${order.customerName || "客戶"} (${order.items?.length || 1}項商品)`
+          : `${order.customerName || "客戶"} 的訂單已更新`;
+        return {
+          id: `activity-${order.id}-${order.status}-${order.createdAt}`,
+          content,
+          displayTime: format(displayDate, "HH:mm"),
+          type: isNew ? "auto" : "success",
+        };
       });
     }
 
-    return items.sort((a, b) => (b.time > a.time ? 1 : -1)).slice(0, 5);
-  }, [dashboardData]);
+    if (!dashboardData) return [];
+
+    const fallbackOrders = [
+      ...(dashboardData.todayPending || []),
+      ...(dashboardData.todayCompleted || []),
+    ];
+
+    if (fallbackOrders.length === 0) {
+      return [
+        {
+          id: "no-activity",
+          content: "尚無今日動態",
+          displayTime: "現在",
+          type: "neutral" as const,
+        },
+      ];
+    }
+
+    return fallbackOrders.slice(0, 10).map((order) => {
+      const date = order.createdAt || order.completedAt || order.updatedAt;
+      const displayDate = date ? new Date(date) : new Date();
+      const isNew = order.status === "pending" || order.status === "confirmed";
+      const content = isNew
+        ? `新訂單：${order.customerName || "客戶"} (${order.items?.length || 1}項商品)`
+        : `${order.customerName || "客戶"} 的訂單已更新`;
+      return {
+        id: `fallback-${order.id}`,
+        content,
+        displayTime: format(displayDate, "HH:mm"),
+        type: isNew ? "auto" : "success",
+      };
+    });
+  }, [activityPages, dashboardData]);
 
   const handleRefresh = async () => {
-    await Promise.all([refetchDashboard(), refetchRevenue()]);
+    await Promise.all([
+      refetchDashboard(),
+      refetchRevenue(),
+      refetchActivity(),
+    ]);
   };
 
   const today = new Date().toLocaleDateString("zh-TW", {
@@ -364,8 +341,8 @@ export default function Overview() {
         <View className="mb-6 px-2">
           <Text className="text-center text-gray-500 text-sm">
             {mode === "auto"
-              ? "✨ AI 將自動回覆訊息並建立訂單"
-              : "📝 AI 生成草稿，需您確認後發送"}
+              ? "AI 將自動回覆訊息並建立訂單"
+              : "AI 生成草稿，需您確認後發送"}
           </Text>
         </View>
 
@@ -441,46 +418,48 @@ export default function Overview() {
                 待辦與動態
               </Text>
 
-              {/* Reminders */}
-              <View className="space-y-3 mb-6">
-                {reminders.map((item) => (
-                  <View
-                    key={item.id}
-                    className="bg-white p-4 rounded-xl border-l-4 border-l-brand-teal flex-row items-center"
-                  >
-                    <View className="bg-teal-50 p-2 rounded-full mr-3">
-                      <Ionicons
-                        name="notifications"
-                        size={20}
-                        color="#008080"
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-brand-slate font-semibold text-sm mb-1">
-                        {item.title}
-                      </Text>
-                      <Text className="text-gray-400 text-xs">{item.time}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
               {/* Activities */}
               <View className="space-y-4">
                 <Text className="text-sm font-semibold text-gray-500 px-1">
                   最新動態
                 </Text>
-                {activities.map((item) => (
-                  <View key={item.id} className="flex-row items-start px-1">
-                    <View className="mt-1 w-2 h-2 rounded-full bg-brand-teal mr-3" />
-                    <View className="flex-1">
-                      <Text className="text-gray-800 text-sm mb-0.5">
-                        {item.content}
-                      </Text>
-                      <Text className="text-gray-400 text-xs">{item.time}</Text>
-                    </View>
+                {isActivityLoading && activities.length === 0 ? (
+                  <View className="py-6 items-center justify-center">
+                    <ActivityIndicator size="small" color="#008080" />
+                    <Text className="text-gray-500 mt-2 text-sm">
+                      載入動態中...
+                    </Text>
                   </View>
-                ))}
+                ) : activities.length === 0 ? (
+                  <View className="py-4 px-2">
+                    <Text className="text-gray-500 text-sm">尚無最新動態</Text>
+                  </View>
+                ) : (
+                  activities.map((item) => (
+                    <View key={item.id} className="flex-row items-start px-1">
+                      <View className="mt-1 w-2 h-2 rounded-full bg-brand-teal mr-3" />
+                      <View className="flex-1">
+                        <Text className="text-gray-800 text-sm mb-0.5">
+                          {item.content}
+                        </Text>
+                        <Text className="text-gray-400 text-xs">
+                          {item.displayTime}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+                {hasNextPage ? (
+                  <TouchableOpacity
+                    onPress={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="mt-2 self-start px-3 py-2 rounded-lg bg-white border border-gray-200"
+                  >
+                    <Text className="text-sm font-semibold text-brand-teal">
+                      {isFetchingNextPage ? "載入中..." : "載入更多"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
           </>

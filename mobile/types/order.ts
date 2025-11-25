@@ -140,6 +140,12 @@ export interface DashboardSummary {
   todayPending: Order[];
   todayCompleted: Order[];
   future: Order[];
+  recentOrders?: Order[];
+}
+
+export interface DashboardActivityPage {
+  items: Order[];
+  nextCursor: string | null;
 }
 
 // ==================== Revenue Stats Types ====================

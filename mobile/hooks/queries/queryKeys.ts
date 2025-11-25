@@ -70,6 +70,10 @@ export const queryKeys = {
         teamId,
         timeRange,
       ] as const,
+
+    // 動態時間軸分頁
+    activity: (teamId: string) =>
+      [...queryKeys.dashboard.all(), "activity", teamId] as const,
   },
 
   // Products 相關 queries

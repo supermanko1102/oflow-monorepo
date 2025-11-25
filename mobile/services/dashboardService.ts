@@ -4,7 +4,12 @@
  */
 
 import { ApiClient } from "@/lib/apiClient";
-import type { DashboardSummary, RevenueStats, TimeRange } from "@/types/order";
+import type {
+  DashboardSummary,
+  RevenueStats,
+  TimeRange,
+  DashboardActivityPage,
+} from "@/types/order";
 
 // 建立 Dashboard API Client 實例
 // Dashboard API 實際上在 order-operations Edge Function 中
@@ -32,6 +37,7 @@ export async function getDashboardSummary(
     todayPending: response.todayPending,
     todayCompleted: response.todayCompleted,
     future: response.future,
+    recentOrders: response.recentOrders,
   };
 }
 
@@ -63,5 +69,28 @@ export async function getRevenueStats(
     totalRevenue: response.totalRevenue,
     orderCount: response.orderCount,
     paymentStats: response.paymentStats,
+  };
+}
+
+/**
+ * 查詢 Dashboard 動態（cursor 分頁）
+ */
+export async function getDashboardActivity(params: {
+  teamId: string;
+  limit?: number;
+  cursor?: string;
+}): Promise<DashboardActivityPage> {
+  const { teamId, limit = 20, cursor } = params;
+  const response = await dashboardApi.call<
+    { success: boolean } & { items: any[]; nextCursor: string | null }
+  >("GET", "dashboard-activity", {
+    team_id: teamId,
+    limit: String(limit),
+    cursor: cursor ?? "",
+  });
+
+  return {
+    items: response.items,
+    nextCursor: response.nextCursor,
   };
 }
