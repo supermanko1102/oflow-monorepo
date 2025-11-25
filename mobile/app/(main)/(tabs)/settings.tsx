@@ -2,17 +2,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
-import { useInviteCode, useTeamMembers } from "@/hooks/queries/useTeams";
-import { logout } from "@/services/auth";
-import { useLeaveTeam } from "@/hooks/queries/useTeams";
-import { useRouter } from "expo-router";
 import {
-  Alert,
-  Pressable,
-  Text,
-  View,
-  ActivityIndicator,
-} from "react-native";
+  useInviteCode,
+  useLeaveTeam,
+  useDeleteTeam,
+} from "@/hooks/queries/useTeams";
+import { useDeleteAccount } from "@/hooks/queries/useAccount";
+import { logout } from "@/services/auth";
+import { useRouter } from "expo-router";
+import { Alert, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
 
@@ -40,19 +38,9 @@ type SettingSection = {
   items: SettingItem[];
 };
 
-type DangerAction = {
-  label: string;
-  onPress: () => void;
-  destructive?: boolean;
-};
-
 export default function Settings() {
   const router = useRouter();
   const { currentTeam, currentTeamId } = useCurrentTeam();
-  const { data: members } = useTeamMembers(
-    currentTeamId || "",
-    !!currentTeamId
-  );
   const {
     data: inviteCode,
     isLoading: isInviteLoading,
@@ -60,30 +48,28 @@ export default function Settings() {
     refetch: refetchInvite,
   } = useInviteCode(currentTeamId || "", !!currentTeamId);
   const leaveTeam = useLeaveTeam();
+  const deleteTeam = useDeleteTeam();
+  const deleteAccount = useDeleteAccount();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeletingTeam, setIsDeletingTeam] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  const memberCount = members?.length ?? 0;
   const hasLine = !!currentTeam?.line_channel_id;
 
   const sections: SettingSection[] = [
     {
-      title: "帳戶與團隊",
-      description: "調整個人資料、帳號安全與團隊權限",
+      title: "訂閱方案（待施工）",
+      description: "升級方案、發票與付款方式設定",
+      isDisabled: true,
+      disabledLabel: "訂閱功能開發中",
       items: [
         {
-          icon: "person-circle-outline",
-          label: "帳戶資訊",
-          detail: "管理姓名、Email、密碼",
-          actionLabel: "編輯",
-          onPress: () => console.log("open account settings"),
-        },
-        {
-          icon: "people-outline",
-          label: "團隊與權限",
-          detail: memberCount > 0 ? `${memberCount} 位成員` : "載入成員中...",
-          actionLabel: "管理",
-          onPress: () => router.push("/(main)/(tabs)/overview"),
+          icon: "card-outline",
+          label: "方案與帳單",
+          detail: "查看目前方案、付款方式與發票資訊",
+          disabled: true,
+          onPress: () => console.log("open subscription"),
         },
       ],
     },
@@ -97,19 +83,15 @@ export default function Settings() {
           icon: "notifications-outline",
           label: "推播提醒",
           detail: "訂單狀態、AI 例外通知",
-          actionLabel: "尚未開放",
           disabled: true,
-          disabledLabel: "施工中",
           onPress: () => console.log("open push notifications"),
         },
         {
           icon: "mail-outline",
           label: "Email 摘要",
           detail: "每週營運數據報告",
-          actionLabel: "尚未開放",
           statusTone: "muted",
           disabled: true,
-          disabledLabel: "施工中",
           onPress: () => console.log("open email digest"),
         },
       ],
@@ -145,11 +127,9 @@ export default function Settings() {
           icon: "calendar-outline",
           label: "Google 日曆（待施工）",
           detail: "未連結 · 即將開放",
-          actionLabel: "尚未開放",
           actionVariant: "default",
           statusTone: "muted",
           disabled: true,
-          disabledLabel: "敬請期待",
           onPress: () => console.log("connect Google Calendar"),
           onActionPress: () => console.log("connect Google Calendar"),
         },
@@ -165,18 +145,14 @@ export default function Settings() {
           icon: "cloud-download-outline",
           label: "匯出資料",
           detail: "訂單、顧客 CSV 報表",
-          actionLabel: "尚未開放",
           disabled: true,
-          disabledLabel: "施工中",
           onPress: () => console.log("export data"),
         },
         {
           icon: "help-circle-outline",
           label: "取得協助",
           detail: "聯絡客服或查看指南",
-          actionLabel: "尚未開放",
           disabled: true,
-          disabledLabel: "施工中",
           onPress: () => console.log("open support"),
         },
       ],
@@ -238,10 +214,60 @@ export default function Settings() {
     ]);
   };
 
-  const dangerActions: DangerAction[] = [
-    { label: "登出帳號", onPress: handleLogout },
-    { label: "退出目前團隊", onPress: handleLeaveTeam },
-  ];
+  const handleDeleteTeam = () => {
+    if (!currentTeamId) return;
+    Alert.alert(
+      "刪除團隊",
+      "此動作無法復原，將永久刪除團隊與相關資料，確定要刪除嗎？",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "永久刪除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeletingTeam(true);
+              await deleteTeam.mutateAsync(currentTeamId);
+              await logout();
+              router.replace("/landing");
+            } catch (error) {
+              console.error("Delete team failed:", error);
+              Alert.alert("刪除失敗", "請稍後再試");
+            } finally {
+              setIsDeletingTeam(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "刪除帳號",
+      "此動作無法復原，將永久刪除個人帳號與資料，確定要刪除嗎？",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "永久刪除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeletingAccount(true);
+              await deleteAccount.mutateAsync();
+              await logout();
+              router.replace("/landing");
+            } catch (error) {
+              console.error("Delete account failed:", error);
+              Alert.alert("刪除失敗", "請稍後再試");
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <MainLayout
@@ -250,8 +276,6 @@ export default function Settings() {
       teamName={currentTeam?.team_name || "載入中..."}
       teamStatus="open"
       showActions={false}
-      showDangerTrigger
-      dangerActions={dangerActions}
       onTeamPress={() => console.log("team picker")}
     >
       <View className="gap-6 pt-2 pb-8">
@@ -277,12 +301,13 @@ export default function Settings() {
           </View>
           <View className="flex-row items-center justify-between bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
             <View className="flex-1">
-              <Text className="text-[11px] text-slate-500 mb-1">
-                邀請碼
-              </Text>
+              <Text className="text-[11px] text-slate-500 mb-1">邀請碼</Text>
               {isInviteLoading || isInviteRefetching ? (
                 <View className="flex-row items-center gap-2">
-                  <ActivityIndicator size="small" color={Palette.brand.primary} />
+                  <ActivityIndicator
+                    size="small"
+                    color={Palette.brand.primary}
+                  />
                   <Text className="text-sm text-slate-500">生成中...</Text>
                 </View>
               ) : (
@@ -338,12 +363,54 @@ export default function Settings() {
           </View>
         ))}
 
-        <DangerZone
-          actions={dangerActions}
-          versionLabel={`版本 1.0.2 (Build 20241120)${
-            isLoggingOut || isLeaving ? " · 進行中" : ""
-          }`}
-        />
+        <View className="gap-3 rounded-3xl border border-slate-100 bg-white shadow-sm p-4">
+          <Text className="text-sm font-bold text-slate-900">危險操作</Text>
+          <Text className="text-sm text-slate-600">
+            團隊 / 帳號相關高風險操作，請謹慎使用
+          </Text>
+          <View className="mt-3 gap-2">
+            <SettingRow
+              icon="exit-outline"
+              label="退出目前團隊"
+              detail="離開當前團隊並清除相關資料快取"
+              actionLabel="退出"
+              actionVariant="primary"
+              onPress={handleLeaveTeam}
+              disabled={isLeaving || leaveTeam.isPending}
+            />
+            <SettingRow
+              icon="trash-outline"
+              label="刪除團隊"
+              detail="不可復原，將永久刪除團隊資料"
+              actionLabel="刪除"
+              actionVariant="primary"
+              onPress={handleDeleteTeam}
+              disabled={isDeletingTeam || deleteTeam.isPending}
+            />
+            <SettingRow
+              icon="log-out-outline"
+              label="登出帳號"
+              detail="離開目前登入狀態"
+              actionLabel="登出"
+              actionVariant="primary"
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+            />
+            <SettingRow
+              icon="person-remove-outline"
+              label="刪除帳號"
+              detail="不可復原，將永久刪除個人帳號與資料"
+              actionLabel="刪除"
+              actionVariant="primary"
+              onPress={handleDeleteAccount}
+              disabled={isDeletingAccount || deleteAccount.isPending}
+            />
+            <Text className="text-[11px] text-slate-400 text-center mt-2">
+              版本 1.0.2 (Build 20241120)
+              {isLoggingOut || isLeaving ? " · 進行中" : ""}
+            </Text>
+          </View>
+        </View>
       </View>
     </MainLayout>
   );
@@ -365,6 +432,7 @@ function SettingRow({
   const isPrimaryAction = actionVariant === "primary";
   const isDisabled = !!disabled;
   const disabledText = disabledLabel || "暫未開放";
+  const showDisabledOverlay = isDisabled && !!disabledLabel;
 
   return (
     <View className="relative">
@@ -451,67 +519,16 @@ function SettingRow({
         )}
       </Pressable>
 
-      {isDisabled ? (
+      {showDisabledOverlay ? (
         <Pressable
           className="absolute inset-0 bg-black/40 items-center justify-center"
           onPress={() => Alert.alert("功能開發中", disabledText)}
         >
           <Text className="text-white font-semibold">施工中</Text>
-          <Text className=" text-white/80 mt-1">{disabledText}</Text>
         </Pressable>
       ) : null}
 
       {showDivider && <View className="h-px bg-slate-50 mx-5" />}
-    </View>
-  );
-}
-
-function DangerZone({
-  actions,
-  versionLabel,
-}: {
-  actions: DangerAction[];
-  versionLabel: string;
-}) {
-  return (
-    <View
-      className="rounded-3xl border border-red-100 px-5 py-5"
-      style={{ backgroundColor: "rgba(254, 242, 242, 0.85)" }}
-    >
-      <Text
-        className="text-[11px] font-semibold uppercase text-red-500"
-        style={{ letterSpacing: 2 }}
-      >
-        危險操作
-      </Text>
-      <Text className="text-sm text-slate-600 mt-2">
-        大部分操作都可透過右上角的危險選單觸發，以下提供捷徑
-      </Text>
-
-      <View className="mt-4 gap-3">
-        {actions.map((action) => (
-          <Pressable
-            key={action.label}
-            onPress={action.onPress}
-            className="flex-row items-center justify-between rounded-2xl border px-4 py-3 bg-white/80"
-            style={{
-              borderColor: action.destructive ? "#FECACA" : "#FBD5D5",
-            }}
-          >
-            <Text
-              className="text-sm font-semibold"
-              style={{ color: action.destructive ? "#DC2626" : "#B91C1C" }}
-            >
-              {action.label}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color="#FCA5A5" />
-          </Pressable>
-        ))}
-      </View>
-
-      <Text className="text-[11px] text-slate-400 text-center mt-5">
-        {versionLabel}
-      </Text>
     </View>
   );
 }

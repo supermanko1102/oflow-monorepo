@@ -209,6 +209,34 @@ export function useLeaveTeam() {
  * ⚠️ 注意：此操作無法復原！
  *
  * 成功後：
+ * - invalidate teams list
+ * - 移除該團隊的相關 cache
+ */
+export function useDeleteTeam() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: teamService.deleteTeam,
+    onSuccess: (_, teamId) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.list(),
+      });
+      queryClient.removeQueries({
+        queryKey: queryKeys.teams.members(teamId),
+      });
+      queryClient.removeQueries({
+        queryKey: queryKeys.teams.inviteCode(teamId),
+      });
+    },
+  });
+}
+
+/**
+ * 刪除團隊（永久刪除）
+ *
+ * ⚠️ 注意：此操作無法復原！
+ *
+ * 成功後：
  * - 自動 invalidate teams list
  * - 移除該團隊的所有相關 cache
  *
