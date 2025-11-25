@@ -11,13 +11,18 @@ interface AuthState {
   isHydrated: boolean;
   status: AuthStatus;
   currentTeamId: string | null;
+  setCurrentTeamId: (teamId: string | null) => void;
 }
 export const useAuthStore = create<AuthState>()(
   persist(
-    (_set, _get) => ({
+    (set, _get) => ({
       isHydrated: false,
       status: AuthStatus.Unauthenticated,
       currentTeamId: null,
+      setCurrentTeamId: (teamId) =>
+        set({
+          currentTeamId: teamId,
+        }),
     }),
     {
       version: 1,
