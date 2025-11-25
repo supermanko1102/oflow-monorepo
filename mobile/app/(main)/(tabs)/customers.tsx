@@ -2,7 +2,6 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Palette } from "@/constants/palette";
-import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useCustomers } from "@/hooks/queries/useCustomers";
 import { useMemo, useState } from "react";
@@ -21,7 +20,6 @@ export default function Customers() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
   const [segment, setSegment] = useState<Segment>("overview");
   const brandTeal = Palette.brand.primary;
-  const brandSlate = Palette.brand.slate;
 
   const {
     data: customers = [],
@@ -45,8 +43,7 @@ export default function Customers() {
     const repeatRate =
       totalCustomers === 0
         ? 0
-        : customers.filter((c) => c.total_orders >= 2).length /
-          totalCustomers;
+        : customers.filter((c) => c.total_orders >= 2).length / totalCustomers;
 
     const highValueCount = customers.filter(
       (c) => (c.total_spent || 0) > 10000
@@ -86,21 +83,6 @@ export default function Customers() {
     ],
     [summary]
   );
-
-  const suggestions: Array<Omit<SuggestionProps, "brandColor">> = [
-    {
-      icon: "gift-outline",
-      title: "喚醒沈睡客",
-      detail: "5 位 VIP 超過 60 天未消費",
-      actionLabel: "推廣活動",
-    },
-    {
-      icon: "chatbubble-outline",
-      title: "邀請加入 LINE",
-      detail: "12 位顧客尚未綁定 LINE 帳號",
-      actionLabel: "發送連結",
-    },
-  ];
 
   const renderSummaryCards = () => (
     <ScrollView
@@ -189,7 +171,10 @@ export default function Customers() {
 
               {/* Right: Stats */}
               <View className="items-end">
-                <Text className="text-sm font-bold" style={{ color: brandTeal }}>
+                <Text
+                  className="text-sm font-bold"
+                  style={{ color: brandTeal }}
+                >
                   ${(customer.total_spent || 0).toLocaleString()}
                 </Text>
                 <Text className="text-[10px] text-gray-400">
@@ -208,6 +193,18 @@ export default function Customers() {
       </View>
     </ScrollView>
   );
+
+  const mockHighValue = [
+    { name: "林小姐", spent: 18200, last: "11/30" },
+    { name: "王先生", spent: 14900, last: "11/28" },
+    { name: "陳老闆", spent: 13250, last: "11/25" },
+  ];
+
+  const mockNewVsReturning = [
+    { label: "近 7 天新客", value: "+18", helper: "新加入" },
+    { label: "近 30 天回訪率", value: "42%", helper: "下單 ≥ 2 次" },
+    { label: "平均客單", value: "$520", helper: "近 30 天" },
+  ];
 
   return (
     <MainLayout
@@ -259,7 +256,7 @@ export default function Customers() {
                     即時資料
                   </Text>
                 </View>
-                <Pressable className="px-3 py-1.5 rounded-full border border-slate-200">
+                <Pressable className="px-3 py-1.5 rounded-full border border-slate-200 ">
                   <Text className="text-xs font-semibold text-slate-600">
                     匯出報表
                   </Text>
@@ -268,19 +265,60 @@ export default function Customers() {
               {renderSummaryCards()}
             </View>
 
-            <View className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-              <Text className="text-sm font-semibold text-slate-900 mb-3">
-                行動建議
-              </Text>
-              <View className="gap-3">
-                {suggestions.map((suggestion) => (
-                  <Suggestion
-                    
-                    key={suggestion.title}
-                    {...suggestion}
-                    brandColor={brandTeal}
-                  />
+            <View className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm relative overflow-hidden">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-sm font-semibold text-slate-900">
+                  顧客洞察（預覽）
+                </Text>
+                <Text className="text-[11px] text-slate-400">開發中</Text>
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                {mockNewVsReturning.map((item) => (
+                  <View
+                    key={item.label}
+                    className="flex-1 rounded-2xl border border-slate-100 bg-white px-3 py-3"
+                    style={{ backgroundColor: "rgba(15,23,42,0.02)" }}
+                  >
+                    <Text className="text-[11px] text-slate-500">
+                      {item.label}
+                    </Text>
+                    <Text className="text-xl font-bold text-slate-900 mt-1">
+                      {item.value}
+                    </Text>
+                    <Text className="text-[11px] text-slate-500 mt-1">
+                      {item.helper}
+                    </Text>
+                  </View>
                 ))}
+              </View>
+
+              <View className="gap-2">
+                {mockHighValue.map((item) => (
+                  <View
+                    key={item.name}
+                    className="flex-row items-center justify-between rounded-2xl border border-slate-100 bg-white px-3 py-3"
+                    style={{ backgroundColor: "rgba(0,128,128,0.05)" }}
+                  >
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-slate-900">
+                        {item.name}
+                      </Text>
+                      <Text className="text-[11px] text-slate-500">
+                        最後消費 {item.last}
+                      </Text>
+                    </View>
+                    <Text className="text-base font-bold text-slate-900">
+                      ${item.spent.toLocaleString()}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              <View className="absolute inset-0 bg-black/35 items-center justify-center px-6">
+                <Text className="text-white font-semibold text-center">
+                  顧客洞察開發中，敬請期待
+                </Text>
               </View>
             </View>
           </>
@@ -333,41 +371,6 @@ function SummaryCard({
           {helper}
         </Text>
       ) : null}
-    </View>
-  );
-}
-
-type SuggestionProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  detail: string;
-  actionLabel: string;
-  brandColor: string;
-};
-
-function Suggestion({ icon, title, detail, actionLabel, brandColor }: SuggestionProps) {
-  return (
-    <View className="rounded-2xl border border-slate-100 bg-white p-4 flex-row items-center gap-3 shadow-sm">
-      <View
-        className="w-10 h-10 rounded-2xl items-center justify-center"
-        style={{ backgroundColor: "rgba(0,128,128,0.1)" }}
-      >
-        <Ionicons
-          name={icon}
-          size={16}
-          color={brandColor}
-        />
-      </View>
-      <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900">{title}</Text>
-        <Text className="text-xs text-slate-500 mt-0.5">{detail}</Text>
-      </View>
-      <Pressable
-        className="px-3 py-1.5 rounded-full"
-        style={{ backgroundColor: brandColor }}
-      >
-        <Text className="text-xs text-white font-semibold">{actionLabel}</Text>
-      </Pressable>
     </View>
   );
 }

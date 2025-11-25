@@ -269,29 +269,6 @@ export default function Overview() {
     await Promise.all([refetchDashboard(), refetchRevenue()]);
   };
 
-  const handleLogout = async () => {
-    Alert.alert("確認登出", "確定要登出嗎？", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "登出",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setIsLoggingOut(true);
-            await logout();
-          } catch (error) {
-            console.error("登出失敗:", error);
-            Alert.alert("登出失敗", "無法完成登出，請稍後再試", [
-              { text: "確定" },
-            ]);
-          } finally {
-            setIsLoggingOut(false);
-          }
-        },
-      },
-    ]);
-  };
-
   const today = new Date().toLocaleDateString("zh-TW", {
     month: "long",
     day: "numeric",
@@ -508,22 +485,6 @@ export default function Overview() {
             </View>
           </>
         )}
-
-        {/* Logout */}
-        <View className="mt-4 mb-8">
-          <Pressable
-            onPress={handleLogout}
-            disabled={isLoggingOut}
-            className="w-full h-12 bg-gray-100 rounded-xl items-center justify-center active:bg-gray-200"
-            style={{ opacity: isLoggingOut ? 0.6 : 1 }}
-          >
-            {isLoggingOut ? (
-              <ActivityIndicator color="#666" />
-            ) : (
-              <Text className="text-gray-600 font-semibold">登出</Text>
-            )}
-          </Pressable>
-        </View>
       </ScrollView>
     </MainLayout>
   );
