@@ -1,6 +1,9 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Palette } from "@/constants/palette";
-import { Ionicons } from "@expo/vector-icons";
+import { DangerActionsCard } from "@/components/settings/DangerActionsCard";
+import { InviteCard } from "@/components/settings/InviteCard";
+import { SettingItem } from "@/components/settings/SettingRow";
+import { SettingSection } from "@/components/settings/SettingSection";
+import { TeamInfoCard } from "@/components/settings/TeamInfoCard";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import {
   useInviteCode,
@@ -10,32 +13,22 @@ import {
 import { useDeleteAccount } from "@/hooks/queries/useAccount";
 import { logout } from "@/services/auth";
 import { useRouter } from "expo-router";
-import { Alert, Pressable, Text, View, ActivityIndicator } from "react-native";
+import {
+  Alert,
+  ActionSheetIOS,
+  Platform,
+  View,
+} from "react-native";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
+import { BUSINESS_TYPE_OPTIONS } from "@/types/team";
 
-type ActionVariant = "default" | "primary";
-type StatusTone = "success" | "muted";
-
-type SettingItem = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  detail?: string;
-  actionLabel?: string;
-  actionVariant?: ActionVariant;
-  statusTone?: StatusTone;
-  disabled?: boolean;
-  disabledLabel?: string;
-  onPress?: () => void;
-  onActionPress?: () => void;
-};
-
-type SettingSection = {
+type SectionConfig = {
   title: string;
   description?: string;
+  items: SettingItem[];
   isDisabled?: boolean;
   disabledLabel?: string;
-  items: SettingItem[];
 };
 
 export default function Settings() {
@@ -56,8 +49,18 @@ export default function Settings() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const hasLine = !!currentTeam?.line_channel_id;
+  const currentBusinessType = (currentTeam as any)?.business_type || "bakery";
+  const currentBusinessLabel =
+    BUSINESS_TYPE_OPTIONS.find((opt) => opt.value === currentBusinessType)
+      ?.label || "烘焙・甜點";
+  const memberCount = currentTeam?.member_count ?? 0;
+  const isOwner = currentTeam?.role === "owner";
+  const isSoleOwner = isOwner && memberCount <= 1;
+  const versionLabel = `版本 1.0.2 (Build 20241120)${
+    isLoggingOut || isLeaving ? " · 進行中" : ""
+  }`;
 
-  const sections: SettingSection[] = [
+  const sections: SectionConfig[] = [
     {
       title: "訂閱方案（待施工）",
       description: "升級方案、發票與付款方式設定",
@@ -192,6 +195,13 @@ export default function Settings() {
 
   const handleLeaveTeam = () => {
     if (!currentTeamId) return;
+    if (isSoleOwner) {
+      Alert.alert(
+        "無法退出團隊",
+        "目前只有你一位擁有者，請先新增成員並轉移擁有者，或保留團隊。"
+      );
+      return;
+    }
     Alert.alert("確認離隊", "離開後需重新邀請才可回到此團隊，確定要離開嗎？", [
       { text: "取消", style: "cancel" },
       {
@@ -216,6 +226,13 @@ export default function Settings() {
 
   const handleDeleteTeam = () => {
     if (!currentTeamId) return;
+    if (isSoleOwner) {
+      Alert.alert(
+        "無法刪除團隊",
+        "目前只有你一位擁有者，請先新增成員並轉移擁有者，或保留團隊。"
+      );
+      return;
+    }
     Alert.alert(
       "刪除團隊",
       "此動作無法復原，將永久刪除團隊與相關資料，確定要刪除嗎？",
@@ -269,6 +286,35 @@ export default function Settings() {
     );
   };
 
+  const handleSelectBusiness = () => {
+    const options = BUSINESS_TYPE_OPTIONS.map((opt) => opt.label).concat("取消");
+    const locked = BUSINESS_TYPE_OPTIONS.map((opt) => opt.value !== "bakery");
+    const cancelButtonIndex = options.length - 1;
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex,
+          title: "行業類別",
+          message: "目前僅開放烘焙・甜點，其餘行業敬請期待",
+        },
+        (buttonIndex) => {
+          if (buttonIndex === cancelButtonIndex) return;
+          if (locked[buttonIndex]) {
+            Alert.alert("敬請期待", "目前僅開放烘焙・甜點");
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        "行業類別",
+        "目前僅開放烘焙・甜點，其餘行業敬請期待",
+        [{ text: "關閉", style: "cancel" }]
+      );
+    }
+  };
+
   return (
     <MainLayout
       title="設定"
@@ -279,256 +325,46 @@ export default function Settings() {
       onTeamPress={() => console.log("team picker")}
     >
       <View className="gap-6 pt-2 pb-8">
-        <View className="rounded-3xl border border-slate-100 bg-white shadow-sm p-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <View>
-              <Text className="text-sm font-semibold text-slate-900">
-                邀請成員
-              </Text>
-              <Text className="text-[12px] text-slate-500 mt-0.5">
-                分享邀請碼讓夥伴加入此團隊
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => refetchInvite()}
-              className="px-3 py-1.5 rounded-full border border-slate-200"
-              disabled={isInviteLoading}
-            >
-              <Text className="text-[12px] font-semibold text-slate-700">
-                重新產生
-              </Text>
-            </Pressable>
-          </View>
-          <View className="flex-row items-center justify-between bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
-            <View className="flex-1">
-              <Text className="text-[11px] text-slate-500 mb-1">邀請碼</Text>
-              {isInviteLoading || isInviteRefetching ? (
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator
-                    size="small"
-                    color={Palette.brand.primary}
-                  />
-                  <Text className="text-sm text-slate-500">生成中...</Text>
-                </View>
-              ) : (
-                <Text className="text-xl font-bold tracking-widest text-slate-900">
-                  {inviteCode || "尚未產生"}
-                </Text>
-              )}
-            </View>
-            <Pressable
-              onPress={handleCopyInvite}
-              className="ml-3 px-3 py-2 rounded-full"
-              style={{
-                backgroundColor: inviteCode ? Palette.brand.primary : "#E2E8F0",
-              }}
-              disabled={!inviteCode}
-            >
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: inviteCode ? "#FFFFFF" : "#94A3B8" }}
-              >
-                複製
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        <TeamInfoCard
+          teamName={currentTeam?.team_name}
+          businessLabel={currentBusinessLabel}
+          onSelectBusiness={handleSelectBusiness}
+        />
+
+        <InviteCard
+          inviteCode={inviteCode}
+          isLoading={isInviteLoading}
+          isRefetching={isInviteRefetching}
+          onCopyInvite={handleCopyInvite}
+          onRefetchInvite={() => refetchInvite()}
+        />
 
         {sections.map((section) => (
-          <View
+          <SettingSection
             key={section.title}
-            className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden relative"
-          >
-            <View className="px-5 pt-5 pb-3 border-b border-slate-50">
-              <Text
-                className="text-[11px] font-semibold uppercase text-slate-400"
-                style={{ letterSpacing: 2 }}
-              >
-                {section.title}
-              </Text>
-              {section.description && (
-                <Text className="text-sm text-slate-500 mt-1">
-                  {section.description}
-                </Text>
-              )}
-            </View>
-
-            {section.items.map((item, index) => (
-              <SettingRow
-                key={item.label}
-                {...item}
-                showDivider={index < section.items.length - 1}
-              />
-            ))}
-          </View>
+            title={section.title}
+            description={section.description}
+            items={section.items}
+            isDisabled={section.isDisabled}
+            disabledLabel={section.disabledLabel}
+          />
         ))}
 
-        <View className="gap-3 rounded-3xl border border-slate-100 bg-white shadow-sm p-4">
-          <Text className="text-sm font-bold text-slate-900">危險操作</Text>
-          <Text className="text-sm text-slate-600">
-            團隊 / 帳號相關高風險操作，請謹慎使用
-          </Text>
-          <View className="mt-3 gap-2">
-            <SettingRow
-              icon="exit-outline"
-              label="退出目前團隊"
-              detail="離開當前團隊並清除相關資料快取"
-              actionLabel="退出"
-              actionVariant="primary"
-              onPress={handleLeaveTeam}
-              disabled={isLeaving || leaveTeam.isPending}
-            />
-            <SettingRow
-              icon="trash-outline"
-              label="刪除團隊"
-              detail="不可復原，將永久刪除團隊資料"
-              actionLabel="刪除"
-              actionVariant="primary"
-              onPress={handleDeleteTeam}
-              disabled={isDeletingTeam || deleteTeam.isPending}
-            />
-            <SettingRow
-              icon="log-out-outline"
-              label="登出帳號"
-              detail="離開目前登入狀態"
-              actionLabel="登出"
-              actionVariant="primary"
-              onPress={handleLogout}
-              disabled={isLoggingOut}
-            />
-            <SettingRow
-              icon="person-remove-outline"
-              label="刪除帳號"
-              detail="不可復原，將永久刪除個人帳號與資料"
-              actionLabel="刪除"
-              actionVariant="primary"
-              onPress={handleDeleteAccount}
-              disabled={isDeletingAccount || deleteAccount.isPending}
-            />
-            <Text className="text-[11px] text-slate-400 text-center mt-2">
-              版本 1.0.2 (Build 20241120)
-              {isLoggingOut || isLeaving ? " · 進行中" : ""}
-            </Text>
-          </View>
-        </View>
+        <DangerActionsCard
+          onLeaveTeam={handleLeaveTeam}
+          onDeleteTeam={handleDeleteTeam}
+          onLogout={handleLogout}
+          onDeleteAccount={handleDeleteAccount}
+          isLeaving={isLeaving}
+          isDeletingTeam={isDeletingTeam}
+          isLoggingOut={isLoggingOut}
+          isDeletingAccount={isDeletingAccount}
+          leaveTeamPending={leaveTeam.isPending}
+          deleteTeamPending={deleteTeam.isPending}
+          deleteAccountPending={deleteAccount.isPending}
+          versionLabel={versionLabel}
+        />
       </View>
     </MainLayout>
-  );
-}
-
-function SettingRow({
-  icon,
-  label,
-  detail,
-  actionLabel,
-  actionVariant = "default",
-  statusTone,
-  disabled,
-  disabledLabel,
-  onPress,
-  onActionPress,
-  showDivider,
-}: SettingItem & { showDivider?: boolean }) {
-  const isPrimaryAction = actionVariant === "primary";
-  const isDisabled = !!disabled;
-  const disabledText = disabledLabel || "暫未開放";
-  const showDisabledOverlay = isDisabled && !!disabledLabel;
-
-  return (
-    <View className="relative">
-      <Pressable
-        className="flex-row items-center justify-between px-5 py-4"
-        style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
-        onPress={onPress}
-        disabled={isDisabled}
-      >
-        <View className="flex-row items-center gap-3 flex-1 mr-3">
-          <View
-            className="w-11 h-11 rounded-2xl items-center justify-center"
-            style={{ backgroundColor: "rgba(0, 128, 128, 0.08)" }}
-          >
-            <Ionicons name={icon} size={22} color={Palette.brand.primary} />
-          </View>
-
-          <View className="flex-1">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-sm font-semibold text-slate-900">
-                {label}
-              </Text>
-              {statusTone && (
-                <View
-                  className="px-2 py-0.5 rounded-full border"
-                  style={{
-                    borderColor:
-                      statusTone === "success"
-                        ? "rgba(0, 128, 128, 0.4)"
-                        : "#E2E8F0",
-                    backgroundColor:
-                      statusTone === "success"
-                        ? "rgba(0, 128, 128, 0.08)"
-                        : "#F8FAFC",
-                  }}
-                >
-                  <Text
-                    className="text-[10px] font-semibold"
-                    style={{
-                      color:
-                        statusTone === "success"
-                          ? Palette.brand.primary
-                          : "#64748B",
-                    }}
-                  >
-                    {statusTone === "success" ? "已連結" : "未連結"}
-                  </Text>
-                </View>
-              )}
-            </View>
-            {detail ? (
-              <Text
-                className="text-[12px] text-slate-500 mt-0.5"
-                numberOfLines={1}
-              >
-                {detail}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        {actionLabel ? (
-          <Pressable
-            onPress={onActionPress ?? onPress}
-            className="px-3 py-1.5 rounded-full border"
-            style={{
-              backgroundColor: isPrimaryAction
-                ? Palette.brand.primary
-                : "#FFFFFF",
-              borderColor: isPrimaryAction ? Palette.brand.primary : "#E2E8F0",
-              opacity: isDisabled ? 0.4 : 1,
-            }}
-            disabled={isDisabled}
-          >
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: isPrimaryAction ? "#FFFFFF" : "#475569" }}
-            >
-              {actionLabel}
-            </Text>
-          </Pressable>
-        ) : (
-          <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
-        )}
-      </Pressable>
-
-      {showDisabledOverlay ? (
-        <Pressable
-          className="absolute inset-0 bg-black/40 items-center justify-center"
-          onPress={() => Alert.alert("功能開發中", disabledText)}
-        >
-          <Text className="text-white font-semibold">施工中</Text>
-        </Pressable>
-      ) : null}
-
-      {showDivider && <View className="h-px bg-slate-50 mx-5" />}
-    </View>
   );
 }

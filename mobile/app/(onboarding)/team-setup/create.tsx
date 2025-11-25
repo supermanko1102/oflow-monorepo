@@ -166,11 +166,15 @@ export default function CreateTeam() {
         <View className="space-y-2">
           {categories.map((category) => {
             const isActive = businessType === category.key;
+            const isLocked = category.key !== "bakery";
             return (
               <Pressable
                 key={category.key}
-                onPress={() => setBusinessType(category.key)}
-                className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+                onPress={() => {
+                  if (isLocked) return;
+                  setBusinessType(category.key);
+                }}
+                className={`relative flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
                   isActive
                     ? "border-emerald-500 bg-emerald-50"
                     : "border-gray-100 bg-white"
@@ -184,7 +188,13 @@ export default function CreateTeam() {
                   <Ionicons
                     name={category.icon}
                     size={18}
-                    color={isActive ? Palette.brand.primary : "#0F172A"}
+                    color={
+                      isLocked
+                        ? "#94A3B8"
+                        : isActive
+                        ? Palette.brand.primary
+                        : "#0F172A"
+                    }
                   />
                 </View>
                 <View className="flex-1">
@@ -202,8 +212,21 @@ export default function CreateTeam() {
                 <Ionicons
                   name={isActive ? "radio-button-on" : "radio-button-off"}
                   size={18}
-                  color={isActive ? Palette.brand.primary : "#94A3B8"}
+                  color={
+                    isLocked
+                      ? "#94A3B8"
+                      : isActive
+                      ? Palette.brand.primary
+                      : "#94A3B8"
+                  }
                 />
+                {isLocked ? (
+                  <View className="absolute inset-0 bg-black/60 rounded-2xl items-center justify-center">
+                    <Text className="text-white text-xs font-semibold">
+                      敬請期待
+                    </Text>
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}

@@ -22,6 +22,7 @@ export interface Team {
   line_channel_name: string | null;
   line_channel_id: string | null; // 用於判斷是否已完成 LINE 設定
   auto_mode: boolean; // 自動模式設定（Server State）
+  business_type?: string;
 }
 
 /**

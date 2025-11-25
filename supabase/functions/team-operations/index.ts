@@ -353,6 +353,43 @@ serve(async (req) => {
 
         console.log("[Team Operations] 刪除團隊 (硬刪除):", team_id);
 
+        // 確認目前使用者角色與團隊成員數
+        const { data: memberCheck, error: memberCheckError } =
+          await supabaseAdmin
+            .from("team_members")
+            .select("role", { count: "exact", head: true })
+            .eq("team_id", team_id)
+            .eq("user_id", user.id);
+
+        if (memberCheckError) {
+          throw memberCheckError;
+        }
+
+        // Supabase count only works when head:true; use memberCheck and an extra count query
+        const { count: memberCount, error: countError } = await supabaseAdmin
+          .from("team_members")
+          .select("*", { head: true, count: "exact" })
+          .eq("team_id", team_id);
+
+        if (countError) {
+          throw countError;
+        }
+
+        const role = (memberCheck as any)?.role;
+        if (!role) {
+          throw new Error("User is not a member of this team");
+        }
+
+        if (role !== "owner") {
+          throw new Error("Only team owner can delete the team");
+        }
+
+        if (!memberCount || memberCount <= 1) {
+          throw new Error(
+            "You are the only member/owner. Add or transfer ownership before deleting this team."
+          );
+        }
+
         // 呼叫 delete_team 函數
         const { data, error } = await supabaseAdmin.rpc("delete_team", {
           p_team_id: team_id,
