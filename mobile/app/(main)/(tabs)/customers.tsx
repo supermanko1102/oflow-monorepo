@@ -214,14 +214,23 @@ export default function Customers() {
       title="顧客管理"
       teamName={currentTeam?.team_name || "載入中..."}
       centerContent={
-        <SegmentedControl
-          options={[
-            { label: "概覽", value: "overview" },
-            { label: "清單", value: "list" },
-          ]}
-          value={segment}
-          onChange={(val) => setSegment(val as Segment)}
-        />
+        <View>
+          <Text className="text-sm font-semibold text-slate-900">顧客視圖</Text>
+          <Text className="text-[12px] text-slate-500 mt-1">
+            切換顧客概覽與清單
+          </Text>
+          <View className="mt-2">
+            <SegmentedControl
+              options={[
+                { label: "概覽", value: "overview" },
+                { label: "清單", value: "list" },
+              ]}
+              value={segment}
+              onChange={(val) => setSegment(val as Segment)}
+              theme="brand"
+            />
+          </View>
+        </View>
       }
       rightContent={
         <View className="flex-row items-center gap-2">

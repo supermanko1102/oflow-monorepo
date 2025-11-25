@@ -190,20 +190,15 @@ export function Navbar({
 
       {/* Center: Title or Custom Content */}
       <View className="mt-4">
-        {centerContent ? (
-          centerContent
-        ) : (
-          <>
-            <Text className={`text-xl font-bold ${textClass}`}>
-              {title}
-            </Text>
-            {subtitle ? (
-              <Text className={`text-xs mt-1 ${subtitleClass}`}>
-                {subtitle}
-              </Text>
-            ) : null}
-          </>
-        )}
+        <Text className={`text-xl font-bold ${textClass}`}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className={`text-xs mt-1 ${subtitleClass}`}>
+            {subtitle}
+          </Text>
+        ) : null}
+        {centerContent ? <View className="mt-3">{centerContent}</View> : null}
       </View>
 
       {trailingContent}

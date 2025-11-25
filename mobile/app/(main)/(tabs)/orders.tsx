@@ -11,6 +11,7 @@ import {
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { OrderFilters } from "@/components/orders/OrderFilters";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { type Order, type OrderStatus } from "@/types/order";
 import { useMemo, useState } from "react";
 import {
@@ -250,6 +251,7 @@ export default function Orders() {
   const todayCount = orders.filter(
     (o) => o.appointmentDate === todayStr
   ).length;
+  const totalCount = orders.length;
 
   const getNextStatus = (status: OrderStatus): OrderStatus | null => {
     if (status === "pending" || status === "confirmed") return "paid";
@@ -339,180 +341,34 @@ export default function Orders() {
     );
   }
 
-  const renderStatusChip = (filter: (typeof statusFilters)[number]) => {
-    const isActive = statusFilter === filter.key;
-    const meta = statusChipMeta[filter.key];
-
-    const backgroundColor = isActive ? meta.background : "#FFFFFF";
-    const borderColor = isActive ? meta.border : "#E2E8F0";
-    const textColor = isActive ? meta.color : "#475569";
-    const iconColor = isActive ? (meta.icon ?? meta.color) : "#94A3B8";
-
-    return (
-      <Pressable
-        key={filter.key}
-        onPress={() => setStatusFilter(filter.key)}
-        className="px-3 py-1.5 rounded-full mr-2 border"
-        style={{ backgroundColor, borderColor }}
-      >
-        <View className="flex-row items-center gap-1">
-          {filter.key === "completed" && (
-            <Ionicons name="checkmark-circle" size={12} color={iconColor} />
-          )}
-          <Text className="text-xs font-semibold" style={{ color: textColor }}>
-            {filter.label}
-          </Text>
-        </View>
-      </Pressable>
-    );
-  };
-
-  const renderOrderCard = (order: Order) => {
-    const statusStyle =
-      orderStatusMeta[order.status] || orderStatusMeta.pending;
-    const isToday = order.appointmentDate === todayStr;
-    const amount = order.totalAmount ?? 0;
-    const actionLabel = getActionLabel(order.status);
-    const isActionable = actionLabel !== "查看詳情";
-
-    const timeLabel = (() => {
-      const date = order.appointmentDate
-        ? new Date(order.appointmentDate)
-        : null;
-      const time = order.appointmentTime?.slice(0, 5);
-      if (!date) return time || "--:--";
-      const today = new Date();
-      const labelDate = `${date.getMonth() + 1}/${date.getDate()}`;
-      const dayLabel =
-        date.toDateString() === today.toDateString() ? "今天" : labelDate;
-      return time ? `${dayLabel} ${time}` : dayLabel;
-    })();
-
-    const summary =
-      order.items && order.items.length > 0
-        ? `${order.items[0].name}${
-            order.items.length > 1 ? ` 等 ${order.items.length} 件` : ""
-          }`
-        : "未填寫品項";
-
-    return (
-      <Pressable
-        key={order.id}
-        onPress={() => setSelectedOrder(order)}
-        className="flex-row rounded-3xl bg-white overflow-hidden mb-3 border border-slate-100 "
-        style={{ minHeight: 110 }}
-      >
-        {/* Status Strip */}
-        <View
-          className="w-1.5"
-          style={{ backgroundColor: statusStyle.strip }}
-        />
-
-        {/* Content */}
-        <View className="flex-1 p-4">
-          {/* Header */}
-          <View className="flex-row justify-between items-start mb-2">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-base font-bold text-slate-900">
-                {order.customerName}
-              </Text>
-              <Text className="text-[11px] text-slate-400">
-                {order.orderNumber || order.id}
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <View
-                className="px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: statusStyle.badgeBackground,
-                }}
-              >
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: statusStyle.badgeColor }}
-                >
-                  {statusStyle.label}
-                </Text>
-              </View>
-              <Text
-                className={`text-xs ${
-                  isToday ? "font-bold text-slate-700" : "text-slate-500"
-                }`}
-              >
-                {timeLabel}
-              </Text>
-            </View>
-          </View>
-
-          {/* Summary */}
-          <Text className="text-sm text-slate-600 mb-2">{summary}</Text>
-
-          {/* Price */}
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <Text
-                className="text-base font-bold"
-                style={{ color: brandTeal }}
-              >
-                ${amount.toLocaleString()}
-              </Text>
-            </View>
-            <Pressable
-              onPress={() =>
-                isActionable
-                  ? handleStatusAction(order)
-                  : console.log("open order detail")
-              }
-              disabled={updateOrderStatus.isPending}
-              className="flex-row items-center gap-2 rounded-full px-3 py-1"
-              style={{
-                backgroundColor: isActionable ? brandTeal : "#E2E8F0",
-                opacity: updateOrderStatus.isPending ? 0.6 : 1,
-              }}
-            >
-              {updateOrderStatus.isPending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons
-                  name={isActionable ? "checkmark" : "arrow-forward"}
-                  size={14}
-                  color={isActionable ? "#FFFFFF" : brandSlate}
-                />
-              )}
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: isActionable ? "#FFFFFF" : brandSlate }}
-              >
-                {actionLabel}
-              </Text>
-            </Pressable>
-          </View>
-
-          {order.status === "pending" ||
-          order.status === "confirmed" ||
-          order.status === "paid" ? (
-            <Pressable
-              onPress={() => handleCancel(order)}
-              disabled={updateOrderStatus.isPending}
-              className="mt-2 self-end"
-            >
-              <Text className="text-[11px] font-semibold text-slate-400 underline">
-                取消訂單
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </Pressable>
-    );
-  };
-
   return (
     <>
       <MainLayout
         title="訂單管理"
         teamName={currentTeam?.team_name || "載入中..."}
         scrollable={false}
-        centerContent={<View />}
+        centerContent={
+          <View>
+            <Text className="text-sm font-semibold text-slate-900">
+              訂單視圖
+            </Text>
+            <Text className="text-[12px] text-slate-500 mt-1">
+              切換待處理 / 今日 / 全部訂單
+            </Text>
+            <View className="mt-2">
+              <SegmentedControl
+                options={[
+                  { label: "待處理", value: "pendingFocus", badge: pendingCount },
+                  { label: "今日", value: "today", badge: todayCount },
+                  { label: "全部", value: "all", badge: totalCount },
+                ]}
+                value={viewScope}
+                onChange={(val) => setViewScope(val as ViewScope)}
+                theme="brand"
+              />
+            </View>
+          </View>
+        }
         rightContent={
           <View className="flex-row items-center gap-2">
             <IconButton

@@ -467,19 +467,29 @@ export default function Inbox() {
       title="對話收件匣"
       teamName={currentTeam?.team_name || "載入中..."}
       centerContent={
-        <SegmentedControl
-          options={[
-            {
-              label: "⚠️ 例外處理",
-              value: "exception",
-              badge: exceptions.length,
-            },
-            { label: "✅ 自動紀錄", value: "auto", badge: autoRecords.length },
-          ]}
-          value={mode}
-          onChange={(val) => setMode(val as InboxMode)}
-          theme={mode === "exception" ? "danger" : "light"}
-        />
+        <View>
+          <Text className="text-sm font-semibold text-slate-900">
+            收件匣視圖
+          </Text>
+          <Text className="text-[12px] text-slate-500 mt-1">
+            切換例外處理與 AI 自動紀錄
+          </Text>
+          <View className="mt-2">
+            <SegmentedControl
+              options={[
+                {
+                  label: "例外處理",
+                  value: "exception",
+                  badge: exceptions.length,
+                },
+                { label: "自動紀錄", value: "auto", badge: autoRecords.length },
+              ]}
+              value={mode}
+              onChange={(val) => setMode(val as InboxMode)}
+              theme="brand"
+            />
+          </View>
+        </View>
       }
       rightContent={
         <View className="flex-row items-center gap-2">
@@ -520,8 +530,10 @@ export default function Inbox() {
           />
         }
       >
-        <View className="flex-row flex-wrap gap-3 mb-5">
-          {summaryCards.map((card) => renderSummaryCard(card))}
+        <View className="mb-3">
+          <View className="flex-row flex-wrap gap-3 mb-5">
+            {summaryCards.map((card) => renderSummaryCard(card))}
+          </View>
         </View>
         {mode === "exception" ? (
           <>
@@ -651,11 +663,7 @@ export default function Inbox() {
                   style={{ backgroundColor: brandTeal }}
                 >
                   <View className="py-3 flex-row items-center justify-center gap-2">
-                    <Ionicons
-                      name="create-outline"
-                      size={16}
-                      color="#FFFFFF"
-                    />
+                    <Ionicons name="create-outline" size={16} color="#FFFFFF" />
                     <Text className="text-white text-base font-semibold">
                       補齊資料 / 確認建單
                     </Text>
