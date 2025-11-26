@@ -121,7 +121,10 @@ export function Navbar({
         {/* Left: Team / Logo */}
         <Pressable
           onPress={onTeamPress}
-          className={`flex-row items-center gap-3 rounded-full px-3 py-2 ${surfaceClass}`}
+          disabled={!onTeamPress}
+          className={`flex-row items-center gap-3 rounded-full px-3 py-2 ${surfaceClass} ${
+            onTeamPress ? "" : "opacity-70"
+          }`}
         >
           <View
             className={`w-2 h-2 rounded-full ${statusIndicatorClass}`}
@@ -133,8 +136,7 @@ export function Navbar({
             name="chevron-down"
             size={16}
             color={iconColor}
-          >
-          </Ionicons>
+          />
         </Pressable>
 
         {/* Right: Actions or Custom Content */}
