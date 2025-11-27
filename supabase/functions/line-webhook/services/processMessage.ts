@@ -10,16 +10,15 @@ import {
   fetchConversationHistory,
   updateConversationData,
 } from "./conversation.ts";
-import { fetchLineProfile, saveIncomingMessage, updateMessageConversation } from "./message.ts";
+import {
+  fetchLineProfile,
+  saveIncomingMessage,
+  updateMessageConversation,
+} from "./message.ts";
 import { callAIParser, mergeCollectedData } from "./ai.ts";
 import { completeConversationSafe, createOrderFromAIResult } from "./order.ts";
 import type { Team } from "./team.ts";
 import { replyLineMessage } from "../lib/line.ts";
-
-function hasMerchantConfirmKeyword(message: string): boolean {
-  const trimmed = message.trim();
-  return MERCHANT_CONFIRM_KEYWORDS.some((kw) => trimmed.includes(kw));
-}
 
 export async function processMessageEvent({
   supabaseAdmin,
@@ -93,8 +92,8 @@ export async function processMessageEvent({
     aiResult.order &&
     (!aiResult.missing_fields || aiResult.missing_fields.length === 0);
 
-  // 自動模式：完整訂單即建單並回覆；非自動則留給 Inbox 手動處理
-  if (team.auto_mode && isCompleteOrder && aiResult.order) {
+  // 完整訂單：自動建單（全自動和半自動都建單）
+  if (isCompleteOrder && aiResult.order) {
     const orderId = await createOrderFromAIResult(
       supabaseAdmin,
       team.id,
@@ -105,7 +104,8 @@ export async function processMessageEvent({
       messageText
     );
 
-    console.log("[Webhook][auto] create_order_from_ai success", {
+    const modeLabel = team.auto_mode ? "auto" : "semi";
+    console.log(`[Webhook][${modeLabel}] create_order_from_ai success`, {
       conversationId: conversation.id,
       orderId,
     });
@@ -114,44 +114,54 @@ export async function processMessageEvent({
       supabaseAdmin,
       conversation.id,
       orderId,
-      "auto"
+      modeLabel
     );
 
-    const { data: orderDetail } = await supabaseAdmin
-      .from("orders")
-      .select("order_number, pickup_date, pickup_time")
-      .eq("id", orderId)
-      .single();
+    // 全自動模式：回覆客人
+    // 半自動模式：不回覆客人
+    if (team.auto_mode) {
+      const { data: orderDetail } = await supabaseAdmin
+        .from("orders")
+        .select("order_number, pickup_date, pickup_time")
+        .eq("id", orderId)
+        .single();
 
-    const confirmMsg =
-      `✅ 訂單已確認！\n\n` +
-      `訂單編號：${orderDetail?.order_number || "處理中"}\n` +
-      `交付日期：${aiResult.order.delivery_date || aiResult.order.pickup_date || ""}` +
-      `${aiResult.order.delivery_time || aiResult.order.pickup_time ? ` ${aiResult.order.delivery_time || aiResult.order.pickup_time}` : ""}\n` +
-      (aiResult.order.total_amount
-        ? `金額：NT$ ${aiResult.order.total_amount}`
-        : "");
+      const confirmMsg =
+        `✅ 訂單已確認！\n\n` +
+        `訂單編號：${orderDetail?.order_number || "處理中"}\n` +
+        `交付日期：${
+          aiResult.order.delivery_date || aiResult.order.pickup_date || ""
+        }` +
+        `${
+          aiResult.order.delivery_time || aiResult.order.pickup_time
+            ? ` ${aiResult.order.delivery_time || aiResult.order.pickup_time}`
+            : ""
+        }\n` +
+        (aiResult.order.total_amount
+          ? `金額：NT$ ${aiResult.order.total_amount}`
+          : "");
 
-    await replyLineMessage(
-      event.replyToken,
-      [{ type: "text", text: confirmMsg }],
-      team.line_channel_access_token
-    );
+      await replyLineMessage(
+        event.replyToken,
+        [{ type: "text", text: confirmMsg }],
+        team.line_channel_access_token
+      );
 
-    await supabaseAdmin.from("line_messages").insert({
-      team_id: team.id,
-      line_user_id: lineUserId,
-      message_type: "text",
-      message_text: confirmMsg,
-      role: "ai",
-      conversation_id: conversation.id,
-      order_id: orderId,
-    });
+      await supabaseAdmin.from("line_messages").insert({
+        team_id: team.id,
+        line_user_id: lineUserId,
+        message_type: "text",
+        message_text: confirmMsg,
+        role: "ai",
+        conversation_id: conversation.id,
+        order_id: orderId,
+      });
+    }
 
     return;
   }
 
-  // 非完整訂單：回覆 AI 建議或暫存
+  // 非完整訂單：只有全自動模式才回覆 AI 建議
   if (team.auto_mode) {
     const replyText =
       aiResult.suggested_reply ||
@@ -174,4 +184,5 @@ export async function processMessageEvent({
       conversation_id: conversation.id,
     });
   }
+  // 半自動模式：不回覆任何訊息（靜默處理）
 }

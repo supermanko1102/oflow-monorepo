@@ -341,8 +341,8 @@ export default function Overview() {
         <View className="mb-6 px-2">
           <Text className="text-center text-gray-500 text-sm">
             {mode === "auto"
-              ? "AI 將自動回覆訊息並建立訂單"
-              : "AI 生成草稿，需您確認後發送"}
+              ? "AI 將自動建立訂單並回覆訊息"
+              : "AI 將自動建立訂單但不回覆訊息"}
           </Text>
         </View>
 
