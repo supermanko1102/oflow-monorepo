@@ -86,6 +86,23 @@ export async function processMessageEvent({
     missing
   );
 
+  const isOrderRelated =
+    aiResult.intent === "order" ||
+    aiResult.stage === "ordering" ||
+    aiResult.stage === "delivery" ||
+    aiResult.stage === "contact";
+
+  if (!isOrderRelated && conversation.status === "collecting_info") {
+    await supabaseAdmin
+      .from("conversations")
+      .update({
+        status: "abandoned",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", conversation.id);
+    return;
+  }
+
   const hasOrder = aiResult.intent === "order" && aiResult.order;
   const isCompleteOrder =
     hasOrder &&
