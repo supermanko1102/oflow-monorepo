@@ -48,6 +48,17 @@ const corsHeaders = {
 };
 
 const ORDER_CONFIRMATION_KEYWORDS = ["/訂單確認", "/建單", "/order"];
+// 商家手動確認（半自動模式）關鍵字
+const MERCHANT_CONFIRM_KEYWORDS = [
+  "ok",
+  "OK",
+  "Ok",
+  "確認",
+  "訂單成立",
+  "成立",
+  "建單",
+  "開單",
+];
 
 interface LineWebhookEvent {
   type: string;
@@ -123,6 +134,11 @@ function isOrderConfirmationTrigger(messageText: string) {
   return { isTrigger: false };
 }
 
+function hasMerchantConfirmKeyword(message: string): boolean {
+  const trimmed = message.trim();
+  return MERCHANT_CONFIRM_KEYWORDS.some((kw) => trimmed.includes(kw));
+}
+
 function createSupabaseAdmin(): SupabaseClient {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -132,6 +148,39 @@ function createSupabaseAdmin(): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+}
+
+async function fetchMerchantLineUserIds(
+  supabase: SupabaseClient,
+  teamId: string
+): Promise<Set<string>> {
+  const { data: members } = await supabase
+    .from("team_members")
+    .select("user_id, role, can_manage_orders")
+    .eq("team_id", teamId);
+
+  const allowedUserIds =
+    members
+      ?.filter(
+        (m) =>
+          m.can_manage_orders ||
+          m.role === "owner" ||
+          m.role === "admin"
+      )
+      .map((m) => m.user_id) || [];
+
+  if (allowedUserIds.length === 0) return new Set<string>();
+
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, line_user_id")
+    .in("id", allowedUserIds);
+
+  return new Set(
+    (users || [])
+      .map((u) => u.line_user_id)
+      .filter((id): id is string => Boolean(id))
+  );
 }
 
 async function fetchTeamByDestination(
@@ -430,6 +479,12 @@ serve(async (req) => {
       });
     }
 
+    // 取得有權建單的商家 Line user ids（owner/admin 或 can_manage_orders）
+    const merchantLineUserIds = await fetchMerchantLineUserIds(
+      supabaseAdmin,
+      team.id
+    );
+
     for (const event of events) {
       try {
         if (event.type !== "message" || event.message?.type !== "text") {
@@ -497,7 +552,48 @@ serve(async (req) => {
         );
 
         const hasOrder = aiResult.intent === "order" && aiResult.order;
-        if (hasOrder && aiResult.is_complete && aiResult.order) {
+        const isCompleteOrder = hasOrder && aiResult.is_complete && aiResult.order;
+        const isMerchant = merchantLineUserIds.has(lineUserId);
+        const merchantTriggered =
+          !team.auto_mode &&
+          isMerchant &&
+          hasMerchantConfirmKeyword(messageText);
+
+        // 半自動模式：僅商家關鍵字 + 完整資料才建單；不回覆客戶
+        if (!team.auto_mode) {
+          if (merchantTriggered && isCompleteOrder && aiResult.order) {
+            const orderId = await createOrderFromAIResult(
+              supabaseAdmin,
+              team.id,
+              conversation.id,
+              lineUserId,
+              savedMessage.id,
+              aiResult.order,
+              messageText
+            );
+
+            await supabaseAdmin.rpc("complete_conversation", {
+              p_conversation_id: conversation.id,
+              p_order_id: orderId,
+            });
+
+            // 記錄一筆系統訊息（不回覆客戶）
+            await supabaseAdmin.from("line_messages").insert({
+              team_id: team.id,
+              line_user_id: lineUserId,
+              message_type: "text",
+              message_text: "系統已依商家確認建單",
+              role: "ai",
+              conversation_id: conversation.id,
+              order_id: orderId,
+            });
+          }
+          // 半自動模式不回覆客戶
+          continue;
+        }
+
+        // 全自動模式：完整訂單即建單並回覆
+        if (isCompleteOrder && aiResult.order) {
           const orderId = await createOrderFromAIResult(
             supabaseAdmin,
             team.id,
