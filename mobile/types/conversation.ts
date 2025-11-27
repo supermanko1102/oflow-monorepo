@@ -11,6 +11,7 @@ export interface Conversation {
   collected_data: Record<string, any>;
   missing_fields: string[];
   order_id: string | null;
+  order_number?: string | null;
   last_message_at: string;
   created_at: string;
   updated_at: string;

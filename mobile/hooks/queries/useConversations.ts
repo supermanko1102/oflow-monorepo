@@ -8,7 +8,8 @@ import { queryKeys } from "@/hooks/queries/queryKeys";
 import * as conversationService from "@/services/conversationService";
 import { supabase } from "@/lib/supabase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { debounce } from "@/utils/debounce";
 
 // ==================== Queries ====================
 
@@ -80,6 +81,15 @@ export function useConversationDetail(
  */
 export function useConversationsRealtime(teamId: string | null) {
   const queryClient = useQueryClient();
+  const scheduleInvalidate = useMemo(
+    () =>
+      debounce(() => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.conversations.all(),
+        });
+      }, 800),
+    [queryClient]
+  );
 
   useEffect(() => {
     if (!teamId) return;
@@ -94,18 +104,15 @@ export function useConversationsRealtime(teamId: string | null) {
           table: "conversations",
           filter: `team_id=eq.${teamId}`,
         },
-        () => {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.conversations.all(),
-          });
-        }
+        scheduleInvalidate
       )
       .subscribe();
 
     return () => {
+      scheduleInvalidate.cancel();
       supabase.removeChannel(channel);
     };
-  }, [teamId, queryClient]);
+  }, [teamId, queryClient, scheduleInvalidate]);
 }
 
 // ==================== Mutations ====================

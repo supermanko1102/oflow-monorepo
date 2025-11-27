@@ -68,10 +68,7 @@ const missingFieldLabels: Record<string, string> = {
 };
 
 export default function Inbox() {
-  const {
-    currentTeam,
-    currentTeamId,
-  } = useCurrentTeam();
+  const { currentTeam, currentTeamId } = useCurrentTeam();
 
   const {
     data: collecting = [],
@@ -121,6 +118,7 @@ export default function Inbox() {
     null
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isUserRefreshing, setIsUserRefreshing] = useState(false);
   const conversationDetail = useConversationDetail(detailId, !!detailId);
   const formConversationDetail = useConversationDetail(
     formConversationId,
@@ -186,95 +184,16 @@ export default function Inbox() {
         conv.collected_data?.line_display_name?.trim() ||
         conv.line_user_id ||
         "LINE 使用者",
-      orderNo: conv.order_id ? `#${conv.order_id}` : undefined,
+      orderNo:
+        conv.order_number ||
+        conv.collected_data?.order_number ||
+        (conv.order_id ? `訂單 ${conv.order_id.slice(0, 6)}` : undefined),
       pickup: "",
       amount: conv.collected_data?.total_amount ?? 0,
       snippet: conv.lastMessage?.message || "已完成對話",
       createdAt: formatTime(conv.last_message_at),
     }));
   }, [completed]);
-
-  const summaryCards = useMemo(
-    () => [
-      {
-        label: "需人工介入",
-        value: `${exceptions.length} 筆`,
-        description: "AI 無法完整處理",
-        tone: "danger" as const,
-      },
-      {
-        label: "AI 已建單",
-        value: `${autoRecords.length} 筆`,
-        description: "自動同步 LINE 對話",
-        tone: "success" as const,
-      },
-    ],
-    [exceptions.length, autoRecords.length]
-  );
-
-  const summaryToneStyles = {
-    danger: {
-      backgroundColor: "rgba(248, 113, 113, 0.15)",
-      borderColor: "rgba(248, 113, 113, 0.35)",
-      textColor: "#B91C1C",
-    },
-    success: {
-      backgroundColor: "rgba(0, 128, 128, 0.12)",
-      borderColor: "rgba(0, 128, 128, 0.3)",
-      textColor: brandTeal,
-    },
-  };
-
-  const renderSummaryCard = (card: (typeof summaryCards)[number]) => {
-    const tone = summaryToneStyles[card.tone];
-    return (
-      <View
-        key={card.label}
-        className="rounded-3xl border px-4 py-3 flex-1 min-w-[150px]"
-        style={{
-          backgroundColor: tone.backgroundColor,
-          borderColor: tone.borderColor,
-        }}
-      >
-        <Text
-          className="text-xs font-semibold uppercase"
-          style={{ color: tone.textColor }}
-        >
-          {card.label}
-        </Text>
-        <Text
-          className="text-2xl font-bold mt-1"
-          style={{ color: tone.textColor }}
-        >
-          {card.value}
-        </Text>
-        <Text className="text-xs text-slate-500 mt-1">{card.description}</Text>
-      </View>
-    );
-  };
-
-  const handleConfirm = async (ticket: ExceptionTicket) => {
-    const data = ticket.collectedData || {};
-    const orderData = {
-      customerName: data.customer_name || "LINE 顧客",
-      customerPhone: data.customer_phone || "",
-      items: data.items || [],
-      totalAmount: data.total_amount || 0,
-      pickupDate: data.delivery_date || data.pickup_date || "",
-      pickupTime: data.delivery_time || data.pickup_time || "",
-      customerNotes: data.customer_notes || "",
-    };
-    try {
-      await confirmConversation.mutateAsync({
-        conversationId: ticket.id,
-        orderData,
-      });
-      Alert.alert("建立成功", "已為此對話建立訂單");
-    } catch (error) {
-      console.error("confirm conversation error", error);
-      Alert.alert("建立失敗", "請稍後再試");
-    }
-  };
 
   const handleIgnore = async (id: string) => {
     try {
@@ -306,8 +225,17 @@ export default function Inbox() {
             </Text>
           </View>
         </View>
-        <View className="px-3 py-1 rounded-full bg-red-50 border border-red-100">
-          <Text className="text-[11px] font-semibold text-red-500">
+        <View
+          className="px-3 py-1 rounded-full border"
+          style={{
+            backgroundColor: "rgba(13, 148, 136, 0.12)",
+            borderColor: "rgba(13, 148, 136, 0.35)",
+          }}
+        >
+          <Text
+            className="text-[11px] font-semibold"
+            style={{ color: brandTeal }}
+          >
             {ticket.status === "awaiting_merchant_confirmation"
               ? "待確認"
               : "需人工"}
@@ -386,65 +314,140 @@ export default function Inbox() {
   const AutoRecordCard = ({ record }: { record: AutoRecord }) => {
     const [expanded, setExpanded] = useState(false);
     const amount = record.amount ?? 0;
+    const labelColor = expanded ? "white" : brandTeal;
 
     return (
       <Pressable
         onPress={() => setExpanded((prev) => !prev)}
-        className="rounded-3xl border border-slate-100 bg-white p-4 mb-4 shadow-[0px_10px_25px_rgba(15,23,42,0.04)]"
+        className="rounded-3xl border bg-white mb-3 overflow-hidden"
+        style={{
+          borderColor: expanded ? "rgba(13, 148, 136, 0.35)" : "#E2E8F0",
+          shadowColor: "#0F172A",
+          shadowOpacity: 0.08,
+          shadowOffset: { width: 0, height: 10 },
+          shadowRadius: 18,
+        }}
       >
-        <View className="flex-row items-start justify-between">
+        <View
+          className="px-4 py-3 flex-row items-start justify-between"
+          style={{
+            backgroundColor: expanded ? brandTeal : "rgba(13, 148, 136, 0.06)",
+          }}
+        >
           <View>
-            <Text className="text-xs font-semibold text-brand-slate">
+            <Text
+              className="text-[11px] font-semibold"
+              style={{ color: labelColor }}
+            >
               AI 已建立訂單
             </Text>
-            <Text className="text-base font-bold text-slate-900 mt-1">
+            <Text
+              className="text-base font-bold mt-1"
+              style={{ color: expanded ? "white" : "#0F172A" }}
+            >
               {record.orderNo || `對話 ${record.id.slice(0, 6)}`}
             </Text>
           </View>
           <View className="items-end">
-            <Text className="text-xs text-slate-400">{record.createdAt}</Text>
+            <Text
+              className="text-[11px]"
+              style={{ color: expanded ? "white" : "#94A3B8" }}
+            >
+              {record.createdAt}
+            </Text>
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#94A3B8"
+              color={expanded ? "white" : "#94A3B8"}
             />
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between mt-3">
-          <Text className="text-sm font-medium text-slate-900">
-            {record.customer}
+        <View className="px-4 py-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm font-semibold text-slate-900">
+              {record.customer}
+            </Text>
+            <View
+              className="px-2 py-1 rounded-full border"
+              style={{
+                backgroundColor: "rgba(13, 148, 136, 0.08)",
+                borderColor: "rgba(13, 148, 136, 0.25)",
+              }}
+            >
+              <Text
+                className="text-[12px] font-semibold"
+                style={{ color: brandTeal }}
+              >
+                ${amount.toLocaleString()}
+              </Text>
+            </View>
+          </View>
+          <Text className="text-xs text-slate-500 mt-1">
+            {record.pickup || "未填寫取貨時間"}
           </Text>
-          <Text className="text-base font-bold" style={{ color: brandTeal }}>
-            ${amount.toLocaleString()}
+          <Text
+            className="text-xs text-slate-600 mt-2"
+            numberOfLines={expanded ? undefined : 1}
+          >
+            AI 回覆：{record.snippet.replace("AI：", "")}
           </Text>
         </View>
-        <Text className="text-xs text-slate-500 mt-1">
-          {record.pickup || "未填寫取貨時間"}
-        </Text>
-        <Text
-          className="text-xs text-slate-500 mt-2"
-          numberOfLines={expanded ? undefined : 1}
-        >
-          AI 回覆：{record.snippet.replace("AI：", "")}
-        </Text>
 
         {expanded && (
-          <View className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <DetailRow label="顧客" value={record.customer} />
-            <DetailRow
-              label="取貨"
-              value={record.pickup || ""}
-              className="mt-1"
-            />
-            <DetailRow
-              label="金額"
-              value={`$${amount.toLocaleString()}`}
-              className="mt-1"
-            />
-            <View className="h-px bg-slate-200 my-3" />
-            <Text className="text-[11px] text-slate-500 mb-1">完整回覆</Text>
-            <Text className="text-xs text-slate-700">{record.snippet}</Text>
+          <View
+            className="px-4 pb-4"
+            style={{
+              backgroundColor: "rgba(13, 148, 136, 0.04)",
+              borderTopWidth: 1,
+              borderTopColor: "rgba(13, 148, 136, 0.15)",
+            }}
+          >
+            <View className="rounded-2xl border border-slate-100 bg-white p-3">
+              <View className="flex-row flex-wrap gap-2">
+                <View
+                  className="px-2 py-1 rounded-full border"
+                  style={{
+                    borderColor: "rgba(13, 148, 136, 0.3)",
+                    backgroundColor: "rgba(13, 148, 136, 0.08)",
+                  }}
+                >
+                  <Text className="text-[11px] font-semibold" style={{ color: brandTeal }}>
+                    {record.orderNo || "尚未產生編號"}
+                  </Text>
+                </View>
+                <View className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  <Text className="text-[11px] font-semibold text-slate-700">
+                    取貨：{record.pickup || "未填"}
+                  </Text>
+                </View>
+                <View className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  <Text className="text-[11px] font-semibold text-slate-700">
+                    建立時間：{record.createdAt}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="h-px bg-slate-200 my-3" />
+              <DetailRow label="顧客" value={record.customer} />
+              <DetailRow
+                label="金額"
+                value={`$${amount.toLocaleString()}`}
+                className="mt-1"
+              />
+
+              <View className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={brandTeal} />
+                  <Text className="text-[11px] font-semibold text-slate-700">
+                    AI 回覆
+                  </Text>
+                </View>
+                <Text className="text-xs text-slate-700 leading-5">
+                  {record.snippet}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
       </Pressable>
@@ -472,7 +475,11 @@ export default function Inbox() {
                     value: "exception",
                     badge: exceptions.length,
                   },
-                  { label: "自動紀錄", value: "auto", badge: autoRecords.length },
+                  {
+                    label: "自動紀錄",
+                    value: "auto",
+                    badge: autoRecords.length,
+                  },
                 ]}
                 value={mode}
                 onChange={(val) => setMode(val as InboxMode)}
@@ -500,237 +507,296 @@ export default function Inbox() {
           className="px-4 pt-2 pb-24"
           refreshControl={
             <RefreshControl
-              refreshing={
-                mode === "exception"
-                  ? isCollectingRefetching ||
-                    isAwaitingRefetching ||
-                    isManualRefetching
-                  : isCompletedRefetching
-              }
-              onRefresh={() => {
-                if (mode === "exception") {
-                  refetchCollecting();
-                  refetchAwaiting();
-                  refetchManual();
-                } else {
-                  refetchCompleted();
+              refreshing={isUserRefreshing}
+              onRefresh={async () => {
+                setIsUserRefreshing(true);
+                try {
+                  if (mode === "exception") {
+                    await Promise.all([
+                      refetchCollecting(),
+                      refetchAwaiting(),
+                      refetchManual(),
+                    ]);
+                  } else {
+                    await refetchCompleted();
+                  }
+                } finally {
+                  setIsUserRefreshing(false);
                 }
               }}
               tintColor={brandTeal}
             />
           }
         >
-        <View className="mb-3">
-          <View className="flex-row flex-wrap gap-3 mb-5">
-            {summaryCards.map((card) => renderSummaryCard(card))}
-          </View>
-        </View>
-        {mode === "exception" ? (
-          <>
-            <View className="rounded-2xl border border-red-100 bg-red-50/70 p-4 mb-3">
-              <Text className="text-sm font-semibold text-red-600">
-                有 {exceptions.length} 筆對話需要人工介入處理
-              </Text>
-              <Text className="text-xs text-red-500 mt-1">
-                快速回覆或手動建單，確保流程不中斷
-              </Text>
-            </View>
-            {isCollectingLoading || isAwaitingLoading || isManualLoading ? (
-              <View className="py-10 items-center">
-                <ActivityIndicator color={brandTeal} />
-                <Text className="text-slate-500 mt-2">載入中...</Text>
+          {mode === "exception" ? (
+            <>
+              <View
+                className="rounded-2xl border p-4 mb-3"
+                style={{
+                  backgroundColor: "rgba(13, 148, 136, 0.08)",
+                  borderColor: "rgba(13, 148, 136, 0.25)",
+                }}
+              >
+                <View className="flex-row items-center gap-2">
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={18}
+                    color={brandTeal}
+                  />
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: brandTeal }}
+                  >
+                    有 {exceptions.length} 筆對話需要人工介入處理
+                  </Text>
+                </View>
+                <Text className="text-xs mt-1 text-slate-600">
+                  快速回覆或手動建單，確保流程不中斷
+                </Text>
               </View>
-            ) : exceptions.length === 0 ? (
-              <Text className="text-xs text-slate-500 py-6 text-center">
-                目前沒有待補資料的對話
-              </Text>
-            ) : (
-              exceptions.map((ticket) => renderExceptionCard(ticket))
-            )}
-          </>
+              {isCollectingLoading || isAwaitingLoading || isManualLoading ? (
+                <View className="py-10 items-center">
+                  <ActivityIndicator color={brandTeal} />
+                  <Text className="text-slate-500 mt-2">載入中...</Text>
+                </View>
+              ) : exceptions.length === 0 ? (
+                <Text className="text-xs text-slate-500 py-6 text-center">
+                  目前沒有待補資料的對話
+                </Text>
+              ) : (
+                exceptions.map((ticket) => renderExceptionCard(ticket))
+              )}
+            </>
         ) : (
-          <View>
+          <View className="gap-3">
             {isCompletedLoading ? (
-              <View className="py-10 items-center">
+              <View
+                className="rounded-2xl border p-4 items-center"
+                style={{
+                  backgroundColor: "rgba(13, 148, 136, 0.08)",
+                  borderColor: "rgba(13, 148, 136, 0.2)",
+                }}
+              >
                 <ActivityIndicator color={brandTeal} />
-                <Text className="text-slate-500 mt-2">載入中...</Text>
+                <Text className="text-sm font-semibold text-brand-slate mt-2">
+                  AI 建單同步中
+                </Text>
+                <Text className="text-xs text-slate-500 mt-1">
+                  稍待數秒，對話會自動更新
+                </Text>
               </View>
             ) : autoRecords.length === 0 ? (
-              <Text className="text-xs text-slate-500 py-6 text-center">
-                目前沒有已完成的對話
-              </Text>
+              <View className="rounded-2xl border border-slate-200 bg-white p-5 items-center">
+                <Ionicons name="checkmark-done-outline" size={22} color={brandTeal} />
+                <Text className="text-sm font-semibold text-slate-900 mt-2">
+                  目前沒有已完成的對話
+                </Text>
+                <Text className="text-xs text-slate-500 mt-1 text-center">
+                  AI 完成訂單會即時顯示在這裡
+                </Text>
+              </View>
             ) : (
-              autoRecords.map((record) => (
-                <AutoRecordCard key={record.id} record={record} />
-              ))
+              <>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="sparkles-outline" size={18} color={brandTeal} />
+                    <Text className="text-sm font-semibold text-slate-900">
+                      AI 已建單列表
+                    </Text>
+                  </View>
+                  <View
+                    className="px-2 py-1 rounded-full border"
+                    style={{
+                      backgroundColor: "rgba(13, 148, 136, 0.12)",
+                      borderColor: "rgba(13, 148, 136, 0.3)",
+                    }}
+                  >
+                    <Text className="text-[11px] font-semibold" style={{ color: brandTeal }}>
+                      {autoRecords.length} 筆
+                    </Text>
+                  </View>
+                </View>
+                <View className="gap-3">
+                  {autoRecords.map((record) => (
+                    <AutoRecordCard key={record.id} record={record} />
+                  ))}
+                </View>
+              </>
             )}
           </View>
         )}
       </ScrollView>
 
-      <Modal
-        visible={!!detailId}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setDetailId(null)}
-      >
-        <Pressable
-          className="flex-1 bg-black/30"
-          onPress={() => setDetailId(null)}
-        />
-        <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-bold text-slate-900">對話詳情</Text>
-            <Pressable onPress={() => setDetailId(null)}>
-              <Ionicons name="close" size={20} color="#475569" />
-            </Pressable>
-          </View>
-          {conversationDetail.isLoading ? (
-            <View className="py-8 items-center">
-              <ActivityIndicator color={brandTeal} />
-              <Text className="text-slate-500 mt-2">載入對話...</Text>
+        <Modal
+          visible={!!detailId}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDetailId(null)}
+        >
+          <Pressable
+            className="flex-1 bg-black/30"
+            onPress={() => setDetailId(null)}
+          />
+          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-lg font-bold text-slate-900">對話詳情</Text>
+              <Pressable onPress={() => setDetailId(null)}>
+                <Ionicons name="close" size={20} color="#475569" />
+              </Pressable>
             </View>
-          ) : conversationDetail.data ? (
-            <ScrollView
-              className="max-h-[60vh]"
-              showsVerticalScrollIndicator={false}
-            >
-              <View className="mb-3">
-                <Text className="text-xs text-slate-500 mb-1">缺少欄位</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {(conversationDetail.data.conversation.missing_fields || [])
-                    .map((f: string) => missingFieldLabels[f] || f)
-                    .map((label: string) => (
-                      <View
-                        key={`${detailId}-${label}`}
-                        className="px-2 py-1 rounded-full"
-                        style={{ backgroundColor: "rgba(14,165,233,0.1)" }}
-                      >
-                        <Text className="text-[11px] font-semibold text-brand-slate">
-                          待補：{label}
+            {conversationDetail.isLoading ? (
+              <View className="py-8 items-center">
+                <ActivityIndicator color={brandTeal} />
+                <Text className="text-slate-500 mt-2">載入對話...</Text>
+              </View>
+            ) : conversationDetail.data ? (
+              <ScrollView
+                className="max-h-[60vh]"
+                showsVerticalScrollIndicator={false}
+              >
+                <View className="mb-3">
+                  <Text className="text-xs text-slate-500 mb-1">缺少欄位</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {(conversationDetail.data.conversation.missing_fields || [])
+                      .map((f: string) => missingFieldLabels[f] || f)
+                      .map((label: string) => (
+                        <View
+                          key={`${detailId}-${label}`}
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: "rgba(14,165,233,0.1)" }}
+                        >
+                          <Text className="text-[11px] font-semibold text-brand-slate">
+                            待補：{label}
+                          </Text>
+                        </View>
+                      ))}
+                    {(!conversationDetail.data.conversation.missing_fields ||
+                      conversationDetail.data.conversation.missing_fields
+                        .length === 0) && (
+                      <Text className="text-[11px] text-slate-500">無缺漏</Text>
+                    )}
+                  </View>
+                </View>
+                <View className="gap-3">
+                  {conversationDetail.data.history.map((msg, idx) => (
+                    <View
+                      key={`${detailId}-${idx}`}
+                      className="rounded-2xl border border-slate-100 p-3"
+                      style={{
+                        backgroundColor:
+                          msg.role === "ai"
+                            ? "rgba(14,165,233,0.05)"
+                            : "#FFFFFF",
+                      }}
+                    >
+                      <View className="flex-row items-center justify-between mb-1">
+                        <Text className="text-xs font-semibold text-slate-500">
+                          {msg.role === "ai" ? "AI" : "客人"}
+                        </Text>
+                        <Text className="text-[11px] text-slate-400">
+                          {formatTime(msg.created_at)}
                         </Text>
                       </View>
-                    ))}
-                  {(!conversationDetail.data.conversation.missing_fields ||
-                    conversationDetail.data.conversation.missing_fields
-                      .length === 0) && (
-                    <Text className="text-[11px] text-slate-500">無缺漏</Text>
-                  )}
-                </View>
-              </View>
-              <View className="gap-3">
-                {conversationDetail.data.history.map((msg, idx) => (
-                  <View
-                    key={`${detailId}-${idx}`}
-                    className="rounded-2xl border border-slate-100 p-3"
-                    style={{
-                      backgroundColor:
-                        msg.role === "ai" ? "rgba(14,165,233,0.05)" : "#FFFFFF",
-                    }}
-                  >
-                    <View className="flex-row items-center justify-between mb-1">
-                      <Text className="text-xs font-semibold text-slate-500">
-                        {msg.role === "ai" ? "AI" : "客人"}
-                      </Text>
-                      <Text className="text-[11px] text-slate-400">
-                        {formatTime(msg.created_at)}
+                      <Text className="text-sm text-slate-800">
+                        {msg.message}
                       </Text>
                     </View>
-                    <Text className="text-sm text-slate-800">
-                      {msg.message}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+                  ))}
+                </View>
 
-              <View className="gap-3 mt-4 mb-6">
-                <Pressable
-                  onPress={() => {
-                    setFormConversationId(detailId);
-                    setIsFormOpen(true);
-                  }}
-                  className="rounded-2xl"
-                  style={{ backgroundColor: brandTeal }}
-                >
-                  <View className="py-3 flex-row items-center justify-center gap-2">
-                    <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-                    <Text className="text-white text-base font-semibold">
-                      補齊資料 / 確認建單
-                    </Text>
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => setDetailId(null)}
-                  className="rounded-2xl border border-slate-200"
-                  disabled={confirmConversation.isPending}
-                >
-                  <View className="py-3 flex-row items-center justify-center gap-2">
-                    <Text className="text-slate-700 text-base font-semibold">
-                      關閉
-                    </Text>
-                  </View>
-                </Pressable>
-              </View>
-            </ScrollView>
-          ) : (
-            <Text className="text-slate-500">沒有找到對話內容</Text>
-          )}
-        </View>
-      </Modal>
+                <View className="gap-3 mt-4 mb-6">
+                  <Pressable
+                    onPress={() => {
+                      setFormConversationId(detailId);
+                      setIsFormOpen(true);
+                    }}
+                    className="rounded-2xl"
+                    style={{ backgroundColor: brandTeal }}
+                  >
+                    <View className="py-3 flex-row items-center justify-center gap-2">
+                      <Ionicons
+                        name="create-outline"
+                        size={16}
+                        color="#FFFFFF"
+                      />
+                      <Text className="text-white text-base font-semibold">
+                        補齊資料 / 確認建單
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setDetailId(null)}
+                    className="rounded-2xl border border-slate-200"
+                    disabled={confirmConversation.isPending}
+                  >
+                    <View className="py-3 flex-row items-center justify-center gap-2">
+                      <Text className="text-slate-700 text-base font-semibold">
+                        關閉
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            ) : (
+              <Text className="text-slate-500">沒有找到對話內容</Text>
+            )}
+          </View>
+        </Modal>
 
-      <Modal
-        visible={isFormOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setIsFormOpen(false);
-          setFormConversationId(null);
-        }}
-      >
-        <Pressable
-          className="flex-1 bg-black/30"
-          onPress={() => {
+        <Modal
+          visible={isFormOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
             setIsFormOpen(false);
             setFormConversationId(null);
           }}
-        />
-        <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-bold text-slate-900">補齊資料</Text>
-            <Pressable
-              onPress={() => {
-                setIsFormOpen(false);
-                setFormConversationId(null);
-              }}
-            >
-              <Ionicons name="close" size={20} color="#475569" />
-            </Pressable>
-          </View>
-          {formConversationDetail.isLoading || !formConversationDetail.data ? (
-            <View className="py-8 items-center">
-              <ActivityIndicator color={brandTeal} />
-              <Text className="text-slate-500 mt-2">載入資料...</Text>
-            </View>
-          ) : (
-            <ScrollView
-              className="max-h-[60vh]"
-              showsVerticalScrollIndicator={false}
-            >
-              <ConversationConfirmForm
-                collectedData={
-                  formConversationDetail.data.conversation.collected_data
-                }
-                isSubmitting={confirmConversation.isPending}
-                onSubmit={submitDetailForm}
-                onCancel={() => {
+        >
+          <Pressable
+            className="flex-1 bg-black/30"
+            onPress={() => {
+              setIsFormOpen(false);
+              setFormConversationId(null);
+            }}
+          />
+          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-lg font-bold text-slate-900">補齊資料</Text>
+              <Pressable
+                onPress={() => {
                   setIsFormOpen(false);
                   setFormConversationId(null);
                 }}
-              />
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </Pressable>
+            </View>
+            {formConversationDetail.isLoading ||
+            !formConversationDetail.data ? (
+              <View className="py-8 items-center">
+                <ActivityIndicator color={brandTeal} />
+                <Text className="text-slate-500 mt-2">載入資料...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                className="max-h-[60vh]"
+                showsVerticalScrollIndicator={false}
+              >
+                <ConversationConfirmForm
+                  collectedData={
+                    formConversationDetail.data.conversation.collected_data
+                  }
+                  isSubmitting={confirmConversation.isPending}
+                  onSubmit={submitDetailForm}
+                  onCancel={() => {
+                    setIsFormOpen(false);
+                    setFormConversationId(null);
+                  }}
+                />
+              </ScrollView>
+            )}
+          </View>
+        </Modal>
       </MainLayout>
     </View>
   );

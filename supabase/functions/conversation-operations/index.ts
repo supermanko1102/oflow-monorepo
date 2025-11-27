@@ -122,7 +122,7 @@ serve(async (req) => {
 
         const { data: conversations, error } = await supabaseAdmin
           .from("conversations")
-          .select("*")
+          .select("*, orders:order_id(order_number)")
           .eq("team_id", teamId)
           .eq("status", status)
           .order("last_message_at", { ascending: false })
@@ -144,6 +144,8 @@ serve(async (req) => {
             );
             return {
               ...conv,
+              order_number: conv.orders?.order_number || null,
+              orders: undefined,
               lastMessage: history && history.length > 0 ? history[0] : null,
             };
           })
@@ -172,7 +174,7 @@ serve(async (req) => {
 
         const { data: conversation, error } = await supabaseAdmin
           .from("conversations")
-          .select("*")
+          .select("*, orders:order_id(order_number)")
           .eq("id", conversationId)
           .single();
 
@@ -207,7 +209,11 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: true,
-            conversation,
+            conversation: {
+              ...conversation,
+              order_number: (conversation as any).orders?.order_number || null,
+              orders: undefined,
+            },
             history: history || [],
           }),
           {
