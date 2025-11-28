@@ -9,6 +9,7 @@ import {
   ensureConversationDisplayName,
   fetchConversationHistory,
   updateConversationData,
+  findActiveConversation,
 } from "./conversation.ts";
 import {
   fetchLineProfile,
@@ -46,11 +47,66 @@ export async function processMessageEvent({
     lineProfile
   );
 
-  let conversation = await ensureConversation(
+  const existingConversation = await findActiveConversation(
     supabaseAdmin,
     team.id,
     lineUserId
   );
+
+  const conversationHistory: ConversationMessage[] = existingConversation
+    ? await fetchConversationHistory(supabaseAdmin, existingConversation.id, 15)
+    : [];
+
+  const aiResult: AIParseResult = await callAIParser(
+    messageText,
+    team,
+    conversationHistory,
+    existingConversation?.collected_data
+  );
+
+  const isOrderRelated =
+    aiResult.intent === "order" ||
+    aiResult.stage === "ordering" ||
+    aiResult.stage === "delivery" ||
+    aiResult.stage === "contact";
+
+  if (!isOrderRelated) {
+    if (team.auto_mode) {
+      const replyText =
+        aiResult.suggested_reply || "已收到您的訊息，感謝您的回覆！";
+
+      await replyLineMessage(
+        event.replyToken,
+        [{ type: "text", text: replyText }],
+        team.line_channel_access_token
+      );
+
+      await supabaseAdmin.from("line_messages").insert({
+        team_id: team.id,
+        line_user_id: lineUserId,
+        message_type: "text",
+        message_text: replyText,
+        role: "ai",
+        conversation_id: existingConversation?.id || null,
+      });
+    }
+
+    if (existingConversation) {
+      await supabaseAdmin
+        .from("conversations")
+        .update({
+          status: "abandoned",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingConversation.id);
+    }
+    return;
+  }
+
+  let conversation =
+    existingConversation ||
+    (await ensureConversation(supabaseAdmin, team.id, lineUserId));
+
   conversation = (await ensureConversationDisplayName(
     supabaseAdmin,
     conversation,
@@ -65,16 +121,6 @@ export async function processMessageEvent({
     savedMessage.message_data
   );
 
-  const conversationHistory: ConversationMessage[] =
-    await fetchConversationHistory(supabaseAdmin, conversation.id, 15);
-
-  const aiResult: AIParseResult = await callAIParser(
-    messageText,
-    team,
-    conversationHistory,
-    conversation.collected_data
-  );
-
   const { collected, missing } = mergeCollectedData(
     conversation.collected_data,
     aiResult
@@ -85,23 +131,6 @@ export async function processMessageEvent({
     collected,
     missing
   );
-
-  const isOrderRelated =
-    aiResult.intent === "order" ||
-    aiResult.stage === "ordering" ||
-    aiResult.stage === "delivery" ||
-    aiResult.stage === "contact";
-
-  if (!isOrderRelated && conversation.status === "collecting_info") {
-    await supabaseAdmin
-      .from("conversations")
-      .update({
-        status: "abandoned",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", conversation.id);
-    return;
-  }
 
   const hasOrder = aiResult.intent === "order" && aiResult.order;
   const isCompleteOrder =

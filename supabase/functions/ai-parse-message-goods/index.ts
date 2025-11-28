@@ -25,11 +25,12 @@ import {
   buildConversationContext,
   buildCollectedDataContext,
 } from "../_shared/date-utils.ts";
-import { generateGoodsSystemPrompt, businessTypeLabels } from "./prompts/system.ts";
-import { generateGoodsUserPrompt } from "./prompts/user.ts";
 import {
-  inferStageFromResult,
-} from "./logic/stage.ts";
+  generateGoodsSystemPrompt,
+  businessTypeLabels,
+} from "./prompts/system.ts";
+import { generateGoodsUserPrompt } from "./prompts/user.ts";
+import { inferStageFromResult } from "./logic/stage.ts";
 import {
   getAllowedDeliveryMethods,
   enforceAllowedDeliveryMethod,
@@ -117,13 +118,13 @@ async function callOpenAI(
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // 使用 GPT-4o-mini，速度快且成本低
+        model: "gpt-5.1", // 升級模型以提升理解與語氣
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.3, // 降低隨機性，提高準確性
-        max_tokens: 500,
+        max_completion_tokens: 500,
         response_format: { type: "json_object" },
       }),
     });

@@ -56,6 +56,29 @@ export async function ensureConversationDisplayName(
   return { ...conversation, collected_data: newCollected };
 }
 
+export async function findActiveConversation(
+  supabase: SupabaseClient,
+  teamId: string,
+  lineUserId: string
+): Promise<Conversation | null> {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("team_id", teamId)
+    .eq("line_user_id", lineUserId)
+    .eq("status", "collecting_info")
+    .order("last_message_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[LINE Webhook] findActiveConversation failed:", error);
+    return null;
+  }
+
+  return (data as Conversation) || null;
+}
+
 export async function fetchConversationHistory(
   supabase: SupabaseClient,
   conversationId: string,
