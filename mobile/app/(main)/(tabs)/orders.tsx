@@ -9,7 +9,6 @@ import {
 } from "@/hooks/queries/useOrders";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
-import { OrderFilters } from "@/components/orders/OrderFilters";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { type Order, type OrderStatus } from "@/types/order";
 import { useMemo, useState } from "react";
@@ -28,60 +27,10 @@ import { Ionicons } from "@expo/vector-icons";
 type StatusFilterKey = "all" | OrderStatus;
 type ViewScope = "pendingFocus" | "today" | "all";
 
-const statusFilters = [
-  { key: "all", label: "全部" },
-  { key: "pending", label: "待付款" },
-  { key: "paid", label: "已付款" },
-  { key: "completed", label: "已完成" },
-  { key: "cancelled", label: "已取消" },
-] as const satisfies { key: StatusFilterKey; label: string }[];
-
 const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
 const brandWarning = Palette.status.warning;
-const brandDanger = Palette.status.danger;
 const brandSuccess = Palette.status.success;
-
-const statusChipMeta: Record<
-  StatusFilterKey,
-  { background: string; border: string; color: string; icon?: string }
-> = {
-  all: {
-    background: "#0F172A",
-    border: "#0F172A",
-    color: "#FFFFFF",
-  },
-  pending: {
-    background: "rgba(248, 113, 113, 0.15)",
-    border: "rgba(239, 68, 68, 0.4)",
-    color: brandDanger,
-    icon: brandDanger,
-  },
-  confirmed: {
-    background: "rgba(249, 115, 22, 0.15)",
-    border: "rgba(249, 115, 22, 0.35)",
-    color: brandWarning,
-    icon: brandWarning,
-  },
-  paid: {
-    background: "rgba(59, 130, 246, 0.12)",
-    border: "rgba(59, 130, 246, 0.35)",
-    color: brandTeal,
-    icon: brandTeal,
-  },
-  completed: {
-    background: "rgba(34, 197, 94, 0.15)",
-    border: "rgba(34, 197, 94, 0.35)",
-    color: brandSuccess,
-    icon: brandSuccess,
-  },
-  cancelled: {
-    background: "rgba(148, 163, 184, 0.2)",
-    border: "rgba(148, 163, 184, 0.4)",
-    color: "#475569",
-    icon: "#475569",
-  },
-};
 
 const orderStatusMeta: Record<
   OrderStatus,
@@ -94,51 +43,54 @@ const orderStatusMeta: Record<
 > = {
   pending: {
     label: "待付款",
-    strip: brandDanger,
-    badgeBackground: "rgba(239, 68, 68, 0.12)",
-    badgeColor: brandDanger,
+    strip: brandWarning,
+    badgeBackground: "transparent",
+    badgeColor: brandWarning,
   },
   confirmed: {
     label: "待付款",
-    strip: brandDanger,
-    badgeBackground: "rgba(239, 68, 68, 0.12)",
-    badgeColor: brandDanger,
+    strip: brandWarning,
+    badgeBackground: "transparent",
+    badgeColor: brandWarning,
   },
   paid: {
     label: "已付款",
     strip: brandTeal,
-    badgeBackground: "rgba(0, 128, 128, 0.12)",
+    badgeBackground: "transparent",
     badgeColor: brandTeal,
   },
   completed: {
     label: "已完成",
     strip: brandSuccess,
-    badgeBackground: "rgba(34, 197, 94, 0.12)",
+    badgeBackground: "transparent",
     badgeColor: brandSuccess,
   },
   cancelled: {
     label: "已取消",
     strip: "#94A3B8",
-    badgeBackground: "rgba(148, 163, 184, 0.12)",
-    badgeColor: "#475569",
+    badgeBackground: "transparent",
+    badgeColor: brandSlate,
   },
 };
 
 export default function Orders() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
   const [viewScope, setViewScope] = useState<ViewScope>("pendingFocus");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const updateOrderStatus = useUpdateOrderStatus();
   const router = useRouter();
-  const statusLabelMap: Record<OrderStatus, string> = {
-    pending: "待付款",
-    paid: "已付款",
-    confirmed: "待付款",
-    completed: "已完成",
-    cancelled: "已取消",
-  };
+  const statusLabelMap = useMemo(
+    () =>
+      Object.entries(orderStatusMeta).reduce(
+        (acc, [key, meta]) => ({
+          ...acc,
+          [key]: meta.label,
+        }),
+        {} as Record<OrderStatus, string>
+      ),
+    []
+  );
 
   const {
     data: orders = [],
@@ -170,16 +122,6 @@ export default function Orders() {
       status === "pending" || status === "confirmed";
 
     const base = orders.filter((order) => {
-      // 狀態篩選：pending 代表「未付款」含 confirmed
-      if (statusFilter !== "all") {
-        if (statusFilter === "pending" && !isPendingLike(order.status)) {
-          return false;
-        }
-        if (statusFilter !== "pending" && order.status !== statusFilter) {
-          return false;
-        }
-      }
-
       if (viewScope === "pendingFocus") {
         return isPendingLike(order.status) || order.status === "paid";
       }
@@ -212,7 +154,7 @@ export default function Orders() {
       if (tsA !== tsB) return tsA - tsB;
       return statusPriority[a.status] - statusPriority[b.status];
     });
-  }, [orders, statusFilter, viewScope, todayStr]);
+  }, [orders, viewScope, todayStr]);
 
   const sectionedOrders = useMemo(() => {
     const sections: { title: string; data: Order[] }[] = [];
@@ -386,18 +328,6 @@ export default function Orders() {
                 tintColor={brandTeal}
               />
             }
-            ListHeaderComponent={
-              <OrderFilters
-                pendingCount={pendingCount}
-                todayCount={todayCount}
-                viewScope={viewScope}
-                onChangeScope={setViewScope}
-                statusFilter={statusFilter}
-                onChangeStatus={setStatusFilter}
-                statusFilters={statusFilters}
-                statusChipMeta={statusChipMeta}
-              />
-            }
             renderSectionHeader={({ section }) => (
               <View className="flex-row items-center justify-between px-1 py-2">
                 <Text className="text-xs font-semibold text-slate-600 uppercase">
@@ -436,13 +366,12 @@ export default function Orders() {
                   <Text className="text-slate-500 mt-2">載入訂單中</Text>
                 </View>
               ) : (
-                <View className="py-16 items-center justify-center">
+                <View className="py-16 items-center justify中心">
                   <Text className="text-slate-600">沒有符合篩選的訂單</Text>
                   <Pressable
                     className="mt-3 px-4 py-2 rounded-full border border-slate-200"
                     onPress={() => {
                       setViewScope("all");
-                      setStatusFilter("all");
                     }}
                   >
                     <Text className="text-slate-700 text-sm font-semibold">
