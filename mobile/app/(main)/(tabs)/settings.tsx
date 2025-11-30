@@ -29,12 +29,14 @@ type SectionConfig = {
 export default function Settings() {
   const router = useRouter();
   const { currentTeam, currentTeamId } = useCurrentTeam();
+  const canInviteMembers =
+    currentTeam?.role === "owner" || currentTeam?.role === "admin";
   const {
     data: inviteCode,
     isLoading: isInviteLoading,
     isRefetching: isInviteRefetching,
     refetch: refetchInvite,
-  } = useInviteCode(currentTeamId || "", !!currentTeamId);
+  } = useInviteCode(currentTeamId || "", !!currentTeamId && canInviteMembers);
   const leaveTeam = useLeaveTeam();
   const deleteTeam = useDeleteTeam();
   const deleteAccount = useDeleteAccount();
@@ -44,7 +46,7 @@ export default function Settings() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const hasLine = !!currentTeam?.line_channel_id;
-  const currentBusinessType = (currentTeam as any)?.business_type || "bakery";
+  const currentBusinessType = currentTeam?.business_type || "bakery";
   const currentBusinessLabel =
     BUSINESS_TYPE_OPTIONS.find((opt) => opt.value === currentBusinessType)
       ?.label || "烘焙・甜點";
@@ -256,13 +258,15 @@ export default function Settings() {
           onSelectBusiness={handleSelectBusiness}
         />
 
-        <InviteCard
-          inviteCode={inviteCode}
-          isLoading={isInviteLoading}
-          isRefetching={isInviteRefetching}
-          onCopyInvite={handleCopyInvite}
-          onRefetchInvite={() => refetchInvite()}
-        />
+        {canInviteMembers ? (
+          <InviteCard
+            inviteCode={inviteCode}
+            isLoading={isInviteLoading}
+            isRefetching={isInviteRefetching}
+            onCopyInvite={handleCopyInvite}
+            onRefetchInvite={() => refetchInvite()}
+          />
+        ) : null}
 
         {sections.map((section) => (
           <SettingSection
