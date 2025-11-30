@@ -1,6 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
-import { logout } from "@/services/auth";
 import {
   useDashboardSummary,
   useRevenueStats,
@@ -13,8 +12,6 @@ import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   ActivityIndicator,
-  Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -22,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { showApiError } from "@/lib/showApiError";
 
 type MetricCardProps = {
   label: string;
@@ -127,7 +125,7 @@ export default function Overview() {
       // Update local state only after success
       setMode(newMode);
     } catch (error) {
-      Alert.alert("更新失敗", "無法更新自動模式設定");
+      showApiError(error);
     }
   };
 

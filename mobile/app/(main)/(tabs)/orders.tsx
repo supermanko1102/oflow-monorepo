@@ -8,6 +8,7 @@ import {
   useUpdateOrderStatus,
   useConfirmPayment,
 } from "@/hooks/queries/useOrders";
+import { showApiError } from "@/lib/showApiError";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -104,6 +105,25 @@ export default function Orders() {
   useOrdersRealtime(currentTeamId);
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  const confirmPaymentWithMethod = async (
+    order: Order,
+    paymentMethod: "cash" | "transfer" | "other"
+  ) => {
+    try {
+      await confirmPayment.mutateAsync({
+        order_id: order.id,
+        payment_method: paymentMethod,
+      });
+      setSelectedOrder({
+        ...order,
+        status: "paid",
+        paymentMethod,
+      });
+    } catch (error) {
+      showApiError(error);
+    }
+  };
 
   const getOrderTimestamp = (order: Order) => {
     const baseDate = order.appointmentDate
@@ -221,38 +241,15 @@ export default function Orders() {
       Alert.alert("確認收款", "選擇付款方式", [
         {
           text: "現金",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "cash" })
-              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "cash" }))
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "cash"),
         },
         {
           text: "轉帳",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "transfer" })
-              .then(() =>
-                setSelectedOrder({ ...order, status: "paid", paymentMethod: "transfer" })
-              )
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "transfer"),
         },
         {
           text: "其他",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "other" })
-              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "other" }))
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "other"),
         },
         { text: "取消", style: "cancel" },
       ]);
@@ -266,8 +263,7 @@ export default function Orders() {
       });
       Alert.alert("成功", `已更新為${getActionLabel(order.status)}`);
     } catch (error) {
-      console.error("[Order] update status failed", error);
-      Alert.alert("更新失敗", "請稍後再試");
+      showApiError(error);
     }
   };
 
@@ -284,8 +280,7 @@ export default function Orders() {
               status: "cancelled",
             });
           } catch (error) {
-            console.error("[Order] cancel failed", error);
-            Alert.alert("取消失敗", "請稍後再試");
+            showApiError(error);
           }
         },
       },
@@ -300,38 +295,15 @@ export default function Orders() {
       Alert.alert("確認收款", "選擇付款方式", [
         {
           text: "現金",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "cash" })
-              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "cash" }))
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "cash"),
         },
         {
           text: "轉帳",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "transfer" })
-              .then(() =>
-                setSelectedOrder({ ...order, status: "paid", paymentMethod: "transfer" })
-              )
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "transfer"),
         },
         {
           text: "其他",
-          onPress: () =>
-            confirmPayment
-              .mutateAsync({ order_id: order.id, payment_method: "other" })
-              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "other" }))
-              .catch((error) => {
-                console.error("[Order] confirm payment failed", error);
-                Alert.alert("更新失敗", "請稍後再試");
-              }),
+          onPress: () => confirmPaymentWithMethod(order, "other"),
         },
         { text: "取消", style: "cancel" },
       ]);
@@ -357,8 +329,7 @@ export default function Orders() {
               });
               setSelectedOrder({ ...order, status: newStatus });
             } catch (error) {
-              console.error("[Order] change status failed", error);
-              Alert.alert("更新失敗", "請稍後再試");
+              showApiError(error);
             }
           },
         },
