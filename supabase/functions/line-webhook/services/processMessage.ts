@@ -17,7 +17,11 @@ import {
   updateMessageConversation,
 } from "./message.ts";
 import { callAIParser, mergeCollectedData } from "./ai.ts";
-import { completeConversationSafe, createOrderFromAIResult } from "./order.ts";
+import {
+  completeConversationSafe,
+  createOrderFromAIResult,
+  notifyNewOrder,
+} from "./order.ts";
 import type { Team } from "./team.ts";
 import { replyLineMessage } from "../lib/line.ts";
 
@@ -163,15 +167,22 @@ export async function processMessageEvent({
       modeLabel
     );
 
+    const { data: orderDetail } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, pickup_date, pickup_time, customer_name, delivery_method, total_amount"
+      )
+      .eq("id", orderId)
+      .single();
+
+    // 通知團隊：AI 建立新訂單
+    if (orderDetail) {
+      await notifyNewOrder(supabaseAdmin, team.id, orderDetail, modeLabel);
+    }
+
     // 全自動模式：回覆客人
     // 半自動模式：不回覆客人
     if (team.auto_mode) {
-      const { data: orderDetail } = await supabaseAdmin
-        .from("orders")
-        .select("order_number, pickup_date, pickup_time")
-        .eq("id", orderId)
-        .single();
-
       const confirmMsg =
         `✅ 訂單已確認！\n\n` +
         `訂單編號：${orderDetail?.order_number || "處理中"}\n` +

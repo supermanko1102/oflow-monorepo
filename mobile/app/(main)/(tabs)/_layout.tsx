@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Palette } from "@/constants/palette";
 import { WebhookGuard } from "@/components/ui/WebhookGuard";
+import { usePushRegistration } from "@/hooks/usePushRegistration";
 import {
   Icon,
   Label,
@@ -8,6 +9,7 @@ import {
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
 export default function TabLayout() {
+  usePushRegistration();
   const activeColor = Palette.brand.primary;
   const tabConfigs = [
     { name: "overview", icon: "view-dashboard", label: "總覽" },

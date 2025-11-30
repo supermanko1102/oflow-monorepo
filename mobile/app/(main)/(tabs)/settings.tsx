@@ -13,12 +13,7 @@ import {
 import { useDeleteAccount } from "@/hooks/queries/useAccount";
 import { logout } from "@/services/auth";
 import { useRouter } from "expo-router";
-import {
-  Alert,
-  ActionSheetIOS,
-  Platform,
-  View,
-} from "react-native";
+import { Alert, ActionSheetIOS, Platform, View } from "react-native";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { BUSINESS_TYPE_OPTIONS } from "@/types/team";
@@ -62,44 +57,6 @@ export default function Settings() {
 
   const sections: SectionConfig[] = [
     {
-      title: "訂閱方案（待施工）",
-      description: "升級方案、發票與付款方式設定",
-      isDisabled: true,
-      disabledLabel: "訂閱功能開發中",
-      items: [
-        {
-          icon: "card-outline",
-          label: "方案與帳單",
-          detail: "查看目前方案、付款方式與發票資訊",
-          disabled: true,
-          onPress: () => console.log("open subscription"),
-        },
-      ],
-    },
-    {
-      title: "通知與提醒（待施工）",
-      description: "此區尚未串接後端",
-      isDisabled: true,
-      disabledLabel: "通知設定開發中",
-      items: [
-        {
-          icon: "notifications-outline",
-          label: "推播提醒",
-          detail: "訂單狀態、AI 例外通知",
-          disabled: true,
-          onPress: () => console.log("open push notifications"),
-        },
-        {
-          icon: "mail-outline",
-          label: "Email 摘要",
-          detail: "每週營運數據報告",
-          statusTone: "muted",
-          disabled: true,
-          onPress: () => console.log("open email digest"),
-        },
-      ],
-    },
-    {
       title: "營運設定",
       description: "配送方式會同步影響 AI 建單與商品可售方式",
       items: [
@@ -125,38 +82,6 @@ export default function Settings() {
           actionVariant: hasLine ? "default" : "primary",
           statusTone: hasLine ? "success" : "muted",
           onPress: () => router.push("/(main)/lineConnect"),
-        },
-        {
-          icon: "calendar-outline",
-          label: "Google 日曆（待施工）",
-          detail: "未連結 · 即將開放",
-          actionVariant: "default",
-          statusTone: "muted",
-          disabled: true,
-          onPress: () => console.log("connect Google Calendar"),
-          onActionPress: () => console.log("connect Google Calendar"),
-        },
-      ],
-    },
-    {
-      title: "資料與支援（待施工）",
-      description: "此區尚未串接後端",
-      isDisabled: true,
-      disabledLabel: "資料匯出與支援開發中",
-      items: [
-        {
-          icon: "cloud-download-outline",
-          label: "匯出資料",
-          detail: "訂單、顧客 CSV 報表",
-          disabled: true,
-          onPress: () => console.log("export data"),
-        },
-        {
-          icon: "help-circle-outline",
-          label: "取得協助",
-          detail: "聯絡客服或查看指南",
-          disabled: true,
-          onPress: () => console.log("open support"),
         },
       ],
     },
@@ -287,7 +212,9 @@ export default function Settings() {
   };
 
   const handleSelectBusiness = () => {
-    const options = BUSINESS_TYPE_OPTIONS.map((opt) => opt.label).concat("取消");
+    const options = BUSINESS_TYPE_OPTIONS.map((opt) => opt.label).concat(
+      "取消"
+    );
     const locked = BUSINESS_TYPE_OPTIONS.map((opt) => opt.value !== "bakery");
     const cancelButtonIndex = options.length - 1;
 
@@ -307,11 +234,9 @@ export default function Settings() {
         }
       );
     } else {
-      Alert.alert(
-        "行業類別",
-        "目前僅開放烘焙・甜點，其餘行業敬請期待",
-        [{ text: "關閉", style: "cancel" }]
-      );
+      Alert.alert("行業類別", "目前僅開放烘焙・甜點，其餘行業敬請期待", [
+        { text: "關閉", style: "cancel" },
+      ]);
     }
   };
 
