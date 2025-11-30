@@ -75,7 +75,9 @@ export function useOrdersRealtime(teamId: string | null) {
         () => {
           // 重新載入訂單列表與 Dashboard 相關資料
           queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dashboard.all(),
+          });
         }
       )
       .subscribe();
@@ -209,52 +211,25 @@ export function useUpdateOrder() {
 }
 
 /**
- * 確認收款
- *
- * 成功後：
- * - 自動 invalidate 該訂單的詳情
- * - 自動 invalidate 訂單列表
- * - 自動 invalidate Dashboard
- *
- * 使用範例：
- * ```tsx
- * const confirmPayment = useConfirmPayment();
- *
- * const handleConfirmCash = async (orderId: string) => {
- *   try {
- *     await confirmPayment.mutateAsync({
- *       orderId,
- *       paymentMethod: 'cash',
- *     });
- *     toast.success('已確認收款（現金）');
- *   } catch (error) {
- *     toast.error('確認失敗');
- *   }
- * };
- * ```
+ * 確認收款（寫入 paid_at / payment_method）
  */
 export function useConfirmPayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      orderId,
-      paymentMethod,
-    }: {
-      orderId: string;
-      paymentMethod: "cash" | "transfer" | "other";
-    }) => orderService.confirmPayment(orderId, paymentMethod),
+    mutationFn: (params: {
+      order_id: string;
+      payment_method: "cash" | "transfer" | "other";
+    }) => orderService.confirmPayment(params.order_id, params.payment_method),
     onSuccess: (_, variables) => {
-      // 確認收款後，重新載入該訂單詳情
+      // 重新載入該訂單詳情
       queryClient.invalidateQueries({
-        queryKey: queryKeys.orders.detail(variables.orderId),
+        queryKey: queryKeys.orders.detail(variables.order_id),
       });
-
-      // 重新載入所有訂單列表（因為狀態變更為 paid）
+      // 重新載入訂單列表
       queryClient.invalidateQueries({
         queryKey: queryKeys.orders.all(),
       });
-
       // 重新載入 Dashboard
       queryClient.invalidateQueries({
         queryKey: queryKeys.dashboard.all(),

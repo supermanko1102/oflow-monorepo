@@ -6,6 +6,7 @@ import {
   useOrders,
   useOrdersRealtime,
   useUpdateOrderStatus,
+  useConfirmPayment,
 } from "@/hooks/queries/useOrders";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
@@ -79,7 +80,9 @@ export default function Orders() {
   const [viewScope, setViewScope] = useState<ViewScope>("pendingFocus");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const updateOrderStatus = useUpdateOrderStatus();
+  const confirmPayment = useConfirmPayment();
   const router = useRouter();
+  const isMutating = updateOrderStatus.isPending || confirmPayment.isPending;
   const statusLabelMap = useMemo(
     () =>
       Object.entries(orderStatusMeta).reduce(
@@ -212,6 +215,50 @@ export default function Orders() {
       Alert.alert("提醒", "此狀態無需操作");
       return;
     }
+
+    // 標記已付款時先選擇付款方式
+    if (next === "paid") {
+      Alert.alert("確認收款", "選擇付款方式", [
+        {
+          text: "現金",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "cash" })
+              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "cash" }))
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        {
+          text: "轉帳",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "transfer" })
+              .then(() =>
+                setSelectedOrder({ ...order, status: "paid", paymentMethod: "transfer" })
+              )
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        {
+          text: "其他",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "other" })
+              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "other" }))
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        { text: "取消", style: "cancel" },
+      ]);
+      return;
+    }
+
     try {
       await updateOrderStatus.mutateAsync({
         order_id: order.id,
@@ -247,6 +294,50 @@ export default function Orders() {
 
   const handleDirectStatusChange = (order: Order, newStatus: OrderStatus) => {
     if (newStatus === order.status) return;
+
+    // 選擇「已付款」時彈付款方式
+    if (newStatus === "paid") {
+      Alert.alert("確認收款", "選擇付款方式", [
+        {
+          text: "現金",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "cash" })
+              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "cash" }))
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        {
+          text: "轉帳",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "transfer" })
+              .then(() =>
+                setSelectedOrder({ ...order, status: "paid", paymentMethod: "transfer" })
+              )
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        {
+          text: "其他",
+          onPress: () =>
+            confirmPayment
+              .mutateAsync({ order_id: order.id, payment_method: "other" })
+              .then(() => setSelectedOrder({ ...order, status: "paid", paymentMethod: "other" }))
+              .catch((error) => {
+                console.error("[Order] confirm payment failed", error);
+                Alert.alert("更新失敗", "請稍後再試");
+              }),
+        },
+        { text: "取消", style: "cancel" },
+      ]);
+      return;
+    }
+
     Alert.alert(
       "變更狀態",
       `確定將訂單變更為「${statusLabelMap[newStatus]}」嗎？`,
@@ -259,6 +350,10 @@ export default function Orders() {
               await updateOrderStatus.mutateAsync({
                 order_id: order.id,
                 status: newStatus,
+                payment_method:
+                  newStatus === "completed"
+                    ? order.paymentMethod || "cash"
+                    : undefined,
               });
               setSelectedOrder({ ...order, status: newStatus });
             } catch (error) {
@@ -348,7 +443,7 @@ export default function Orders() {
                   statusMeta={orderStatusMeta}
                   actionLabel={actionLabel}
                   isActionable={isActionable}
-                  loading={updateOrderStatus.isPending}
+                  loading={isMutating}
                   onPress={(order) => setSelectedOrder(order)}
                   onAction={(order) =>
                     isActionable
@@ -396,7 +491,7 @@ export default function Orders() {
         onClose={() => setSelectedOrder(null)}
         statusMeta={orderStatusMeta}
         statusLabelMap={statusLabelMap}
-        loading={updateOrderStatus.isPending}
+        loading={isMutating}
         onPrimaryAction={(order) => handleStatusAction(order)}
         getActionLabel={getActionLabel}
         getNextStatus={getNextStatus}

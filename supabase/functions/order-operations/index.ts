@@ -569,7 +569,7 @@ serve(async (req) => {
         // 先取得訂單資訊以驗證權限
         const { data: order, error: fetchError } = await supabaseAdmin
           .from("orders")
-          .select("team_id")
+          .select("team_id, paid_at")
           .eq("id", order_id)
           .single();
 
@@ -604,6 +604,16 @@ serve(async (req) => {
           updateData.completed_at = new Date().toISOString();
           // 如果提供了付款方式，則更新；否則預設為 cash
           updateData.payment_method = payment_method || "cash";
+          // 若尚未記錄收款時間，完成時補上收款時間，避免營收統計漏算
+          if (!order.paid_at) {
+            updateData.paid_at = new Date().toISOString();
+          }
+        }
+
+        // 標記為已付款時，補上 paid_at 與付款方式（預設現金）
+        if (status === "paid") {
+          updateData.payment_method = payment_method || "cash";
+          updateData.paid_at = new Date().toISOString();
         }
 
         const { error: updateError } = await supabaseAdmin
@@ -669,8 +679,8 @@ serve(async (req) => {
           throw new Error("You don't have permission to manage orders");
         }
 
-        // 只有 pending 狀態的訂單可以確認收款
-        if (order.status !== "pending") {
+        // 只有待付款狀態可以確認收款（接受 pending/confirmed）
+        if (order.status !== "pending" && order.status !== "confirmed") {
           throw new Error("Only pending orders can confirm payment");
         }
 

@@ -138,7 +138,6 @@ export default function Overview() {
     refetch: refetchDashboard,
     isRefetching: isDashboardRefetching,
   } = useDashboardSummary(currentTeamId);
-
   const {
     data: revenueData,
     isLoading: isRevenueLoading,
@@ -414,10 +413,6 @@ export default function Overview() {
 
             {/* Timeline / Feed */}
             <View className="mb-8">
-              <Text className="text-lg font-bold text-brand-slate mb-4 px-1">
-                待辦與動態
-              </Text>
-
               {/* Activities */}
               <View className="space-y-4">
                 <Text className="text-sm font-semibold text-gray-500 px-1">
