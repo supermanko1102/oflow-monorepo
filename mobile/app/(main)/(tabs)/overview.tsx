@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
+import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import {
   useDashboardSummary,
   useRevenueStats,
@@ -8,6 +9,7 @@ import { useDashboardActivity } from "@/hooks/queries/useDashboardActivity";
 import { useUpdateAutoMode } from "@/hooks/queries/useTeams";
 import { useUser } from "@/hooks/queries/useUser";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
+import { useRouter } from "expo-router";
 import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -24,10 +26,9 @@ import { showApiError } from "@/lib/showApiError";
 type MetricCardProps = {
   label: string;
   value: string | number;
-  icon: React.ReactNode;
+  icon: keyof typeof Ionicons.glyphMap;
   trend?: string;
   trendType?: "up" | "down" | "neutral";
-  primary?: boolean;
 };
 
 function MetricCard({
@@ -36,57 +37,44 @@ function MetricCard({
   icon,
   trend,
   trendType = "neutral",
-  primary,
 }: MetricCardProps) {
+  const trendColor =
+    trendType === "up"
+      ? "#22C55E"
+      : trendType === "down"
+        ? "#EF4444"
+        : "#94A3B8";
+
   return (
-    <View
-      className={`rounded-2xl p-4 mr-3 w-40 ${
-        primary ? "bg-brand-teal" : "bg-white border border-gray-100"
-      }`}
-    >
+    <View className="rounded-2xl border border-slate-100 bg-white p-4 mr-3 w-40 shadow-sm">
       <View className="flex-row items-center justify-between mb-2">
         <View
-          className={`p-1.5 rounded-full ${
-            primary ? "bg-white/20" : "bg-gray-100"
-          }`}
+          className="w-9 h-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: "#F8FAFC" }}
         >
-          {icon}
+          <Ionicons name={icon} size={18} color="#64748B" />
         </View>
         {trend && (
           <View className="flex-row items-center">
             <Ionicons
-              name={trendType === "up" ? "arrow-up" : "arrow-down"}
-              size={12}
-              color={
-                primary ? "white" : trendType === "up" ? "#22C55E" : "#EF4444"
+              name={
+                trendType === "up"
+                  ? "arrow-up"
+                  : trendType === "down"
+                    ? "arrow-down"
+                    : "remove"
               }
+              size={12}
+              color={trendColor}
             />
-            <Text
-              className={`text-xs ml-0.5 ${
-                primary
-                  ? "text-white"
-                  : trendType === "up"
-                    ? "text-status-success"
-                    : "text-status-danger"
-              }`}
-            >
+            <Text className="text-xs ml-0.5" style={{ color: trendColor }}>
               {trend}
             </Text>
           </View>
         )}
       </View>
-      <Text
-        className={`text-2xl font-bold mb-1 ${
-          primary ? "text-white" : "text-brand-slate"
-        }`}
-      >
-        {value}
-      </Text>
-      <Text
-        className={`text-xs ${primary ? "text-white/80" : "text-gray-500"}`}
-      >
-        {label}
-      </Text>
+      <Text className="text-2xl font-bold text-slate-900 mb-1">{value}</Text>
+      <Text className="text-xs text-slate-500">{label}</Text>
     </View>
   );
 }
@@ -95,6 +83,7 @@ type OperationMode = "auto" | "semi";
 
 export default function Overview() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
+  const router = useRouter();
 
   // Fetch User
   const { data: user } = useUser();
@@ -106,6 +95,7 @@ export default function Overview() {
 
   // Local state for mode to allow optimistic UI, synced with server state
   const [mode, setMode] = useState<OperationMode>("auto");
+  const [timeRange, setTimeRange] = useState<"day" | "week" | "month">("day");
 
   useEffect(() => {
     if (currentTeam) {
@@ -141,6 +131,12 @@ export default function Overview() {
     isLoading: isRevenueLoading,
     refetch: refetchRevenue,
   } = useRevenueStats(currentTeamId, "day");
+
+  const { data: weekRevenueData, refetch: refetchWeekRevenue } =
+    useRevenueStats(currentTeamId, "week");
+
+  const { data: monthRevenueData, refetch: refetchMonthRevenue } =
+    useRevenueStats(currentTeamId, "month");
 
   const {
     data: activityPages,
@@ -239,6 +235,8 @@ export default function Overview() {
     await Promise.all([
       refetchDashboard(),
       refetchRevenue(),
+      refetchWeekRevenue(),
+      refetchMonthRevenue(),
       refetchActivity(),
     ]);
   };
@@ -343,6 +341,37 @@ export default function Overview() {
           </Text>
         </View>
 
+        {/* Quick Actions */}
+        <View className="mb-6">
+          <View className="flex-row items-center justify-between mb-3 px-1">
+            <Text className="text-base font-bold text-slate-900">快捷功能</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 4 }}
+          >
+            <QuickActionCard
+              icon="cube-outline"
+              title="商品管理"
+              subtitle="管理商品與庫存"
+              onPress={() => router.push("/production")}
+            />
+            <QuickActionCard
+              icon="bicycle-outline"
+              title="配送設定"
+              subtitle="設定配送方式"
+              onPress={() => router.push("/delivery")}
+            />
+            <QuickActionCard
+              icon="chatbubble-ellipses-outline"
+              title="LINE 設定"
+              subtitle="連結 LINE 帳號"
+              onPress={() => router.push("/lineConnect")}
+            />
+          </ScrollView>
+        </View>
+
         {/* Loading State */}
         {isLoading ? (
           <View className="py-20 items-center justify-center">
@@ -354,10 +383,9 @@ export default function Overview() {
             {/* Metrics Carousel */}
             <View className="mb-8">
               <View className="flex-row items-center justify-between mb-4 px-1">
-                <Text className="text-lg font-bold text-brand-slate">
+                <Text className="text-lg font-bold text-slate-900">
                   今日概況
                 </Text>
-                <Text className="text-xs text-gray-400">Updated just now</Text>
               </View>
               <ScrollView
                 horizontal
@@ -367,25 +395,18 @@ export default function Overview() {
                 <MetricCard
                   label="今日營收"
                   value={todayMetrics.revenue}
-                  icon={<Ionicons name="cash" size={20} color="white" />}
+                  icon="cash-outline"
                   trend={
                     revenueData?.orderCount
                       ? `${revenueData.orderCount} 筆`
                       : undefined
                   }
                   trendType="up"
-                  primary
                 />
                 <MetricCard
                   label="今日訂單"
                   value={todayMetrics.orders}
-                  icon={
-                    <Ionicons
-                      name="receipt"
-                      size={20}
-                      color="rgb(90, 107, 124)"
-                    />
-                  }
+                  icon="receipt-outline"
                   trend={
                     dashboardData?.todayCompleted.length
                       ? `${dashboardData.todayCompleted.length} 已完成`
@@ -396,15 +417,31 @@ export default function Overview() {
                 <MetricCard
                   label="待處理訂單"
                   value={todayMetrics.pending}
-                  icon={
-                    <MaterialCommunityIcons
-                      name="message-processing"
-                      size={20}
-                      color="rgb(249, 115, 22)"
-                    />
-                  }
+                  icon="time-outline"
                   trend={todayMetrics.pending > 0 ? "需關注" : "無"}
                   trendType={todayMetrics.pending > 0 ? "down" : "neutral"}
+                />
+                <MetricCard
+                  label="本週訂單"
+                  value={weekRevenueData?.orderCount || 0}
+                  icon="calendar-outline"
+                  trend={
+                    weekRevenueData?.orderCount
+                      ? `$${weekRevenueData.totalRevenue.toLocaleString()}`
+                      : undefined
+                  }
+                  trendType="up"
+                />
+                <MetricCard
+                  label="本月訂單"
+                  value={monthRevenueData?.orderCount || 0}
+                  icon="stats-chart-outline"
+                  trend={
+                    monthRevenueData?.orderCount
+                      ? `$${monthRevenueData.totalRevenue.toLocaleString()}`
+                      : undefined
+                  }
+                  trendType="up"
                 />
               </ScrollView>
             </View>
