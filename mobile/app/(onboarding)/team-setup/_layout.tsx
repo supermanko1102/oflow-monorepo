@@ -10,15 +10,8 @@ export default function TeamSetupOnboardingLayout() {
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const status = useAuthStore((state) => state.status);
 
-  const isCheckingSessionExpiration = useAuthStore(
-    (state) => state.isCheckingSessionExpiration
-  );
   const checkAccessible = useCallback(() => {
-    if (
-      !isHydrated ||
-      status === AuthStatus.Unauthenticated ||
-      isCheckingSessionExpiration
-    ) {
+    if (!isHydrated || status === AuthStatus.Unauthenticated) {
       router.replace("/landing");
       return;
     }
@@ -27,14 +20,14 @@ export default function TeamSetupOnboardingLayout() {
       router.replace("/(main)/(tabs)/inbox");
       return;
     }
-  }, [isHydrated, status, router, isCheckingSessionExpiration]);
+  }, [isHydrated, status, router]);
 
   useFocusEffect(checkAccessible);
   useEffect(() => {
     syncAuthStatus();
   }, []);
 
-  if (!isHydrated || isCheckingSessionExpiration) {
+  if (!isHydrated) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator size="large" color={Palette.brand.primary} />

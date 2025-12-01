@@ -8,20 +8,17 @@ const authenticatedStatuses = [AuthStatus.NoTeam, AuthStatus.Active];
 export default function MainLayout() {
   const router = useRouter();
   const isHydrated = useAuthStore((state) => state.isHydrated);
-  const isCheckingSessionExpiration = useAuthStore(
-    (state) => state.isCheckingSessionExpiration
-  );
+
   const status = useAuthStore((state) => state.status);
   const isAuthenticated = authenticatedStatuses.includes(status);
 
   const checkAccessible = useCallback(() => {
-    if (isHydrated && !isAuthenticated && !isCheckingSessionExpiration)
-      router.replace("/landing");
-  }, [isHydrated, isAuthenticated, router, isCheckingSessionExpiration]);
+    if (isHydrated && !isAuthenticated) router.replace("/landing");
+  }, [isHydrated, isAuthenticated, router]);
 
   useFocusEffect(checkAccessible);
   try {
-    if (!isHydrated || isCheckingSessionExpiration)
+    if (!isHydrated)
       throw new Error("Not hydrated or checking session expiration");
     if (!isAuthenticated) throw new Error("Not authenticated");
     return <Stack screenOptions={{ headerShown: false }} />;

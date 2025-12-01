@@ -10,7 +10,6 @@ export enum AuthStatus {
 
 interface AuthState {
   isHydrated: boolean;
-  isCheckingSessionExpiration: boolean;
   status: AuthStatus;
   currentTeamId: string | null;
   setCurrentTeamId: (teamId: string | null) => void;
@@ -20,7 +19,6 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, _get) => ({
       isHydrated: false,
-      isCheckingSessionExpiration: false,
       status: AuthStatus.Unauthenticated,
       currentTeamId: null,
       setCurrentTeamId: (teamId) =>
@@ -28,7 +26,6 @@ export const useAuthStore = create<AuthState>()(
           currentTeamId: teamId,
         }),
       checkSessionExpiration: async () => {
-        set({ isCheckingSessionExpiration: true });
         try {
           const {
             data: { session },
@@ -41,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
           console.error("[auth] getSession failed", err);
           set({ status: AuthStatus.Unauthenticated, currentTeamId: null });
         } finally {
-          set({ isCheckingSessionExpiration: false });
+          set({ isHydrated: true });
         }
       },
     }),
@@ -51,7 +48,6 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          state.isHydrated = true;
           state.checkSessionExpiration();
         }
       },
