@@ -27,6 +27,7 @@ export const useAuthStore = create<AuthState>()(
         }),
       checkSessionExpiration: async () => {
         try {
+          set({ isHydrated: false });
           const {
             data: { session },
           } = await supabase.auth.getSession();
