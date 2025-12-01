@@ -8,21 +8,31 @@ export default function AuthLayout() {
   const router = useRouter();
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const status = useAuthStore((state) => state.status);
+  const isCheckingSessionExpiration = useAuthStore(
+    (state) => state.isCheckingSessionExpiration
+  );
   const isAuthenticated = authenticatedStatuses.includes(status);
 
   const checkAccessible = useCallback(() => {
-    if (isHydrated && isAuthenticated) {
+    if (isHydrated && isAuthenticated && !isCheckingSessionExpiration) {
       if (status === AuthStatus.NoTeam) {
         router.replace("/(onboarding)/team-setup");
       } else {
         router.replace("/(main)/(tabs)/inbox");
       }
     }
-  }, [isHydrated, isAuthenticated, status, router]);
+  }, [
+    isHydrated,
+    isAuthenticated,
+    status,
+    router,
+    isCheckingSessionExpiration,
+  ]);
 
   useFocusEffect(checkAccessible);
   try {
-    if (!isHydrated) throw new Error("Hydrating");
+    if (!isHydrated || isCheckingSessionExpiration)
+      throw new Error("Hydrating or checking session expiration");
     if (isAuthenticated) throw new Error("Already authenticated");
     return <Stack screenOptions={{ headerShown: false }} />;
   } catch (e) {
