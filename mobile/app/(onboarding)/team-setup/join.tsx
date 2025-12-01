@@ -104,7 +104,7 @@ export default function JoinTeam() {
             placeholderTextColor="#94A3B8"
             autoCapitalize="characters"
             autoCorrect={false}
-            maxLength={10}
+            maxLength={30}
             autoFocus
           />
           <Text className="text-xs text-gray-500">

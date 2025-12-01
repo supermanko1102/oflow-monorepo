@@ -64,7 +64,7 @@ CREATE TABLE public.orders (
   items jsonb NOT NULL,
   total_amount numeric NOT NULL,
   pickup_date date NOT NULL,
-  pickup_time time without time zone NOT NULL,
+  pickup_time time without time zone,
   pickup_method text DEFAULT 'store'::text,
   delivery_address text,
   status text DEFAULT 'pending'::text,
@@ -236,6 +236,23 @@ CREATE TABLE public.teams (
   deleted_at timestamp with time zone,
   line_bot_user_id text,
   CONSTRAINT teams_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  team_id uuid,
+  expo_push_token text NOT NULL UNIQUE,
+  platform text,
+  device_id text,
+  app_version text,
+  project_id text,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'revoked'::text])),
+  last_seen_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT user_push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_push_tokens_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
 );
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
