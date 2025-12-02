@@ -11,13 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oflow.app",
-      "associatedDomains": [
-        "applinks:oflow-website.vercel.app"
-      ],
+      "associatedDomains": ["applinks:oflow-website.vercel.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "18"
+      "buildNumber": "20"
     },
     "android": {
       "adaptiveIcon": {
