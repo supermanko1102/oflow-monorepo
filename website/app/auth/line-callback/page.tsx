@@ -117,12 +117,10 @@ export default function LineCallbackPage() {
         console.log("[LINE Callback] 優先透過 URL Scheme 回到 app");
         window.location.href = schemeLink;
 
-        // 1 秒後若仍停留在頁面，改用 https Universal Link 作為備援
+        // 無論有無開啟 app，都在 1 秒後跳到 https fallback，以便關閉授權 session/tab
         setTimeout(() => {
-          if (!document.hidden) {
-            console.log("[LINE Callback] URL Scheme 可能失敗，使用 https fallback");
-            window.location.replace(fallbackUniversalLink);
-          }
+          console.log("[LINE Callback] 強制導向 https fallback 以關閉授權視窗");
+          window.location.replace(fallbackUniversalLink);
         }, 1000);
       } catch (error) {
         console.error("[LINE Callback] 處理失敗:", error);
