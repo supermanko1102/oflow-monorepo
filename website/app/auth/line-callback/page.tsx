@@ -101,17 +101,29 @@ export default function LineCallbackPage() {
         console.log("[LINE Callback] 團隊數:", result.teams?.length || 0);
 
         // 建立 Universal Link 並傳遞 session tokens 和團隊資料
-        // 使用 Universal Link 而非 URL Scheme，避免 iOS 安全限制
+        // 先嘗試直接以 URL Scheme 打開 App，若失敗再 fallback 到 https
         setStatus("登入成功！正在跳轉...");
         const teamsJson = JSON.stringify(result.teams || []);
-        const universalLink = `https://oflow-website.vercel.app/auth/callback?access_token=${encodeURIComponent(
-          result.session.access_token
-        )}&refresh_token=${encodeURIComponent(
-          result.session.refresh_token
-        )}&teams=${encodeURIComponent(teamsJson)}`;
+        const fragmentParams = new URLSearchParams({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+          teams: teamsJson,
+          state: state || "",
+        }).toString();
 
-        console.log("[LINE Callback] 重定向回 app (Universal Link)");
-        window.location.replace(universalLink);
+        const schemeLink = `oflow://auth?${fragmentParams}`;
+        const fallbackUniversalLink = `https://oflow-website.vercel.app/auth/callback#${fragmentParams}`;
+
+        console.log("[LINE Callback] 優先透過 URL Scheme 回到 app");
+        window.location.href = schemeLink;
+
+        // 1 秒後若仍停留在頁面，改用 https Universal Link 作為備援
+        setTimeout(() => {
+          if (!document.hidden) {
+            console.log("[LINE Callback] URL Scheme 可能失敗，使用 https fallback");
+            window.location.replace(fallbackUniversalLink);
+          }
+        }, 1000);
       } catch (error) {
         console.error("[LINE Callback] 處理失敗:", error);
         setStatus("登入失敗");
