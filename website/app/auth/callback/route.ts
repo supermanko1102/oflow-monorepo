@@ -8,46 +8,19 @@ import { NextRequest, NextResponse } from "next/server";
  * - 如果 app 未安裝：會在 Safari 中打開，顯示下載頁
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const requestUrl = new URL(request.url);
 
-  // 取得所有參數
-  const accessToken = searchParams.get("access_token");
-  const refreshToken = searchParams.get("refresh_token");
-  const teams = searchParams.get("teams");
-  const error = searchParams.get("error");
-
-  console.log("[Universal Link] 收到請求:", {
-    hasAccessToken: !!accessToken,
-    hasRefreshToken: !!refreshToken,
-    hasTeams: !!teams,
-    error,
-  });
-
-  // 檢測 User-Agent，判斷是否來自 mobile app
+  // 取得 User-Agent
   const userAgent = request.headers.get("user-agent") || "";
   const isInApp = /OFlow/i.test(userAgent);
 
   console.log("[Universal Link] User-Agent:", userAgent);
   console.log("[Universal Link] 是否在 app 內:", isInApp);
 
-  // 如果在瀏覽器中打開（app 未安裝），顯示下載頁
-  // if (!isInApp) {
-  //   console.log("[Universal Link] 重定向到下載頁");
-  //   return NextResponse.redirect(new URL("/download", request.url));
-  // }
-
   // 返回 HTML 並通過 JavaScript 嘗試打開 app
   // 如果 Universal Link 失效，使用 URL Scheme 作為 fallback
-  
-  // 構建 URL Scheme deep link（fallback）
-  const params = new URLSearchParams();
-  if (accessToken) params.set("access_token", accessToken);
-  if (refreshToken) params.set("refresh_token", refreshToken);
-  if (teams) params.set("teams", teams);
-  if (error) params.set("error", error);
-  
-  const urlSchemeLink = `oflow://auth?${params.toString()}`;
-  
+  // 資料使用 hash 傳遞，避免出現在伺服器 log / 瀏覽器歷史
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -75,7 +48,19 @@ export async function GET(request: NextRequest) {
   </style>
   <script>
     // Universal Link 的 fallback 機制
-    const urlScheme = ${JSON.stringify(urlSchemeLink)};
+    // 1. 優先從 hash 取得參數（避免出現在伺服器 log）
+    // 2. 若 hash 無資料，再從 query 取（向後相容）
+    function getParams() {
+      const hash = window.location.hash ? window.location.hash.slice(1) : "";
+      const search = window.location.search
+        ? window.location.search.slice(1)
+        : "";
+      const raw = hash || search;
+      return new URLSearchParams(raw);
+    }
+
+    const params = getParams();
+    const urlScheme = \`oflow://auth?\${params.toString()}\`;
     let appOpened = false;
     
     function openApp() {
@@ -113,4 +98,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
