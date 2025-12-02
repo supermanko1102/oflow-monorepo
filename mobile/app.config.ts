@@ -25,6 +25,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           resizeMode: "cover",
         },
       ],
+      ["expo-build-properties", { ios: { useFrameworks: "static" } }],
+      "@xmartlabs/react-native-line",
     ],
   };
 };

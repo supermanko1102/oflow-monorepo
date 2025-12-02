@@ -1,6 +1,6 @@
 import { initiateAppleLogin } from "@/services/apple";
 import { loginWithLine, loginWithApple, syncAuthStatus } from "@/services/auth";
-import { handleAuthCallback, initiateLineLogin } from "@/services/line";
+import { loginWithNativeLine } from "@/services/line";
 import { supabase } from "@/lib/supabase";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -26,12 +26,8 @@ export default function Landing() {
   const handleLineLogin = async () => {
     try {
       setIsLoading(true);
-      const redirectUrl = await initiateLineLogin();
-      if (!redirectUrl) {
-        Alert.alert("登入已取消", "您已取消 LINE 登入", [{ text: "確定" }]);
-        return;
-      }
-      const session = await handleAuthCallback(redirectUrl);
+      // 僅使用官方 SDK 的 App-to-App 登入
+      const session = await loginWithNativeLine();
       await loginWithLine(session.access_token, session.refresh_token);
     } catch (e) {
       e instanceof Error && console.log(`AuthLayout: Blocking [${e.message}]`);

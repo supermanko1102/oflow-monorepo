@@ -36,23 +36,17 @@ serve(async (req) => {
 
   try {
     // 1. 解析請求參數
-    const { code, state, code_verifier, redirect_uri } = await req.json();
+    const { access_token, expires_in, id_token } = await req.json();
 
-    if (!code) {
-      throw new Error("Missing authorization code");
+    if (!access_token) {
+      throw new Error("Missing access token");
     }
 
     console.log("[Auth] 收到 LINE callback 請求");
 
     // 2. 取得環境變數
-    const LINE_CHANNEL_ID = Deno.env.get("LINE_CHANNEL_ID");
-    const LINE_CHANNEL_SECRET = Deno.env.get("LINE_CHANNEL_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!LINE_CHANNEL_ID || !LINE_CHANNEL_SECRET) {
-      throw new Error("LINE credentials not configured");
-    }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
@@ -70,47 +64,16 @@ serve(async (req) => {
       }
     );
 
-    // 4. 用授權碼交換 LINE Access Token
-    console.log("[Auth] 交換 LINE access token...");
-
-    // 構建完整的 redirect_uri（必須與授權請求時完全一致）
-    const baseRedirectUri =
-      redirect_uri || "https://oflow-website.vercel.app/auth/line-callback";
-    const fullRedirectUri = code_verifier
-      ? `${baseRedirectUri}?code_verifier=${encodeURIComponent(code_verifier)}`
-      : baseRedirectUri;
-
-    console.log("[Auth] Redirect URI:", fullRedirectUri);
-
-    const tokenParams = new URLSearchParams({
-      grant_type: "authorization_code",
-      code: code,
-      redirect_uri: fullRedirectUri,
-      client_id: LINE_CHANNEL_ID,
-      client_secret: LINE_CHANNEL_SECRET,
-    });
-
-    // 如果有 code_verifier，加入 PKCE 驗證
-    if (code_verifier) {
-      tokenParams.append("code_verifier", code_verifier);
-    }
-
-    const tokenResponse = await fetch("https://api.line.me/oauth2/v2.1/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: tokenParams.toString(),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error("[Auth] LINE token 交換失敗:", errorData);
-      throw new Error(`LINE token exchange failed: ${errorData}`);
-    }
-
-    const tokenData: LineTokenResponse = await tokenResponse.json();
-    console.log("[Auth] LINE token 交換成功");
+    // 4. 取得 LINE Access Token
+    console.log("[Auth] 取得 LINE access token...");
+    const tokenData: LineTokenResponse = {
+      access_token,
+      token_type: "Bearer",
+      refresh_token: "",
+      expires_in: Number(expires_in || 0),
+      scope: "",
+      id_token,
+    };
 
     // 5. 取得 LINE 使用者資料
     console.log("[Auth] 取得 LINE 使用者資料...");
