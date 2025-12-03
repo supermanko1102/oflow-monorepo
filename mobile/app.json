@@ -2,7 +2,7 @@
   "expo": {
     "name": "OFlow",
     "slug": "mobile",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "oflow",
@@ -11,11 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oflow.app",
-      "associatedDomains": ["applinks:oflow-website.vercel.app"],
+      "associatedDomains": [
+        "applinks:oflow-website.vercel.app"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "20"
+      "buildNumber": "21"
     },
     "android": {
       "adaptiveIcon": {
