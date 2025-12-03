@@ -24,6 +24,11 @@ import {
 } from "./order.ts";
 import type { Team } from "./team.ts";
 import { replyLineMessage } from "../lib/line.ts";
+import {
+  checkAIQuota,
+  recordAIUsage,
+  calculateEstimatedCost,
+} from "../../_shared/ai-rate-limit.ts";
 
 export async function processMessageEvent({
   supabaseAdmin,
@@ -61,11 +66,55 @@ export async function processMessageEvent({
     ? await fetchConversationHistory(supabaseAdmin, existingConversation.id, 15)
     : [];
 
+  // ✅ 檢查 AI 配額（防止成本爆炸）
+  const quotaCheck = await checkAIQuota(supabaseAdmin, team.id);
+
+  if (!quotaCheck.allowed) {
+    console.warn("[Webhook] AI 配額不足:", {
+      teamId: team.id,
+      reason: quotaCheck.reason,
+      dailyUsed: quotaCheck.daily_used,
+      dailyLimit: quotaCheck.daily_limit,
+    });
+
+    // ❌ 不回覆客戶（Silent Fallback）
+    // ✅ App 端會通過查詢 team_ai_status 視圖來顯示警告
+    return; // 提前返回，不調用 AI
+  }
+
+  console.log("[Webhook] AI 配額檢查通過:", {
+    dailyUsed: quotaCheck.daily_used,
+    dailyLimit: quotaCheck.daily_limit,
+    monthlyUsed: quotaCheck.monthly_used,
+    monthlyLimit: quotaCheck.monthly_limit,
+  });
+
   const aiResult: AIParseResult = await callAIParser(
     messageText,
     team,
     conversationHistory,
     existingConversation?.collected_data
+  );
+
+  // ✅ 記錄 AI 使用量（估算 tokens 和成本）
+  // GPT-5.1 平均：輸入 ~500 tokens，輸出 ~300 tokens
+  const estimatedInputTokens = 500;
+  const estimatedOutputTokens = 300;
+
+  // 使用共用函數計算成本，確保定價一致
+  const estimatedCost = calculateEstimatedCost(
+    estimatedInputTokens,
+    estimatedOutputTokens,
+    "gpt-5.1"
+  );
+
+  await recordAIUsage(
+    supabaseAdmin,
+    team.id,
+    lineUserId,
+    "parse_message",
+    estimatedInputTokens + estimatedOutputTokens,
+    estimatedCost
   );
 
   const isOrderRelated =
