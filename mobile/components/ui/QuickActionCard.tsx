@@ -18,21 +18,10 @@ export function QuickActionCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="w-28 mr-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm active:opacity-70"
-      style={{
-        shadowColor: "#0F172A",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-      }}
+      className="rounded-2xl border border-slate-100 bg-white p-4 mr-3 shadow-sm active:opacity-70"
     >
-      <View
-        className="w-10 h-10 rounded-xl items-center justify-center mb-3"
-        style={{ backgroundColor: "#F8FAFC" }}
-      >
-        <Ionicons name={icon} size={20} color={Palette.brand.slate} />
-      </View>
-      <Text className="text-sm font-bold text-slate-900 mb-1" numberOfLines={1}>
+      <Ionicons name={icon} size={20} color={Palette.brand.slate} />
+      <Text className="text-sm font-bold text-slate-900 " numberOfLines={1}>
         {title}
       </Text>
       {subtitle && (

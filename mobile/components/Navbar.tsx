@@ -46,17 +46,10 @@ export function Navbar({
   teamStatus = "open",
   title,
   subtitle,
-  showActions = true,
-  showDangerTrigger = false,
   onTeamPress,
-  onSearchPress,
-  onNotificationsPress,
-  onCreatePress,
-  onDangerPress,
   tabs,
   trailingContent,
   centerContent,
-  rightContent,
 }: NavbarProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -68,7 +61,9 @@ export function Navbar({
   const subtitleClass = isDark ? "text-slate-400" : "text-slate-500";
   const iconColor = isDark ? "#E2E8F0" : "#475569";
   const tabInactiveTextClass = isDark ? "text-slate-400" : "text-slate-500";
-  const tabInactiveBorderClass = isDark ? "border-slate-800" : "border-slate-200";
+  const tabInactiveBorderClass = isDark
+    ? "border-slate-800"
+    : "border-slate-200";
 
   const statusIndicatorClass =
     teamStatus === "open"
@@ -126,79 +121,19 @@ export function Navbar({
             onTeamPress ? "" : "opacity-70"
           }`}
         >
-          <View
-            className={`w-2 h-2 rounded-full ${statusIndicatorClass}`}
-          />
+          <View className={`w-2 h-2 rounded-full ${statusIndicatorClass}`} />
           <Text className={`text-sm font-semibold ${textClass}`}>
             {teamName}
           </Text>
-          <Ionicons
-            name="chevron-down"
-            size={16}
-            color={iconColor}
-          />
+          <Ionicons name="chevron-down" size={16} color={iconColor} />
         </Pressable>
-
-        {/* Right: Actions or Custom Content */}
-        <View className="flex-row items-center gap-3">
-          {rightContent ? (
-            rightContent
-          ) : (showActions || showDangerTrigger) ? (
-            <>
-              {showActions ? (
-                <>
-                  <IconButton
-                    icon="search"
-                    ariaLabel="搜尋"
-                    onPress={onSearchPress}
-                    isDark={isDark}
-                  />
-                  <IconButton
-                    icon="notifications-outline"
-                    ariaLabel="提醒"
-                    onPress={onNotificationsPress}
-                    isDark={isDark}
-                  />
-              <Pressable
-                onPress={onCreatePress}
-                className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
-                  isDark ? "bg-brand-teal" : "bg-slate-900"
-                }`}
-              >
-                <Ionicons
-                  name="add"
-                  size={18}
-                  color="#FFFFFF"
-                />
-                <Text className="text-white text-xs font-semibold">
-                  新增
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {showDangerTrigger ? (
-                <IconButton
-                  icon="log-out-outline"
-                  ariaLabel="危險操作"
-                  onPress={onDangerPress}
-                  variant="danger"
-                  isDark={isDark}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </View>
       </View>
 
       {/* Center: Title or Custom Content */}
       <View className="mt-4">
-        <Text className={`text-xl font-bold ${textClass}`}>
-          {title}
-        </Text>
+        <Text className={`text-xl font-bold ${textClass}`}>{title}</Text>
         {subtitle ? (
-          <Text className={`text-xs mt-1 ${subtitleClass}`}>
-            {subtitle}
-          </Text>
+          <Text className={`text-xs mt-1 ${subtitleClass}`}>{subtitle}</Text>
         ) : null}
         {centerContent ? <View className="mt-3">{centerContent}</View> : null}
       </View>

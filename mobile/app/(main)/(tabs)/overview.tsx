@@ -1,27 +1,23 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { IconButton } from "@/components/Navbar";
-import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import {
   useDashboardSummary,
   useRevenueStats,
 } from "@/hooks/queries/useDashboard";
 import { useDashboardActivity } from "@/hooks/queries/useDashboardActivity";
-import { useUpdateAutoMode } from "@/hooks/queries/useTeams";
 import { useUser } from "@/hooks/queries/useUser";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import { useRouter } from "expo-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import { format } from "date-fns";
 import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
-  TouchableOpacity,
+  Pressable,
   View,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { showApiError } from "@/lib/showApiError";
+import { Ionicons } from "@expo/vector-icons";
 
 type MetricCardProps = {
   label: string;
@@ -79,8 +75,6 @@ function MetricCard({
   );
 }
 
-type OperationMode = "auto" | "semi";
-
 export default function Overview() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
   const router = useRouter();
@@ -89,35 +83,6 @@ export default function Overview() {
   const { data: user } = useUser();
 
   // Fetch Teams
-  // Auto Mode Mutation
-  const { mutateAsync: mutateAutoMode, isPending: isUpdatingMode } =
-    useUpdateAutoMode();
-
-  // Local state for mode to allow optimistic UI, synced with server state
-  const [mode, setMode] = useState<OperationMode>("auto");
-  const [timeRange, setTimeRange] = useState<"day" | "week" | "month">("day");
-
-  useEffect(() => {
-    if (currentTeam) {
-      setMode(currentTeam.auto_mode ? "auto" : "semi");
-    }
-  }, [currentTeam?.auto_mode, currentTeam]);
-
-  const handleModeChange = async (newMode: OperationMode) => {
-    if (!currentTeamId || isUpdatingMode) return;
-
-    try {
-      // Wait for server confirmation
-      await mutateAutoMode({
-        teamId: currentTeamId,
-        autoMode: newMode === "auto",
-      });
-      // Update local state only after success
-      setMode(newMode);
-    } catch (error) {
-      showApiError(error);
-    }
-  };
 
   // Fetch dashboard data
   const {
@@ -132,18 +97,9 @@ export default function Overview() {
     refetch: refetchRevenue,
   } = useRevenueStats(currentTeamId, "day");
 
-  const { data: weekRevenueData, refetch: refetchWeekRevenue } =
-    useRevenueStats(currentTeamId, "week");
-
-  const { data: monthRevenueData, refetch: refetchMonthRevenue } =
-    useRevenueStats(currentTeamId, "month");
-
   const {
     data: activityPages,
     isLoading: isActivityLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
     refetch: refetchActivity,
   } = useDashboardActivity({
     teamId: currentTeamId,
@@ -180,7 +136,7 @@ export default function Overview() {
     const pageItems = activityPages?.pages.flatMap((p) => p.items || []) || [];
 
     if (pageItems.length > 0) {
-      return pageItems.map((order) => {
+      return pageItems.slice(0, 7).map((order) => {
         const date = order.createdAt || order.completedAt || order.updatedAt;
         const displayDate = date ? new Date(date) : new Date();
         const isNew =
@@ -235,8 +191,6 @@ export default function Overview() {
     await Promise.all([
       refetchDashboard(),
       refetchRevenue(),
-      refetchWeekRevenue(),
-      refetchMonthRevenue(),
       refetchActivity(),
     ]);
   };
@@ -247,6 +201,24 @@ export default function Overview() {
     weekday: "long",
   });
 
+  const quickLinks = [
+    {
+      icon: "receipt-outline" as const,
+      label: "商品管理",
+      onPress: () => router.push("/production"),
+    },
+    {
+      icon: "bicycle-outline" as const,
+      label: "配送設定",
+      onPress: () => router.push("/delivery"),
+    },
+    {
+      icon: "chatbubble-ellipses-outline" as const,
+      label: "LINE 設定",
+      onPress: () => router.push("/lineConnect"),
+    },
+  ];
+
   return (
     <MainLayout
       title={`Hi, ${user?.displayName || "店主"}`}
@@ -254,17 +226,6 @@ export default function Overview() {
       teamName={currentTeam?.team_name || "載入中..."}
       teamStatus="open"
       showActions={false}
-      rightContent={
-        <View className="flex-row items-center gap-3">
-          <IconButton
-            icon="notifications-outline"
-            ariaLabel="提醒"
-            onPress={() => console.log("notifications")}
-            isDark={false}
-          />
-        </View>
-      }
-      onNotificationsPress={() => console.log("notifications")}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -276,100 +237,44 @@ export default function Overview() {
           />
         }
       >
-        {/* AI Mode Switcher */}
-        <View className="mb-6 bg-gray-100 p-1 rounded-full flex-row">
-          <TouchableOpacity
-            onPress={() => handleModeChange("auto")}
-            disabled={isUpdatingMode}
-            className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
-              mode === "auto" ? "bg-white " : ""
-            }`}
-          >
-            {isUpdatingMode && mode !== "auto" ? (
-              <ActivityIndicator size="small" color="#9CA3AF" />
-            ) : (
-              <MaterialCommunityIcons
-                name="robot"
-                size={20}
-                color={mode === "auto" ? "#008080" : "#9CA3AF"}
-              />
-            )}
-            <View>
-              <Text
-                className={`text-sm font-bold ${
-                  mode === "auto" ? "text-brand-teal" : "text-gray-500"
-                }`}
+        {/* Hero Summary */}
+        <View className="mb-6 px-1">
+          <View className="rounded-3xl bg-white border border-slate-100 shadow-sm p-5">
+            <Text className="text-sm font-semibold text-slate-500">
+              今日狀態
+            </Text>
+            <Text className="text-2xl font-extrabold text-slate-900 mt-1">
+              {todayMetrics.orders} 筆訂單 · {todayMetrics.pending} 待處理
+            </Text>
+            <Text className="text-[12px] text-slate-500 mt-1">
+              團隊：{currentTeam?.team_name || "載入中..."}
+            </Text>
+            <View className="flex-row items-center gap-2 mt-3">
+              <Pressable
+                onPress={() => router.push("/(main)/(tabs)/inbox")}
+                className="flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-brand-teal"
               >
-                全自動
-              </Text>
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={16}
+                  color="#FFFFFF"
+                />
+                <Text className="text-white text-sm font-semibold">
+                  前往收件匣
+                </Text>
+              </Pressable>
+              <View className="flex-row items-center gap-1 px-3 py-2 rounded-full bg-slate-100">
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={14}
+                  color="#0F172A"
+                />
+                <Text className="text-[12px] font-semibold text-slate-700">
+                  AI 建單啟用中
+                </Text>
+              </View>
             </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleModeChange("semi")}
-            disabled={isUpdatingMode}
-            className={`flex-1 py-3 px-4 rounded-full flex-row items-center justify-center space-x-2 ${
-              mode === "semi" ? "bg-white " : ""
-            }`}
-          >
-            {isUpdatingMode && mode !== "semi" ? (
-              <ActivityIndicator size="small" color="#9CA3AF" />
-            ) : (
-              <MaterialCommunityIcons
-                name="file-document-edit"
-                size={20}
-                color={mode === "semi" ? "#5A6B7C" : "#9CA3AF"}
-              />
-            )}
-            <View>
-              <Text
-                className={`text-sm font-bold ${
-                  mode === "semi" ? "text-brand-slate" : "text-gray-500"
-                }`}
-              >
-                半自動
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Mode Description */}
-        <View className="mb-6 px-2">
-          <Text className="text-center text-gray-500 text-sm">
-            {mode === "auto"
-              ? "AI 將自動建立訂單並回覆訊息"
-              : "AI 將自動建立訂單但不回覆訊息"}
-          </Text>
-        </View>
-
-        {/* Quick Actions */}
-        <View className="mb-6">
-          <View className="flex-row items-center justify-between mb-3 px-1">
-            <Text className="text-base font-bold text-slate-900">快捷功能</Text>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 4 }}
-          >
-            <QuickActionCard
-              icon="cube-outline"
-              title="商品管理"
-              subtitle="管理商品與庫存"
-              onPress={() => router.push("/production")}
-            />
-            <QuickActionCard
-              icon="bicycle-outline"
-              title="配送設定"
-              subtitle="設定配送方式"
-              onPress={() => router.push("/delivery")}
-            />
-            <QuickActionCard
-              icon="chatbubble-ellipses-outline"
-              title="LINE 設定"
-              subtitle="連結 LINE 帳號"
-              onPress={() => router.push("/lineConnect")}
-            />
-          </ScrollView>
         </View>
 
         {/* Loading State */}
@@ -380,18 +285,12 @@ export default function Overview() {
           </View>
         ) : (
           <>
-            {/* Metrics Carousel */}
-            <View className="mb-8">
-              <View className="flex-row items-center justify-between mb-4 px-1">
-                <Text className="text-lg font-bold text-slate-900">
-                  今日概況
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="-mx-6 px-6"
-              >
+            {/* Metrics Grid */}
+            <View className="mb-8 px-1">
+              <Text className="text-lg font-bold text-slate-900 mb-3">
+                概況
+              </Text>
+              <View className="flex-row flex-wrap gap-3">
                 <MetricCard
                   label="今日營收"
                   value={todayMetrics.revenue}
@@ -403,47 +302,37 @@ export default function Overview() {
                   }
                   trendType="up"
                 />
-                <MetricCard
-                  label="今日訂單"
-                  value={todayMetrics.orders}
-                  icon="receipt-outline"
-                  trend={
-                    dashboardData?.todayCompleted.length
-                      ? `${dashboardData.todayCompleted.length} 已完成`
-                      : undefined
-                  }
-                  trendType="up"
-                />
-                <MetricCard
-                  label="待處理訂單"
-                  value={todayMetrics.pending}
-                  icon="time-outline"
-                  trend={todayMetrics.pending > 0 ? "需關注" : "無"}
-                  trendType={todayMetrics.pending > 0 ? "down" : "neutral"}
-                />
-                <MetricCard
-                  label="本週訂單"
-                  value={weekRevenueData?.orderCount || 0}
-                  icon="calendar-outline"
-                  trend={
-                    weekRevenueData?.orderCount
-                      ? `$${weekRevenueData.totalRevenue.toLocaleString()}`
-                      : undefined
-                  }
-                  trendType="up"
-                />
-                <MetricCard
-                  label="本月訂單"
-                  value={monthRevenueData?.orderCount || 0}
-                  icon="stats-chart-outline"
-                  trend={
-                    monthRevenueData?.orderCount
-                      ? `$${monthRevenueData.totalRevenue.toLocaleString()}`
-                      : undefined
-                  }
-                  trendType="up"
-                />
-              </ScrollView>
+              </View>
+            </View>
+
+            {/* Quick Links */}
+            <View className="mb-8 px-1">
+              <Text className="text-lg font-bold text-slate-900 mb-3">
+                快速入口
+              </Text>
+              <View className="gap-3">
+                {quickLinks.map((item) => (
+                  <Pressable
+                    key={item.label}
+                    onPress={item.onPress}
+                    className="flex-row items-center justify-between rounded-2xl bg-white border border-slate-100 shadow-sm px-4 py-3"
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center">
+                        <Ionicons name={item.icon} size={18} color="#0F172A" />
+                      </View>
+                      <Text className="text-sm font-semibold text-slate-900">
+                        {item.label}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#94A3B8"
+                    />
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             {/* Timeline / Feed */}
@@ -479,17 +368,6 @@ export default function Overview() {
                     </View>
                   ))
                 )}
-                {hasNextPage ? (
-                  <TouchableOpacity
-                    onPress={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                    className="mt-2 self-start px-3 py-2 rounded-lg bg-white border border-gray-200"
-                  >
-                    <Text className="text-sm font-semibold text-brand-teal">
-                      {isFetchingNextPage ? "載入中..." : "載入更多"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
               </View>
             </View>
           </>

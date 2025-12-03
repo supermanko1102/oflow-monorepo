@@ -1,5 +1,4 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { IconButton } from "@/components/Navbar";
 import {
   ConfirmOrderData,
   ConversationConfirmForm,
@@ -8,6 +7,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Palette } from "@/constants/palette";
 import { Ionicons } from "@expo/vector-icons";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
+import { useUpdateAutoMode } from "@/hooks/queries/useTeams";
+import { showApiError } from "@/lib/showApiError";
 import {
   useConfirmConversation,
   useConversations,
@@ -15,7 +16,7 @@ import {
   useIgnoreConversation,
   useConversationsRealtime,
 } from "@/hooks/queries/useConversations";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,10 +25,12 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
 type InboxMode = "exception" | "auto";
+type OperationMode = "auto" | "semi";
 
 type ExceptionTicket = {
   id: string;
@@ -111,7 +114,29 @@ export default function Inbox() {
   const confirmConversation = useConfirmConversation();
   const ignoreConversation = useIgnoreConversation();
 
-  const [mode, setMode] = useState<InboxMode>("exception");
+  const [inboxMode, setInboxMode] = useState<InboxMode>("exception");
+  const [operationMode, setOperationMode] = useState<OperationMode>("auto");
+  const { mutateAsync: mutateAutoMode, isPending: isUpdatingMode } =
+    useUpdateAutoMode();
+  useEffect(() => {
+    if (currentTeam) {
+      setOperationMode(currentTeam.auto_mode ? "auto" : "semi");
+    }
+  }, [currentTeam?.auto_mode, currentTeam]);
+
+  const handleOperationModeChange = async (newMode: OperationMode) => {
+    if (!currentTeamId || isUpdatingMode) return;
+    try {
+      await mutateAutoMode({
+        teamId: currentTeamId,
+        autoMode: newMode === "auto",
+      });
+      setOperationMode(newMode);
+    } catch (error) {
+      showApiError(error);
+    }
+  };
+
   useConversationsRealtime(currentTeamId);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [formConversationId, setFormConversationId] = useState<string | null>(
@@ -412,7 +437,10 @@ export default function Inbox() {
                     backgroundColor: "rgba(13, 148, 136, 0.08)",
                   }}
                 >
-                  <Text className="text-[11px] font-semibold" style={{ color: brandTeal }}>
+                  <Text
+                    className="text-[11px] font-semibold"
+                    style={{ color: brandTeal }}
+                  >
                     {record.orderNo || "尚未產生編號"}
                   </Text>
                 </View>
@@ -438,7 +466,11 @@ export default function Inbox() {
 
               <View className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={brandTeal} />
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={16}
+                    color={brandTeal}
+                  />
                   <Text className="text-[11px] font-semibold text-slate-700">
                     AI 回覆
                   </Text>
@@ -481,27 +513,69 @@ export default function Inbox() {
                     badge: autoRecords.length,
                   },
                 ]}
-                value={mode}
-                onChange={(val) => setMode(val as InboxMode)}
+                value={inboxMode}
+                onChange={(val) => setInboxMode(val as InboxMode)}
                 theme="brand"
               />
+              <View className="mt-3 bg-gray-100 p-1 rounded-full flex-row">
+                <TouchableOpacity
+                  onPress={() => handleOperationModeChange("auto")}
+                  disabled={isUpdatingMode}
+                  className={`flex-1 py-2 px-3 rounded-full flex-row items-center justify-center ${
+                    operationMode === "auto" ? "bg-white" : ""
+                  }`}
+                >
+                  {isUpdatingMode && operationMode !== "auto" ? (
+                    <ActivityIndicator size="small" color="#9CA3AF" />
+                  ) : (
+                    <Ionicons
+                      size={16}
+                      color={operationMode === "auto" ? brandTeal : "#9CA3AF"}
+                    />
+                  )}
+                  <Text
+                    className={`ml-2 text-[13px] font-semibold ${
+                      operationMode === "auto"
+                        ? "text-brand-teal"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    全自動
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleOperationModeChange("semi")}
+                  disabled={isUpdatingMode}
+                  className={`flex-1 py-2 px-3 rounded-full flex-row items-center justify-center ${
+                    operationMode === "semi" ? "bg-white" : ""
+                  }`}
+                >
+                  {isUpdatingMode && operationMode !== "semi" ? (
+                    <ActivityIndicator size="small" color="#9CA3AF" />
+                  ) : (
+                    <Ionicons
+                      name="file-tray-full-outline"
+                      size={16}
+                      color={operationMode === "semi" ? brandSlate : "#9CA3AF"}
+                    />
+                  )}
+                  <Text
+                    className={`ml-2 text-[13px] font-semibold ${
+                      operationMode === "semi"
+                        ? "text-brand-slate"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    半自動
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text className="text-[11px] text-slate-500 mt-2">
+                全自動：AI 直接回覆並建單；半自動：AI 建單但由你確認回覆。
+              </Text>
             </View>
           </View>
         }
-        rightContent={
-          <View className="flex-row items-center gap-2">
-            <IconButton
-              icon="checkmark-done-outline"
-              ariaLabel="批次處理"
-              onPress={() => console.log("batch")}
-              isDark={false}
-            />
-          </View>
-        }
-        onTeamPress={() => console.log("team picker")}
-        onSearchPress={() => console.log("search inbox")}
-        onNotificationsPress={() => console.log("notifications")}
-        onCreatePress={() => console.log("新建訊息")}
       >
         <ScrollView
           className="px-4 pt-2 pb-24"
@@ -511,7 +585,7 @@ export default function Inbox() {
               onRefresh={async () => {
                 setIsUserRefreshing(true);
                 try {
-                  if (mode === "exception") {
+                  if (inboxMode === "exception") {
                     await Promise.all([
                       refetchCollecting(),
                       refetchAwaiting(),
@@ -528,7 +602,7 @@ export default function Inbox() {
             />
           }
         >
-          {mode === "exception" ? (
+          {inboxMode === "exception" ? (
             <>
               <View
                 className="rounded-2xl border p-4 mb-3"
@@ -567,65 +641,76 @@ export default function Inbox() {
                 exceptions.map((ticket) => renderExceptionCard(ticket))
               )}
             </>
-        ) : (
-          <View className="gap-3">
-            {isCompletedLoading ? (
-              <View
-                className="rounded-2xl border p-4 items-center"
-                style={{
-                  backgroundColor: "rgba(13, 148, 136, 0.08)",
-                  borderColor: "rgba(13, 148, 136, 0.2)",
-                }}
-              >
-                <ActivityIndicator color={brandTeal} />
-                <Text className="text-sm font-semibold text-brand-slate mt-2">
-                  AI 建單同步中
-                </Text>
-                <Text className="text-xs text-slate-500 mt-1">
-                  稍待數秒，對話會自動更新
-                </Text>
-              </View>
-            ) : autoRecords.length === 0 ? (
-              <View className="rounded-2xl border border-slate-200 bg-white p-5 items-center">
-                <Ionicons name="checkmark-done-outline" size={22} color={brandTeal} />
-                <Text className="text-sm font-semibold text-slate-900 mt-2">
-                  目前沒有已完成的對話
-                </Text>
-                <Text className="text-xs text-slate-500 mt-1 text-center">
-                  AI 完成訂單會即時顯示在這裡
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="sparkles-outline" size={18} color={brandTeal} />
-                    <Text className="text-sm font-semibold text-slate-900">
-                      AI 已建單列表
-                    </Text>
-                  </View>
-                  <View
-                    className="px-2 py-1 rounded-full border"
-                    style={{
-                      backgroundColor: "rgba(13, 148, 136, 0.12)",
-                      borderColor: "rgba(13, 148, 136, 0.3)",
-                    }}
-                  >
-                    <Text className="text-[11px] font-semibold" style={{ color: brandTeal }}>
-                      {autoRecords.length} 筆
-                    </Text>
-                  </View>
+          ) : (
+            <View className="gap-3">
+              {isCompletedLoading ? (
+                <View
+                  className="rounded-2xl border p-4 items-center"
+                  style={{
+                    backgroundColor: "rgba(13, 148, 136, 0.08)",
+                    borderColor: "rgba(13, 148, 136, 0.2)",
+                  }}
+                >
+                  <ActivityIndicator color={brandTeal} />
+                  <Text className="text-sm font-semibold text-brand-slate mt-2">
+                    AI 建單同步中
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-1">
+                    稍待數秒，對話會自動更新
+                  </Text>
                 </View>
-                <View className="gap-3">
-                  {autoRecords.map((record) => (
-                    <AutoRecordCard key={record.id} record={record} />
-                  ))}
+              ) : autoRecords.length === 0 ? (
+                <View className="rounded-2xl border border-slate-200 bg-white p-5 items-center">
+                  <Ionicons
+                    name="checkmark-done-outline"
+                    size={22}
+                    color={brandTeal}
+                  />
+                  <Text className="text-sm font-semibold text-slate-900 mt-2">
+                    目前沒有已完成的對話
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-1 text-center">
+                    AI 完成訂單會即時顯示在這裡
+                  </Text>
                 </View>
-              </>
-            )}
-          </View>
-        )}
-      </ScrollView>
+              ) : (
+                <>
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons
+                        name="sparkles-outline"
+                        size={18}
+                        color={brandTeal}
+                      />
+                      <Text className="text-sm font-semibold text-slate-900">
+                        AI 已建單列表
+                      </Text>
+                    </View>
+                    <View
+                      className="px-2 py-1 rounded-full border"
+                      style={{
+                        backgroundColor: "rgba(13, 148, 136, 0.12)",
+                        borderColor: "rgba(13, 148, 136, 0.3)",
+                      }}
+                    >
+                      <Text
+                        className="text-[11px] font-semibold"
+                        style={{ color: brandTeal }}
+                      >
+                        {autoRecords.length} 筆
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="gap-3">
+                    {autoRecords.map((record) => (
+                      <AutoRecordCard key={record.id} record={record} />
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+        </ScrollView>
 
         <Modal
           visible={!!detailId}

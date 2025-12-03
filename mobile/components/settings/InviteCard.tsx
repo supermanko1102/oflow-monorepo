@@ -25,13 +25,6 @@ export function InviteCard({
             分享邀請碼讓夥伴加入此團隊
           </Text>
         </View>
-        <Pressable
-          onPress={onRefetchInvite}
-          className="px-3 py-1.5 rounded-full border border-slate-200"
-          disabled={isLoading}
-        >
-          <Text className="text-[12px] font-semibold text-slate-700">重新產生</Text>
-        </Pressable>
       </View>
       <View className="flex-row items-center justify-between bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
         <View className="flex-1">

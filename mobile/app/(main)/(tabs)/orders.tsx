@@ -354,7 +354,11 @@ export default function Orders() {
             <View className="mt-2">
               <SegmentedControl
                 options={[
-                  { label: "待處理", value: "pendingFocus", badge: pendingCount },
+                  {
+                    label: "待處理",
+                    value: "pendingFocus",
+                    badge: pendingCount,
+                  },
                   { label: "今日", value: "today", badge: todayCount },
                   { label: "全部", value: "all", badge: totalCount },
                 ]}
@@ -370,12 +374,6 @@ export default function Orders() {
             <IconButton
               icon="add"
               ariaLabel="新增訂單"
-              onPress={() => console.log("create order")}
-              isDark={false}
-            />
-            <IconButton
-              icon="pricetags-outline"
-              ariaLabel="前往商品管理"
               onPress={() => router.push("/production")}
               isDark={false}
             />
