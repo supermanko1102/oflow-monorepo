@@ -429,7 +429,7 @@ serve(async (req) => {
         );
       }
 
-      // 查詢營收統計
+      // 查詢營收統計（改用 daily_revenue 聚合表）
       if (action === "revenue-stats") {
         const teamId = url.searchParams.get("team_id");
         const timeRange = url.searchParams.get("time_range") || "day";
@@ -449,13 +449,12 @@ serve(async (req) => {
         let endDate: string;
 
         switch (timeRange) {
-          case "day":
-            // 今天
+          case "day": {
             startDate = now.toISOString().split("T")[0];
             endDate = startDate;
             break;
-          case "week":
-            // 本週（週一到週日）
+          }
+          case "week": {
             const dayOfWeek = now.getDay();
             const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 週日=0，調整為週一
             const monday = new Date(now);
@@ -465,59 +464,52 @@ serve(async (req) => {
             startDate = monday.toISOString().split("T")[0];
             endDate = sunday.toISOString().split("T")[0];
             break;
-          case "month":
-            // 本月
+          }
+          case "month": {
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             startDate = firstDay.toISOString().split("T")[0];
             endDate = lastDay.toISOString().split("T")[0];
             break;
-          case "year":
-            // 本年
+          }
+          case "year": {
             startDate = `${now.getFullYear()}-01-01`;
             endDate = `${now.getFullYear()}-12-31`;
             break;
+          }
           default:
             throw new Error("Invalid time_range parameter");
         }
 
         console.log("[Order Operations] 日期範圍:", startDate, "到", endDate);
 
-        // 查詢該時間範圍內已付款和已完成的訂單
-        // 使用 paid_at（收款日期）而非 pickup_date（取貨日期）
-        // 符合現金收付制：今天收到的錢算今天的營收
-        const { data: orders, error } = await supabaseAdmin
-          .from("orders")
-          .select("total_amount, payment_method, paid_at")
+        const { data: dailyAgg, error: dailyError } = await supabaseAdmin
+          .from("daily_revenue")
+          .select(
+            "total_revenue, order_count, cash_total, transfer_total, other_total"
+          )
           .eq("team_id", teamId)
-          .in("status", ["paid", "completed"])
-          .not("paid_at", "is", null)
-          .gte("paid_at", `${startDate}T00:00:00`)
-          .lte("paid_at", `${endDate}T23:59:59`);
+          .gte("revenue_date", startDate)
+          .lte("revenue_date", endDate);
 
-        if (error) {
-          throw error;
+        if (dailyError) {
+          throw dailyError;
         }
 
-        // 統計營收
         let totalRevenue = 0;
+        let orderCount = 0;
         const paymentStats = {
           cash: 0,
           transfer: 0,
           other: 0,
         };
-        let orderCount = 0;
 
-        (orders || []).forEach((order) => {
-          const amount = parseFloat(order.total_amount);
-          totalRevenue += amount;
-          orderCount += 1;
-
-          // 按付款方式分類（NULL 視為 cash）
-          const method = order.payment_method || "cash";
-          if (method in paymentStats) {
-            paymentStats[method as keyof typeof paymentStats] += amount;
-          }
+        (dailyAgg || []).forEach((row) => {
+          totalRevenue += Number(row.total_revenue || 0);
+          orderCount += Number(row.order_count || 0);
+          paymentStats.cash += Number(row.cash_total || 0);
+          paymentStats.transfer += Number(row.transfer_total || 0);
+          paymentStats.other += Number(row.other_total || 0);
         });
 
         console.log("[Order Operations] 營收統計完成:", {
