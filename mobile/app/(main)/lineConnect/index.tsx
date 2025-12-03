@@ -1,4 +1,3 @@
-import { MainLayout } from "@/components/layout/MainLayout";
 import { IconButton } from "@/components/Navbar";
 import { LineConnectionForm } from "@/components/form/LineConnectionForm";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
@@ -6,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Alert, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { BasicLayout } from "@/components/layout/BasicLayout";
 
 export default function LineConnectionSettings() {
   const router = useRouter();
@@ -16,19 +16,7 @@ export default function LineConnectionSettings() {
   } = useCurrentTeam();
 
   return (
-    <MainLayout
-      title="LINE 串接"
-      teamName={currentTeam?.team_name || "載入中..."}
-      showActions={false}
-      rightContent={
-        <IconButton
-          icon="chevron-back"
-          ariaLabel="返回"
-          onPress={() => router.back()}
-          isDark={false}
-        />
-      }
-    >
+    <BasicLayout title="LINE 串接">
       <KeyboardAwareScrollView
         bottomOffset={50}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -67,20 +55,16 @@ export default function LineConnectionSettings() {
             refetchTeams={refetchTeams}
             onCancel={() => router.replace("/(main)/(tabs)/overview")}
             onSuccess={(botName) =>
-              Alert.alert(
-                "設定成功",
-                `已成功連接 LINE 官方帳號：${botName}`,
-                [
-                  {
-                    text: "確定",
-                    onPress: () => router.replace("/(main)/(tabs)/inbox"),
-                  },
-                ]
-              )
+              Alert.alert("設定成功", `已成功連接 LINE 官方帳號：${botName}`, [
+                {
+                  text: "確定",
+                  onPress: () => router.replace("/(main)/(tabs)/inbox"),
+                },
+              ])
             }
           />
         </View>
       </KeyboardAwareScrollView>
-    </MainLayout>
+    </BasicLayout>
   );
 }

@@ -1,5 +1,4 @@
-import { MainLayout } from "@/components/layout/MainLayout";
-import { IconButton } from "@/components/Navbar";
+import { BasicLayout } from "@/components/layout/BasicLayout";
 import ProductForm from "@/components/form/ProductForm";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
@@ -19,7 +18,6 @@ import {
   ActivityIndicator,
   Image,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -28,14 +26,12 @@ import {
   View,
 } from "react-native";
 import { useState } from "react";
-import { useRouter } from "expo-router";
 
 const brandTeal = Palette.brand.primary;
 const brandSlate = Palette.brand.slate;
 
 export default function Production() {
   const { currentTeam, currentTeamId } = useCurrentTeam();
-  const router = useRouter();
   const [deliveryModalProduct, setDeliveryModalProduct] =
     useState<Product | null>(null);
   const [useTeamDeliveryDefault, setUseTeamDeliveryDefault] = useState(true);
@@ -74,7 +70,9 @@ export default function Production() {
 
   const toggleMethod = (method: DeliveryMethod) => {
     setSelectedMethods((prev) =>
-      prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method]
+      prev.includes(method)
+        ? prev.filter((m) => m !== method)
+        : [...prev, method]
     );
   };
 
@@ -211,7 +209,9 @@ export default function Production() {
             }}
             className="w-12 h-12 rounded-xl"
           />
-          {!isOn && <View className="absolute inset-0 bg-white/60 rounded-xl" />}
+          {!isOn && (
+            <View className="absolute inset-0 bg-white/60 rounded-xl" />
+          )}
         </View>
 
         <View className="flex-1">
@@ -252,7 +252,10 @@ export default function Production() {
           )}
 
           <View className="flex-row items-center gap-3 mt-2">
-            <Pressable onPress={() => openEditModal(product)} className="flex-row items-center gap-1">
+            <Pressable
+              onPress={() => openEditModal(product)}
+              className="flex-row items-center gap-1"
+            >
               <Ionicons name="create-outline" size={14} color={brandSlate} />
               <Text className="text-[12px] font-semibold text-brand-slate">
                 編輯
@@ -283,26 +286,10 @@ export default function Production() {
 
   return (
     <View className="flex-1 relative">
-      <MainLayout
+      <BasicLayout
         title="商品管理"
-        teamName={currentTeam?.team_name || "載入中..."}
+        subtitle={currentTeam?.team_name || "載入中..."}
         scrollable={false}
-        rightContent={
-          <View className="flex-row items-center gap-2">
-            <IconButton
-              icon={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
-              ariaLabel="返回訂單"
-              onPress={() => router.back()}
-              isDark={false}
-            />
-            <IconButton
-              icon="add"
-              ariaLabel="新增商品"
-              onPress={openCreateModal}
-              isDark={false}
-            />
-          </View>
-        }
       >
         <ScrollView
           className="pb-20"
@@ -326,7 +313,15 @@ export default function Production() {
             products.map((product) => renderProductRow(product))
           )}
         </ScrollView>
-      </MainLayout>
+      </BasicLayout>
+
+      <Pressable
+        onPress={openCreateModal}
+        className="absolute rounded-full flex-row items-center gap-2 top-20 right-6 bg-brand-teal p-4 shadow-lg"
+      >
+        <Ionicons name="add" size={18} color="#FFFFFF" />
+        <Text className="text-white font-semibold text-sm">新增商品</Text>
+      </Pressable>
 
       <Modal
         visible={showCreateModal}
@@ -369,7 +364,10 @@ export default function Production() {
         animationType="slide"
         onRequestClose={closeDeliveryModal}
       >
-        <Pressable className="flex-1 bg-black/30" onPress={closeDeliveryModal} />
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={closeDeliveryModal}
+        />
         <View className="bg-white rounded-t-3xl p-6">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-lg font-bold text-slate-900">

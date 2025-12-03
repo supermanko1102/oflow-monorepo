@@ -1,4 +1,3 @@
-import { MainLayout } from "@/components/layout/MainLayout";
 import { Palette } from "@/constants/palette";
 import { useCurrentTeam } from "@/hooks/useCurrentTeam";
 import {
@@ -25,6 +24,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import { BasicLayout } from "@/components/layout/BasicLayout";
 
 type FormState = DeliverySettings & { meetupAreasText: string };
 
@@ -110,30 +110,7 @@ export default function DeliverySettingsScreen() {
   };
 
   return (
-    <MainLayout
-      title="配送設定"
-      subtitle="設定店取、面交、超商與宅配"
-      teamName={currentTeam?.team_name || "載入中..."}
-      showActions={false}
-      rightContent={
-        <Pressable
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full items-center justify-center border"
-          style={{
-            backgroundColor: isDark
-              ? "rgba(255,255,255,0.08)"
-              : "#F8FAFC",
-            borderColor: isDark ? "#1F2937" : "#E2E8F0",
-          }}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color={isDark ? "#F8FAFC" : "#0F172A"}
-          />
-        </Pressable>
-      }
-    >
+    <BasicLayout title="配送設定" subtitle="設定店取、面交、超商與宅配">
       <ScrollView
         className="pb-12"
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -336,7 +313,7 @@ export default function DeliverySettingsScreen() {
           </>
         )}
       </ScrollView>
-    </MainLayout>
+    </BasicLayout>
   );
 }
 
