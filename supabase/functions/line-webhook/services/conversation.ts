@@ -10,6 +10,8 @@ export type Conversation = {
   missing_fields: string[] | null;
   order_id: string | null;
   last_message_at: string | null;
+  last_ai_reply_at?: string | null;
+  last_ai_intent_hash?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };

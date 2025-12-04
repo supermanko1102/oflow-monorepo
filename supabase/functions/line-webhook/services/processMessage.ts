@@ -2,7 +2,6 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.4
 import type {
   AIParseResult,
   ConversationMessage,
-  TeamContext,
 } from "../../_shared/types.ts";
 import {
   ensureConversation,
@@ -11,6 +10,7 @@ import {
   updateConversationData,
   findActiveConversation,
 } from "./conversation.ts";
+import type { Conversation } from "./conversation.ts";
 import {
   fetchLineProfile,
   saveIncomingMessage,
@@ -29,6 +29,37 @@ import {
   recordAIUsage,
   calculateEstimatedCost,
 } from "../../_shared/ai-rate-limit.ts";
+
+const AI_REPLY_COOLDOWN_SECONDS = 3;
+
+function buildAIIntentHash(aiResult: AIParseResult): string {
+  return JSON.stringify({
+    intent: aiResult.intent,
+    stage: aiResult.stage,
+    missing: aiResult.missing_fields || [],
+    order: aiResult.order || null,
+  });
+}
+
+async function reserveAIReplySlot(
+  supabase: SupabaseClient,
+  conversationId: string,
+  intentHash: string,
+  cooldownSeconds = AI_REPLY_COOLDOWN_SECONDS
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("reserve_ai_reply_slot", {
+    p_conversation_id: conversationId,
+    p_intent_hash: intentHash,
+    p_cooldown_seconds: cooldownSeconds,
+  });
+
+  if (error) {
+    console.error("[Webhook] 保留 AI 回覆權失敗，預設放行:", error);
+    return true; // fail-open：避免因暫時性錯誤而不回覆
+  }
+
+  return Boolean(data);
+}
 
 export async function processMessageEvent({
   supabaseAdmin,
@@ -95,6 +126,7 @@ export async function processMessageEvent({
     conversationHistory,
     existingConversation?.collected_data
   );
+  const intentHash = buildAIIntentHash(aiResult);
 
   // ✅ 記錄 AI 使用量（估算 tokens 和成本）
   // GPT-5.1 平均：輸入 ~500 tokens，輸出 ~300 tokens
@@ -123,25 +155,38 @@ export async function processMessageEvent({
     aiResult.stage === "delivery" ||
     aiResult.stage === "contact";
 
+  // 確保後續需要回覆時有 conversation 可用於節流
+  let conversation: Conversation | null =
+    existingConversation ||
+    (team.auto_mode || isOrderRelated
+      ? await ensureConversation(supabaseAdmin, team.id, lineUserId)
+      : null);
+
   if (!isOrderRelated) {
     if (team.auto_mode) {
       const replyText =
         aiResult.suggested_reply || "已收到您的訊息，感謝您的回覆！";
 
-      await replyLineMessage(
-        event.replyToken,
-        [{ type: "text", text: replyText }],
-        team.line_channel_access_token
-      );
+      const canReply =
+        conversation &&
+        (await reserveAIReplySlot(supabaseAdmin, conversation.id, intentHash));
 
-      await supabaseAdmin.from("line_messages").insert({
-        team_id: team.id,
-        line_user_id: lineUserId,
-        message_type: "text",
-        message_text: replyText,
-        role: "ai",
-        conversation_id: existingConversation?.id || null,
-      });
+      if (canReply) {
+        await replyLineMessage(
+          event.replyToken,
+          [{ type: "text", text: replyText }],
+          team.line_channel_access_token
+        );
+
+        await supabaseAdmin.from("line_messages").insert({
+          team_id: team.id,
+          line_user_id: lineUserId,
+          message_type: "text",
+          message_text: replyText,
+          role: "ai",
+          conversation_id: conversation?.id || null,
+        });
+      }
     }
 
     if (existingConversation) {
@@ -156,9 +201,16 @@ export async function processMessageEvent({
     return;
   }
 
-  let conversation =
-    existingConversation ||
+  conversation =
+    conversation ||
     (await ensureConversation(supabaseAdmin, team.id, lineUserId));
+
+  if (!conversation) {
+    console.error("[Webhook] conversation not found after ensure, abort reply");
+    return;
+  }
+
+  const conversationId = conversation.id;
 
   conversation = (await ensureConversationDisplayName(
     supabaseAdmin,
@@ -169,18 +221,18 @@ export async function processMessageEvent({
   await updateMessageConversation(
     supabaseAdmin,
     savedMessage.id,
-    conversation.id,
+    conversationId,
     lineProfile,
     savedMessage.message_data
   );
 
   const { collected, missing } = mergeCollectedData(
-    conversation.collected_data,
+    conversation?.collected_data,
     aiResult
   );
   await updateConversationData(
     supabaseAdmin,
-    conversation.id,
+    conversationId,
     collected,
     missing
   );
@@ -196,7 +248,7 @@ export async function processMessageEvent({
     const orderId = await createOrderFromAIResult(
       supabaseAdmin,
       team.id,
-      conversation.id,
+      conversationId,
       lineUserId,
       savedMessage.id,
       aiResult.order,
@@ -205,13 +257,13 @@ export async function processMessageEvent({
 
     const modeLabel = team.auto_mode ? "auto" : "semi";
     console.log(`[Webhook][${modeLabel}] create_order_from_ai success`, {
-      conversationId: conversation.id,
+      conversationId: conversationId,
       orderId,
     });
 
     await completeConversationSafe(
       supabaseAdmin,
-      conversation.id,
+      conversationId,
       orderId,
       modeLabel
     );
@@ -232,6 +284,12 @@ export async function processMessageEvent({
     // 全自動模式：回覆客人
     // 半自動模式：不回覆客人
     if (team.auto_mode) {
+      const canReply = await reserveAIReplySlot(
+        supabaseAdmin,
+        conversationId,
+        intentHash
+      );
+
       const confirmMsg =
         `✅ 訂單已確認！\n\n` +
         `訂單編號：${orderDetail?.order_number || "處理中"}\n` +
@@ -247,21 +305,23 @@ export async function processMessageEvent({
           ? `金額：NT$ ${aiResult.order.total_amount}`
           : "");
 
-      await replyLineMessage(
-        event.replyToken,
-        [{ type: "text", text: confirmMsg }],
-        team.line_channel_access_token
-      );
+      if (canReply) {
+        await replyLineMessage(
+          event.replyToken,
+          [{ type: "text", text: confirmMsg }],
+          team.line_channel_access_token
+        );
 
-      await supabaseAdmin.from("line_messages").insert({
-        team_id: team.id,
-        line_user_id: lineUserId,
-        message_type: "text",
-        message_text: confirmMsg,
-        role: "ai",
-        conversation_id: conversation.id,
-        order_id: orderId,
-      });
+        await supabaseAdmin.from("line_messages").insert({
+          team_id: team.id,
+          line_user_id: lineUserId,
+          message_type: "text",
+          message_text: confirmMsg,
+          role: "ai",
+          conversation_id: conversationId,
+          order_id: orderId,
+        });
+      }
     }
 
     return;
@@ -275,20 +335,28 @@ export async function processMessageEvent({
         ? "已收到您的訂單資訊，請再補充缺少的資料。"
         : "已收到您的訊息，謝謝！");
 
-    await replyLineMessage(
-      event.replyToken,
-      [{ type: "text", text: replyText }],
-      team.line_channel_access_token
+    const canReply = await reserveAIReplySlot(
+      supabaseAdmin,
+      conversationId,
+      intentHash
     );
 
-    await supabaseAdmin.from("line_messages").insert({
-      team_id: team.id,
-      line_user_id: lineUserId,
-      message_type: "text",
-      message_text: replyText,
-      role: "ai",
-      conversation_id: conversation.id,
-    });
+    if (canReply) {
+      await replyLineMessage(
+        event.replyToken,
+        [{ type: "text", text: replyText }],
+        team.line_channel_access_token
+      );
+
+      await supabaseAdmin.from("line_messages").insert({
+        team_id: team.id,
+        line_user_id: lineUserId,
+        message_type: "text",
+        message_text: replyText,
+        role: "ai",
+        conversation_id: conversationId,
+      });
+    }
   }
   // 半自動模式：不回覆任何訊息（靜默處理）
 }
