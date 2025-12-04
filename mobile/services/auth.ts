@@ -68,6 +68,9 @@ export async function logout() {
     currentTeamId: null,
   });
 
+  // 先取消所有進行中的/重試中的請求，避免登出後再帶舊 token 打 API
+  await queryClient.cancelQueries();
+
   await supabase.auth.signOut();
 
   queryClient.clear();
