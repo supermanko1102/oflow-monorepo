@@ -384,7 +384,6 @@ export default function TeamSetupIndex() {
             onScroll={onScroll}
             onMomentumScrollEnd={handleMomentumEnd}
             scrollEventThrottle={16}
-            snapToInterval={cardWidth}
             decelerationRate="fast"
             style={{ width: cardWidth }}
           >
