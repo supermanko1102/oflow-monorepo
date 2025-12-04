@@ -158,7 +158,7 @@ export async function processMessageEvent({
   // 確保後續需要回覆時有 conversation 可用於節流
   let conversation: Conversation | null =
     existingConversation ||
-    (team.auto_mode || isOrderRelated
+    (isOrderRelated
       ? await ensureConversation(supabaseAdmin, team.id, lineUserId)
       : null);
 
@@ -167,9 +167,9 @@ export async function processMessageEvent({
       const replyText =
         aiResult.suggested_reply || "已收到您的訊息，感謝您的回覆！";
 
-      const canReply =
-        conversation &&
-        (await reserveAIReplySlot(supabaseAdmin, conversation.id, intentHash));
+      const canReply = conversation
+        ? await reserveAIReplySlot(supabaseAdmin, conversation.id, intentHash)
+        : true; // 無對話時不節流，仍允許回覆
 
       if (canReply) {
         await replyLineMessage(
