@@ -4,7 +4,7 @@ import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Palette } from "@/constants/palette";
 import { useJoinTeam, useTeams } from "@/hooks/queries/useTeams";
 import { AuthStatus, useAuthStore } from "@/stores/auth";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -17,11 +17,7 @@ import {
 
 export default function JoinTeam() {
   const router = useRouter();
-  const { inviteCode: inviteCodeParam } =
-    useLocalSearchParams<{ inviteCode?: string }>();
-  const [inviteCode, setInviteCode] = useState(
-    () => (typeof inviteCodeParam === "string" ? inviteCodeParam : "")
-  );
+  const [inviteCode, setInviteCode] = useState("");
   const joinTeam = useJoinTeam();
   const { refetch: refetchTeams } = useTeams();
 
