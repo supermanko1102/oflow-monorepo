@@ -9,21 +9,37 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
 
-export default function JoinTeam() {
+const OFFICIAL_LINE_INVITE_URL = "https://line.me/R/ti/p/@948uomqp";
+
+export default function ExploreTeam() {
   const router = useRouter();
-  const { inviteCode: inviteCodeParam } =
-    useLocalSearchParams<{ inviteCode?: string }>();
-  const [inviteCode, setInviteCode] = useState(
-    () => (typeof inviteCodeParam === "string" ? inviteCodeParam : "")
+  const { inviteCode: inviteCodeParam } = useLocalSearchParams<{
+    inviteCode?: string;
+  }>();
+  const [inviteCode] = useState(
+    () =>
+      (typeof inviteCodeParam === "string" && inviteCodeParam.trim()) || "OFLOW"
   );
   const joinTeam = useJoinTeam();
   const { refetch: refetchTeams } = useTeams();
+
+  const handleOpenLineInvite = async () => {
+    const supported = await Linking.canOpenURL(OFFICIAL_LINE_INVITE_URL);
+    if (!supported) {
+      Alert.alert("無法開啟 LINE", "請確認是否已安裝 LINE App", [
+        { text: "確定" },
+      ]);
+      return;
+    }
+    await Linking.openURL(OFFICIAL_LINE_INVITE_URL);
+  };
 
   const handleJoinTeam = async () => {
     if (!inviteCode.trim()) {
@@ -65,9 +81,12 @@ export default function JoinTeam() {
         </Pressable>
 
         <View className="space-y-2">
-          <Text className="text-3xl font-black text-gray-900">加入團隊</Text>
+          <Text className="text-3xl font-black text-gray-900">
+            加入範例團隊
+          </Text>
           <Text className="text-sm text-gray-600">
-            使用團隊分享的邀請碼，加入他們的工作區一起協作。
+            已預填邀請碼
+            OFLOW，立即體驗完整流程；如需真實團隊，向管理員索取專屬邀請碼。
           </Text>
         </View>
 
@@ -96,23 +115,47 @@ export default function JoinTeam() {
           </View>
         </View>
 
+        <View className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-4 space-y-3">
+          <View className="flex-row items-center gap-2">
+            <Ionicons
+              name="chatbox-ellipses-outline"
+              size={18}
+              color={Palette.brand.primary}
+            />
+            <Text className="text-sm font-semibold text-gray-900">
+              官方 LINE 邀請（試用體驗）
+            </Text>
+          </View>
+          <Text className="text-xs text-emerald-900 leading-5">
+            點擊開啟官方 LINE，立即測試訊息互動與訂單流程。
+          </Text>
+          <Pressable
+            onPress={handleOpenLineInvite}
+            className="flex-row items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3"
+          >
+            <Text className="text-white font-semibold text-sm">
+              打開 LINE 並加入好友
+            </Text>
+            <Ionicons name="open-outline" size={16} color="#FFFFFF" />
+          </Pressable>
+        </View>
+
         <View className="space-y-3">
           <Text className="text-sm font-semibold text-gray-700">
             輸入邀請碼
           </Text>
           <TextInput
             value={inviteCode}
-            onChangeText={setInviteCode}
-            placeholder="例如：OFLOW1234"
-            className="w-full h-16 bg-white rounded-3xl px-4 text-center text-base border border-gray-200 tracking-widest"
+            editable={false}
+            className="w-full h-16 bg-gray-50 rounded-3xl px-4 text-center text-base border border-gray-200 tracking-widest text-gray-700"
             placeholderTextColor="#94A3B8"
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={30}
             autoFocus
           />
-          <Text className="text-xs text-gray-500">
-            如果邀請碼超過期限，請請求新的邀請碼。
+          <Text className="text-xs text-gray-500 leading-4">
+            已預填範例邀請碼：OFLOW（範例團隊）；若超過期限請向管理員索取新的邀請碼。
           </Text>
         </View>
 
