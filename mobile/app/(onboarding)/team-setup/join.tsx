@@ -17,10 +17,11 @@ import {
 
 export default function JoinTeam() {
   const router = useRouter();
-  const { inviteCode: inviteCodeParam } =
-    useLocalSearchParams<{ inviteCode?: string }>();
-  const [inviteCode, setInviteCode] = useState(
-    () => (typeof inviteCodeParam === "string" ? inviteCodeParam : "")
+  const { inviteCode: inviteCodeParam } = useLocalSearchParams<{
+    inviteCode?: string;
+  }>();
+  const [inviteCode, setInviteCode] = useState(() =>
+    typeof inviteCodeParam === "string" ? inviteCodeParam : ""
   );
   const joinTeam = useJoinTeam();
   const { refetch: refetchTeams } = useTeams();
