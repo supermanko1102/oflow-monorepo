@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -9,7 +10,6 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import type { SharedValue } from "react-native-reanimated";
 
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Palette } from "@/constants/palette";
@@ -103,7 +103,7 @@ const options = [
   {
     key: "create",
     title: "建立新團隊",
-    description: "建立屬於你的團隊，邀請成員一起管理訂單",
+    description: "我是業主，建立屬於我的團隊，邀請成員一起管理訂單",
     icon: "sparkles-outline" as const,
     variant: "primary" as const,
     href: "/(onboarding)/team-setup/create",
@@ -111,10 +111,18 @@ const options = [
   {
     key: "join",
     title: "加入現有團隊",
-    description: "使用邀請碼加入其他人的團隊",
+    description: "我是管理者，使用邀請碼加入其他人的團隊",
     icon: "people-outline" as const,
     variant: "secondary" as const,
     href: "/(onboarding)/team-setup/join",
+  },
+  {
+    key: "explore",
+    title: "加入範例團隊",
+    description: "我是探索者，加入範例團隊，立即體驗完整功能",
+    icon: "chatbox-ellipses-outline" as const,
+    variant: "secondary" as const,
+    href: "/(onboarding)/team-setup/explore",
   },
 ] as const;
 
