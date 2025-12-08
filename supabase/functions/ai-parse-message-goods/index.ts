@@ -38,6 +38,64 @@ import {
 } from "./logic/postprocess.ts";
 import { deriveStageHint } from "./logic/stageHint.ts";
 
+const AI_PARSE_RESULT_SCHEMA = {
+  type: "object",
+  properties: {
+    intent: { type: "string", enum: ["order", "inquiry", "other"] },
+    confidence: { type: "number" },
+    is_continuation: { type: "boolean" },
+    is_complete: { type: "boolean" },
+    stage: {
+      type: "string",
+      enum: ["inquiry", "ordering", "delivery", "contact", "done"],
+    },
+    order: {
+      type: "object",
+      properties: {
+        customer_name: { type: "string" },
+        customer_phone: { type: "string" },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              quantity: { type: "number" },
+              price: { type: "number" },
+              notes: { type: "string" },
+            },
+            required: ["name", "quantity"],
+            additionalProperties: false,
+          },
+        },
+        delivery_date: { type: "string" },
+        delivery_time: { type: "string" },
+        delivery_method: {
+          type: "string",
+          enum: ["pickup", "convenience_store", "black_cat", "onsite"],
+        },
+        pickup_type: { type: "string", enum: ["store", "meetup"] },
+        pickup_location: { type: "string" },
+        requires_frozen: { type: "boolean" },
+        store_info: { type: "string" },
+        shipping_address: { type: "string" },
+        customer_notes: { type: "string" },
+        service_duration: { type: "number" },
+        service_notes: { type: "string" },
+        total_amount: { type: "number" },
+        pickup_date: { type: "string" },
+        pickup_time: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    missing_fields: { type: "array", items: { type: "string" } },
+    suggested_reply: { type: "string" },
+    raw_response: { type: "string" },
+  },
+  required: ["intent", "confidence", "is_continuation", "is_complete"],
+  additionalProperties: false,
+};
+
 function safeTeamContext(teamContext?: TeamContext): TeamContext {
   return (
     teamContext || {
@@ -111,21 +169,28 @@ async function callOpenAI(
   console.log("[AI Parse Goods] 呼叫 OpenAI API...");
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-5.1", // 升級模型以提升理解與語氣
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+        model: "gpt-5.1",
+        input: [
+          { role: "system", content: [{ type: "text", text: systemPrompt }] },
+          { role: "user", content: [{ type: "text", text: userPrompt }] },
         ],
-        temperature: 0.3, // 降低隨機性，提高準確性
-        max_completion_tokens: 500,
-        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_output_tokens: 500,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "ai_parse_result",
+            schema: AI_PARSE_RESULT_SCHEMA,
+            strict: true,
+          },
+        },
       }),
     });
 
@@ -136,21 +201,25 @@ async function callOpenAI(
     }
 
     const data = await response.json();
-    const rawResponse = data.choices[0]?.message?.content || "";
+    const parsedFromStructured =
+      data.output_parsed ||
+      data.output?.[0]?.parsed ||
+      data.output?.[0]?.content?.[0]?.parsed;
+    const rawText =
+      data.output_text ||
+      data.output?.[0]?.content?.[0]?.text ||
+      "";
+
+    const rawResponse = parsedFromStructured
+      ? JSON.stringify(parsedFromStructured)
+      : rawText;
 
     console.log("[AI Parse Goods] OpenAI 回應:", rawResponse);
 
-    // 解析 JSON 回應
     try {
-      // 移除可能的 markdown 程式碼區塊標記
-      let jsonText = rawResponse.trim();
-      if (jsonText.startsWith("```json")) {
-        jsonText = jsonText.replace(/^```json\s*\n/, "").replace(/\n```$/, "");
-      } else if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```\s*\n/, "").replace(/\n```$/, "");
-      }
-
-      const parsed: AIParseResult = JSON.parse(jsonText);
+      const parsed: AIParseResult = parsedFromStructured
+        ? parsedFromStructured
+        : JSON.parse(rawText);
       parsed.raw_response = rawResponse;
 
       const updated = normalizeAIResult(parsed, deliverySettings);
