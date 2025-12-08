@@ -1,5 +1,3 @@
-import { BottomNav } from "@/components/bottom-nav";
-
 export default function DashboardLayout({
   children,
 }: {

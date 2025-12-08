@@ -41,20 +41,20 @@ export default function LoginPage() {
       }
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError("root", {
-        message: err?.message || "登入失敗，請稍後再試",
-      });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "登入失敗，請稍後再試";
+      setError("root", { message });
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-neutral-50 to-neutral-100 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-neutral-50 to-neutral-100 p-4">
       <div className="w-full max-w-sm space-y-8">
         {/* Logo 與標題 */}
         <div className="text-center">
           <div className="mb-2 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-2xl font-bold text-white shadow-lg">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-blue-600 text-2xl font-bold text-white shadow-lg">
               O
             </div>
           </div>
