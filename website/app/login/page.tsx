@@ -3,18 +3,49 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // 直接導向 Dashboard（無驗證）
-    router.push("/dashboard");
+  const handleLogin = async (values: LoginFormValues) => {
+    setError("root", { message: undefined });
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (signInError) {
+        setError("root", { message: signInError.message });
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError("root", {
+        message: err?.message || "登入失敗，請稍後再試",
+      });
+    }
   };
 
   return (
@@ -34,7 +65,7 @@ export default function LoginPage() {
         </div>
 
         {/* 登入表單 */}
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label
@@ -47,11 +78,15 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email", {
+                  required: "請輸入 Email",
+                })}
                 className="h-12 text-base"
                 required
               />
+              {errors.email ? (
+                <p className="text-sm text-red-600">{errors.email.message}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -65,20 +100,33 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password", {
+                  required: "請輸入密碼",
+                })}
                 className="h-12 text-base"
                 required
               />
+              {errors.password ? (
+                <p className="text-sm text-red-600">
+                  {errors.password.message}
+                </p>
+              ) : null}
             </div>
           </div>
+
+          {errors.root?.message ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {errors.root.message}
+            </div>
+          ) : null}
 
           <Button
             type="submit"
             className="h-12 w-full text-base font-medium"
             size="lg"
+            disabled={isSubmitting}
           >
-            登入
+            {isSubmitting ? "登入中..." : "登入"}
           </Button>
         </form>
 
