@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "header": "青鳥咖啡",
+    "type": "餐飲",
+    "status": "綁定中",
+    "target": "2 Webhooks",
+    "limit": "Prompt v3",
+    "reviewer": "小芳"
+  },
+  {
+    "id": 2,
+    "header": "好好超市",
+    "type": "零售",
+    "status": "已上線",
+    "target": "1 Webhook",
+    "limit": "Prompt v5 (A/B)",
+    "reviewer": "阿強"
+  },
+  {
+    "id": 3,
+    "header": "星月甜點",
+    "type": "餐飲",
+    "status": "待補件",
+    "target": "LINE 簽章失敗",
+    "limit": "Prompt v2",
+    "reviewer": "小芳"
+  },
+  {
+    "id": 4,
+    "header": "沐木設計",
+    "type": "服務",
+    "status": "已上線",
+    "target": "Webhook 健康",
+    "limit": "Prompt v4",
+    "reviewer": "Luna"
+  },
+  {
+    "id": 5,
+    "header": "陽光藥局",
+    "type": "藥妝",
+    "status": "待審核",
+    "target": "等待管理員",
+    "limit": "Prompt v1",
+    "reviewer": "Max"
+  },
+  {
+    "id": 6,
+    "header": "野町日料",
+    "type": "餐飲",
+    "status": "已上線",
+    "target": "2 Webhooks",
+    "limit": "Prompt v3",
+    "reviewer": "阿強"
+  },
+  {
+    "id": 7,
+    "header": "Flow Fit",
+    "type": "健身",
+    "status": "綁定中",
+    "target": "回覆延遲",
+    "limit": "Prompt v2.1",
+    "reviewer": "Luna"
+  },
+  {
+    "id": 8,
+    "header": "森森花坊",
+    "type": "零售",
+    "status": "已上線",
+    "target": "Webhook 健康",
+    "limit": "Prompt v3",
+    "reviewer": "小芳"
+  }
+]

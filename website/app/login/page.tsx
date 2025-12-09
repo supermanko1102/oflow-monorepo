@@ -1,10 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 
 type LoginFormValues = {
@@ -37,109 +45,76 @@ export default function LoginPage() {
 
       if (signInError) {
         setError("root", { message: signInError.message });
+        toast.error(signInError.message);
         return;
       }
 
+      toast.success("登入成功，正在進入控制台");
       router.push("/dashboard");
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "登入失敗，請稍後再試";
       setError("root", { message });
+      toast.error(message);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-neutral-50 to-neutral-100 p-4">
-      <div className="w-full max-w-sm space-y-8">
-        {/* Logo 與標題 */}
-        <div className="text-center">
-          <div className="mb-2 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-blue-600 text-2xl font-bold text-white shadow-lg">
-              O
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-900">
-            OFlow
-          </h1>
-          <p className="mt-2 text-sm text-neutral-600">智慧訂單中心</p>
-        </div>
+    <div className="flex min-h-svh w-full items-center justify-center bg-neutral-50 px-4 py-10">
+      <div className="w-full max-w-sm">
+        <Card className="border border-neutral-200 shadow-sm">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-semibold">
+              登入 OFlow 後台
+            </CardTitle>
+            <CardDescription>使用客服/營運帳號登入控制台。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">電子郵件</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="ops@oflow.io"
+                  {...register("email", { required: "請輸入 Email" })}
+                  required
+                />
+                {errors.email ? (
+                  <p className="text-sm text-red-600">{errors.email.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <Label htmlFor="password">密碼</Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  {...register("password", { required: "請輸入密碼" })}
+                  required
+                />
+                {errors.password ? (
+                  <p className="text-sm text-red-600">
+                    {errors.password.message}
+                  </p>
+                ) : null}
+              </div>
 
-        {/* 登入表單 */}
-        <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-medium text-neutral-700"
-              >
-                電子郵件
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                {...register("email", {
-                  required: "請輸入 Email",
-                })}
-                className="h-12 text-base"
-                required
-              />
-              {errors.email ? (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
+              {errors.root?.message ? (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {errors.root.message}
+                </div>
               ) : null}
-            </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-neutral-700"
-              >
-                密碼
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...register("password", {
-                  required: "請輸入密碼",
-                })}
-                className="h-12 text-base"
-                required
-              />
-              {errors.password ? (
-                <p className="text-sm text-red-600">
-                  {errors.password.message}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {errors.root?.message ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {errors.root.message}
-            </div>
-          ) : null}
-
-          <Button
-            type="submit"
-            className="h-12 w-full text-base font-medium"
-            size="lg"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "登入中..." : "登入"}
-          </Button>
-        </form>
-
-        {/* 額外連結 */}
-        <div className="text-center text-sm text-neutral-600">
-          <button type="button" className="hover:text-neutral-900">
-            忘記密碼？
-          </button>
-        </div>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "登入中..." : "登入"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* 版本資訊 */}
-      <div className="absolute bottom-4 text-xs text-neutral-400">v1.0.0</div>
     </div>
   );
 }
