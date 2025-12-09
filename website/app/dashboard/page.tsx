@@ -1,17 +1,29 @@
 "use client";
 
 import type React from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { ChartAreaInteractive } from "@/components/chart-area-interactive";
-import { DataTable } from "@/components/data-table";
-import { SectionCards } from "@/components/section-cards";
-import { SiteHeader } from "@/components/site-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { getAllTeams } from "@/services/teamService";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { toast } from "sonner";
-import data from "./data.json";
+import { TeamRow } from "@/lib/types";
 
 function DashboardPage() {
   const sessionQuery = useQuery({
@@ -25,13 +37,25 @@ function DashboardPage() {
     },
   });
 
-  useEffect(() => {
-    if (sessionQuery.isError) {
-      toast.error("無法取得登入資訊，請重新登入");
-    }
-  }, [sessionQuery.isError]);
+  const teamsQuery = useQuery({
+    queryKey: ["admin-teams"],
+    queryFn: getAllTeams,
+    enabled: !!sessionQuery.data,
+  });
 
-  if (sessionQuery.isPending) {
+  const sessionError =
+    sessionQuery.isError &&
+    (sessionQuery.error instanceof Error
+      ? sessionQuery.error.message
+      : "無法取得登入資訊，請重新登入");
+
+  const teamsError =
+    teamsQuery.isError &&
+    (teamsQuery.error instanceof Error
+      ? teamsQuery.error.message
+      : "載入團隊失敗");
+
+  if (sessionQuery.isPending || teamsQuery.isPending) {
     return (
       <div className="min-h-screen bg-background px-4 py-10 text-sm text-muted-foreground">
         載入中...
@@ -39,18 +63,25 @@ function DashboardPage() {
     );
   }
 
-  if (sessionQuery.isError) {
+  if (sessionError) {
+    toast.error(sessionError);
     return (
       <div className="min-h-screen bg-background px-4 py-10 text-sm text-muted-foreground">
-        無法取得登入資訊：{sessionQuery.error.message}
+        無法取得登入資訊：{sessionError}
       </div>
     );
+  }
+
+  if (teamsError) {
+    toast.error(teamsError);
   }
 
   const user = sessionQuery.data?.user;
   const userName = user?.user_metadata?.name ?? user?.email ?? "客服成員";
   const userEmail = user?.email ?? "";
   const avatar = user?.user_metadata?.avatar_url as string | undefined;
+
+  const teams = teamsQuery.data ?? [];
 
   return (
     <SidebarProvider
@@ -66,18 +97,75 @@ function DashboardPage() {
         user={{ name: userName, email: userEmail, avatar }}
       />
       <SidebarInset>
-        <SiteHeader
-          title="客服控制台"
-          subtitle={userEmail ? `登入：${userEmail}` : "已連線"}
-        />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
-              <div className="px-4 lg:px-6"></div>
-              <DataTable data={data} />
-            </div>
-          </div>
+        <SiteHeader title="客服控制台" subtitle="後台全域團隊列表" />
+        <div className="flex flex-1 flex-col gap-4 px-4 py-6 lg:px-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>所有團隊</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>名稱</TableHead>
+                    <TableHead>LINE Channel</TableHead>
+                    <TableHead>訂閱</TableHead>
+                    <TableHead>成員</TableHead>
+                    <TableHead>訂單</TableHead>
+                    <TableHead>建立時間</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teams.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-sm text-muted-foreground"
+                      >
+                        尚無資料，請確認 admin_users 或資料庫內容。
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    teams.map((team: TeamRow) => (
+                      <TableRow key={team.team_id}>
+                        <TableCell>
+                          <div className="font-medium">{team.team_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            slug: {team.team_slug}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {team.line_channel_id ? (
+                            <div className="text-sm">
+                              {team.line_channel_name || "已綁定"}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              未綁定
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {team.subscription_status || "trial"}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {team.member_count}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {team.order_count}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {team.created_at
+                            ? new Date(team.created_at).toLocaleString()
+                            : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       </SidebarInset>
     </SidebarProvider>
