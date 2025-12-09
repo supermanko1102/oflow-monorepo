@@ -41,7 +41,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { adminCreateInvite, adminCreateTeam, verifyLine } from "@/services/adminService";
 import { supabase } from "@/lib/supabaseClient";
+import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -300,8 +302,103 @@ export default function ImportPage() {
   );
 }
 
+type NewMerchantForm = {
+  name: string;
+  category: string;
+  channelId: string;
+  channelSecret: string;
+  accessToken: string;
+};
+
 function NewMerchantDrawer() {
   const [open, setOpen] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [verifyInfo, setVerifyInfo] = useState<{
+    webhook_url?: string;
+    webhook_test_success?: boolean;
+    bot_name?: string;
+  }>({});
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setValue,
+    setError,
+    reset,
+  } = useForm<NewMerchantForm>({
+    defaultValues: {
+      name: "",
+      category: "bakery",
+      channelId: "",
+      channelSecret: "",
+      accessToken: "",
+    },
+  });
+
+  const onVerify = async (values: NewMerchantForm) => {
+    setVerifying(true);
+    setVerified(false);
+    setVerifyInfo({});
+    try {
+      const res = await verifyLine({
+        line_channel_id: values.channelId.trim(),
+        line_channel_secret: values.channelSecret.trim(),
+        line_channel_access_token: values.accessToken.trim(),
+      });
+      setVerified(true);
+      setVerifyInfo({
+        webhook_url: res.webhook_url,
+        webhook_test_success: res.webhook_test_success,
+        bot_name: res.bot_name,
+      });
+      toast.success("驗證成功，Webhook 已設定");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "驗證失敗，請檢查 LINE Key";
+      setError("channelId", { message });
+      toast.error(message);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const onSubmit = async (values: NewMerchantForm) => {
+    if (!verified) {
+      toast.error("請先驗證 LINE 三鍵");
+      return;
+    }
+
+    try {
+      const team = await adminCreateTeam({
+        team_name: values.name.trim(),
+        business_type: values.category,
+        line_channel_id: values.channelId.trim(),
+        line_channel_secret: values.channelSecret.trim(),
+        line_channel_access_token: values.accessToken.trim(),
+        line_channel_name: verifyInfo.bot_name,
+      });
+
+      const invite = await adminCreateInvite({
+        team_id: team.team.id,
+        role: "owner",
+        max_uses: 1,
+      });
+
+      toast.success(`已建立團隊並產生邀請碼：${invite.invite_code}`);
+      reset();
+      setVerified(false);
+      setVerifyInfo({});
+      setOpen(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "建立失敗，請稍後重試";
+      toast.error(message);
+    }
+  };
+
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
@@ -312,87 +409,140 @@ function NewMerchantDrawer() {
           <DrawerTitle>新增商家</DrawerTitle>
           <DrawerDescription>填寫基本資料與 LINE 三鍵</DrawerDescription>
         </DrawerHeader>
-        <div className="grid gap-4 px-4 pb-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">基本資訊</CardTitle>
-              <CardDescription>名稱、類別</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="newName">商家名稱</Label>
-                <Input id="newName" placeholder="例如：木木甜點" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newCategory">類別</Label>
-                <Select defaultValue="bakery">
-                  <SelectTrigger id="newCategory">
-                    <SelectValue placeholder="選擇類別" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">LINE 三鍵</CardTitle>
-              <CardDescription>
-                收集 Channel ID / Secret / Access Token
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="newChannelId">Channel ID</Label>
-                <Input id="newChannelId" placeholder="輸入 Channel ID" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newChannelSecret">Channel Secret</Label>
-                <Input
-                  id="newChannelSecret"
-                  placeholder="輸入 Channel Secret"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newAccessToken">Access Token</Label>
-                <Input id="newAccessToken" placeholder="輸入 Access Token" />
-              </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid gap-4 px-4 pb-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">基本資訊</CardTitle>
+                <CardDescription>名稱、類別</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="newName">商家名稱</Label>
+                  <Input
+                    id="newName"
+                    placeholder="例如：木木甜點"
+                    {...register("name", { required: "請填寫商家名稱" })}
+                  />
+                  {errors.name ? (
+                    <p className="text-xs text-red-600">
+                      {errors.name.message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newCategory">類別</Label>
+                  <Select
+                    defaultValue="bakery"
+                    onValueChange={(val) =>
+                      setValue("category", val, { shouldDirty: true })
+                    }
+                  >
+                    <SelectTrigger id="newCategory">
+                      <SelectValue placeholder="選擇類別" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">LINE 三鍵</CardTitle>
+                <CardDescription>
+                  收集 Channel ID / Secret / Access Token
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="newChannelId">Channel ID</Label>
+                  <Input
+                    id="newChannelId"
+                    placeholder="輸入 Channel ID"
+                    {...register("channelId", { required: "請輸入 Channel ID" })}
+                  />
+                  {errors.channelId ? (
+                    <p className="text-xs text-red-600">
+                      {errors.channelId.message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newChannelSecret">Channel Secret</Label>
+                  <Input
+                    id="newChannelSecret"
+                    placeholder="輸入 Channel Secret"
+                    {...register("channelSecret", {
+                      required: "請輸入 Channel Secret",
+                    })}
+                  />
+                  {errors.channelSecret ? (
+                    <p className="text-xs text-red-600">
+                      {errors.channelSecret.message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newAccessToken">Access Token</Label>
+                  <Input
+                    id="newAccessToken"
+                    placeholder="輸入 Access Token"
+                    {...register("accessToken", {
+                      required: "請輸入 Access Token",
+                    })}
+                  />
+                  {errors.accessToken ? (
+                    <p className="text-xs text-red-600">
+                      {errors.accessToken.message}
+                    </p>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={verifying}
+                  onClick={() =>
+                    onVerify({
+                      name: watch("name"),
+                      category: watch("category") || "bakery",
+                      channelId: watch("channelId"),
+                      channelSecret: watch("channelSecret"),
+                      accessToken: watch("accessToken"),
+                    })
+                  }
+                >
+                  {verifying ? "驗證中..." : "驗證簽章 / Webhook 測試"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  驗證成功後才可送出。Webhook URL：{" "}
+                  {verifyInfo.webhook_url ?? "驗證後顯示"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <DrawerFooter className="flex flex-row items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              驗證成功前，送出按鈕會停用。
+            </div>
+            <div className="flex gap-2">
               <Button
-                className="w-full"
-                onClick={() => toast.info("假按鈕：檢查簽章與 webhook")}
+                type="submit"
+                disabled={isSubmitting || !verified}
               >
-                驗證簽章 / Webhook 測試
+                {isSubmitting ? "建立中..." : "新增並開始上線"}
               </Button>
-              <p className="text-xs text-muted-foreground">
-                驗證成功後即可帶入列表，並進入上線流程。
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        <DrawerFooter className="flex flex-row items-center justify-between">
-          <div className="text-xs text-muted-foreground">
-            建議同時設定類別，後續可自動套用對應 Prompt 模板。
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                toast.success("假按鈕：已新增並送往上線流程");
-                setOpen(false);
-              }}
-            >
-              新增並開始上線
-            </Button>
-            <DrawerClose asChild>
-              <Button variant="outline">取消</Button>
-            </DrawerClose>
-          </div>
-        </DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline">取消</Button>
+              </DrawerClose>
+            </div>
+          </DrawerFooter>
+        </form>
       </DrawerContent>
     </Drawer>
   );
