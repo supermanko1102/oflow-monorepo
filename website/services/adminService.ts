@@ -39,11 +39,11 @@ export async function adminCreateInvite(params: {
   team_id: string;
   role?: string;
   max_uses?: number;
+  is_system?: boolean;
 }) {
-  return adminApi.call<{ success: boolean; invite_code: string }>(
-    "POST",
-    "create-invite",
-    undefined,
-    params
-  );
+  return adminApi.call<{
+    success: boolean;
+    invite_code: string;
+    reused?: boolean;
+  }>("POST", "create-invite", undefined, params);
 }

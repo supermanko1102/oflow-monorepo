@@ -41,7 +41,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { adminCreateInvite, adminCreateTeam, verifyLine } from "@/services/adminService";
+import {
+  adminCreateInvite,
+  adminCreateTeam,
+  verifyLine,
+} from "@/services/adminService";
 import { supabase } from "@/lib/supabaseClient";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -308,6 +312,7 @@ type NewMerchantForm = {
   channelId: string;
   channelSecret: string;
   accessToken: string;
+  inviteRole: "owner" | "member";
 };
 
 function NewMerchantDrawer() {
@@ -335,27 +340,34 @@ function NewMerchantDrawer() {
       channelId: "",
       channelSecret: "",
       accessToken: "",
+      inviteRole: "owner",
     },
   });
 
   const onVerify = async (values: NewMerchantForm) => {
     setVerifying(true);
-    setVerified(false);
-    setVerifyInfo({});
     try {
       const res = await verifyLine({
         line_channel_id: values.channelId.trim(),
         line_channel_secret: values.channelSecret.trim(),
         line_channel_access_token: values.accessToken.trim(),
       });
-      setVerified(true);
       setVerifyInfo({
         webhook_url: res.webhook_url,
         webhook_test_success: res.webhook_test_success,
         bot_name: res.bot_name,
       });
-      toast.success("驗證成功，Webhook 已設定");
+      if (res.webhook_test_success) {
+        setVerified(true);
+        toast.success("驗證成功，LINE Webhook 測試通過");
+      } else {
+        setVerified(false);
+        const message = "Webhook 設定成功，但 LINE 測試未通過，請檢查 Access Token/權限";
+        setError("accessToken", { message });
+        toast.error(message);
+      }
     } catch (err: unknown) {
+      setVerified(false);
       const message =
         err instanceof Error ? err.message : "驗證失敗，請檢查 LINE Key";
       setError("channelId", { message });
@@ -367,7 +379,7 @@ function NewMerchantDrawer() {
 
   const onSubmit = async (values: NewMerchantForm) => {
     if (!verified) {
-      toast.error("請先驗證 LINE 三鍵");
+      toast.error("請先驗證 LINE 三鍵並確保 Webhook 測試通過");
       return;
     }
 
@@ -379,12 +391,14 @@ function NewMerchantDrawer() {
         line_channel_secret: values.channelSecret.trim(),
         line_channel_access_token: values.accessToken.trim(),
         line_channel_name: verifyInfo.bot_name,
+        // owner_user_id 由後端自動解析 admin 對應 users.id
       });
 
       const invite = await adminCreateInvite({
         team_id: team.team.id,
-        role: "owner",
+        role: values.inviteRole || "owner",
         max_uses: 1,
+        is_system: true,
       });
 
       toast.success(`已建立團隊並產生邀請碼：${invite.invite_code}`);
@@ -430,6 +444,7 @@ function NewMerchantDrawer() {
                     </p>
                   ) : null}
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="newCategory">類別</Label>
                   <Select
@@ -465,7 +480,9 @@ function NewMerchantDrawer() {
                   <Input
                     id="newChannelId"
                     placeholder="輸入 Channel ID"
-                    {...register("channelId", { required: "請輸入 Channel ID" })}
+                    {...register("channelId", {
+                      required: "請輸入 Channel ID",
+                    })}
                   />
                   {errors.channelId ? (
                     <p className="text-xs text-red-600">
@@ -514,6 +531,7 @@ function NewMerchantDrawer() {
                       channelId: watch("channelId"),
                       channelSecret: watch("channelSecret"),
                       accessToken: watch("accessToken"),
+                      inviteRole: "owner",
                     })
                   }
                 >
@@ -531,10 +549,7 @@ function NewMerchantDrawer() {
               驗證成功前，送出按鈕會停用。
             </div>
             <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={isSubmitting || !verified}
-              >
+              <Button type="submit" disabled={isSubmitting || !verified}>
                 {isSubmitting ? "建立中..." : "新增並開始上線"}
               </Button>
               <DrawerClose asChild>

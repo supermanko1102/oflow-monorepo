@@ -18,13 +18,25 @@ serve(async (req) => {
 
   try {
     if (req.method !== "POST") {
-      throw new Error("Only POST method is allowed");
+      return new Response(
+        JSON.stringify({ message: "Only POST method is allowed" }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const bodyText = await req.text();
     const signature = req.headers.get("x-line-signature");
     if (!signature) {
-      throw new Error("Missing x-line-signature header");
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing x-line-signature header" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const webhookBody = JSON.parse(bodyText) as {
@@ -46,8 +58,8 @@ serve(async (req) => {
 
     const team = await fetchTeamByDestination(supabaseAdmin, destination);
     if (!team) {
-      return new Response(JSON.stringify({ message: "Team not found" }), {
-        status: 200,
+      return new Response(JSON.stringify({ success: false, error: "Team not found" }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -58,10 +70,13 @@ serve(async (req) => {
       team.line_channel_secret
     );
     if (!validSignature) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid signature" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid signature" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     for (const event of events) {
@@ -94,7 +109,7 @@ serve(async (req) => {
         error: (error as Error).message,
       }),
       {
-        status: 200,
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

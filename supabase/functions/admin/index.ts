@@ -113,22 +113,59 @@ serve(async (req) => {
           line_channel_access_token,
         } = body || {};
 
-        if (
-          !line_channel_id ||
-          !line_channel_secret ||
-          !line_channel_access_token
-        ) {
+        const channelId = String(line_channel_id ?? "").trim();
+        const channelSecret = String(line_channel_secret ?? "").trim();
+        const accessToken = String(line_channel_access_token ?? "").trim();
+
+        if (!channelId || !channelSecret || !accessToken) {
           throw new Error("Missing required LINE settings");
         }
 
-        if (!/^\d+$/.test(String(line_channel_id).trim())) {
+        if (!/^\d+$/.test(channelId)) {
           throw new Error("Channel ID 格式不正確，應該是純數字");
         }
 
-        // 取得 Bot User ID
+        // 先檢查 Channel Secret 是否有效：用 client_credentials 換取 token，失敗代表 Secret/ID 不匹配
+        const channelSecretVerifyResp = await fetch(
+          "https://api.line.me/v2/oauth/accessToken",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "client_credentials",
+              client_id: channelId,
+              client_secret: channelSecret,
+            }).toString(),
+          }
+        );
+        if (!channelSecretVerifyResp.ok) {
+          const errorText = await channelSecretVerifyResp.text().catch(() => "");
+          throw new Error(
+            `驗證 LINE Channel Secret 失敗: ${channelSecretVerifyResp.status} ${errorText}`
+          );
+        } else {
+          // 避免產生多餘 token，成功後嘗試回收剛產生的 access token（失敗可忽略）
+          const issuedToken = await channelSecretVerifyResp
+            .json()
+            .catch(() => ({}));
+          const revokeToken = issuedToken?.access_token;
+          if (revokeToken) {
+            fetch("https://api.line.me/v2/oauth/accessToken/revoke", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({ access_token: revokeToken }).toString(),
+            }).catch(() => {});
+          }
+        }
+
+        // 取得 Bot User ID（用 Access Token 驗證）
         const botInfoResponse = await fetch("https://api.line.me/v2/bot/info", {
           method: "GET",
-          headers: { Authorization: `Bearer ${line_channel_access_token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!botInfoResponse.ok) {
           const errorText = await botInfoResponse.text();
@@ -140,7 +177,7 @@ serve(async (req) => {
         const lineBotUserId = botInfo.userId;
         if (!lineBotUserId) throw new Error("無法取得 LINE Bot User ID");
 
-        // 設定 webhook 並測試
+        // 設定 webhook 並測試（若測試未通過即視為失敗）
         const webhookUrl = `${SUPABASE_URL}/functions/v1/line-webhook`;
         const setWebhookResponse = await fetch(
           "https://api.line.me/v2/bot/channel/webhook/endpoint",
@@ -148,7 +185,7 @@ serve(async (req) => {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${line_channel_access_token}`,
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ endpoint: webhookUrl }),
           }
@@ -161,25 +198,43 @@ serve(async (req) => {
           );
         }
 
-        let webhookTestSuccess = false;
-        try {
-          const testWebhookResponse = await fetch(
-            "https://api.line.me/v2/bot/channel/webhook/test",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${line_channel_access_token}`,
-              },
-              body: JSON.stringify({ endpoint: webhookUrl }),
-            }
-          );
-          if (testWebhookResponse.ok) {
-            const testResult = await testWebhookResponse.json();
-            webhookTestSuccess = testResult.success === true;
+        const testWebhookResponse = await fetch(
+          "https://api.line.me/v2/bot/channel/webhook/test",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ endpoint: webhookUrl }),
           }
-        } catch (_err) {
-          // 忍受測試失敗，交由前端決定是否允許
+        );
+
+        // 解析 webhook test 回應，遇到 404（team 尚未建立導致 webhook 找不到）時可視為可忽略的警告
+        const testWebhookText = await testWebhookResponse.text().catch(() => "");
+        let testResult: any = {};
+        try {
+          testResult = testWebhookText ? JSON.parse(testWebhookText) : {};
+        } catch {
+          testResult = { raw: testWebhookText };
+        }
+
+        const webhookTestSuccess = testResult?.success === true;
+        const testReason =
+          testResult?.reason ||
+          testResult?.message ||
+          (typeof testWebhookText === "string" ? testWebhookText : "");
+        const is404Related =
+          testWebhookResponse.status === 404 ||
+          (typeof testReason === "string" && testReason.includes("404"));
+        const webhookTestAccepted = webhookTestSuccess || is404Related;
+
+        if (!webhookTestAccepted) {
+          const errorText =
+            typeof testReason === "string" && testReason.trim().length > 0
+              ? testReason
+              : `${testWebhookResponse.status} ${testWebhookText}`;
+          throw new Error(`LINE Webhook 測試未通過: ${errorText}`);
         }
 
         return new Response(
@@ -187,7 +242,10 @@ serve(async (req) => {
             success: true,
             line_bot_user_id: lineBotUserId,
             webhook_url: webhookUrl,
-            webhook_test_success: webhookTestSuccess,
+            webhook_test_success: webhookTestAccepted,
+            webhook_test_warning: is404Related
+              ? "LINE Webhook 測試回應 404，可能是 team 尚未建立；稍後正式訊息仍會觸發"
+              : undefined,
             bot_name: botInfo.displayName,
             bot_picture_url: botInfo.pictureUrl,
           }),
@@ -197,8 +255,63 @@ serve(async (req) => {
 
       if (action === "create-invite") {
         const body = await req.json();
-        const { team_id, role = "owner", max_uses = 1 } = body || {};
+        const {
+          team_id,
+          role = "owner",
+          max_uses = 1,
+          is_system = false,
+        } = body || {};
         if (!team_id) throw new Error("Missing team_id");
+
+        // 最多允許 2 個 owner
+        if (role === "owner") {
+          const { count: ownerCount, error: ownerCountError } =
+            await supabaseAdmin
+              .from("team_members")
+              .select("*", { head: true, count: "exact" })
+              .eq("team_id", team_id)
+              .eq("role", "owner");
+          if (ownerCountError) throw ownerCountError;
+          if ((ownerCount ?? 0) >= 2) {
+            throw new Error("Owner limit reached (max 2 owners per team)");
+          }
+          if (max_uses && (ownerCount ?? 0) + max_uses > 2) {
+            throw new Error(
+              `Owner invites available: ${Math.max(0, 2 - (ownerCount ?? 0))}`
+            );
+          }
+        }
+
+        // 若已有同角色同 is_system 的有效邀請碼且未用完，直接重用
+        const { data: existingInvite } = await supabaseAdmin
+          .from("team_invites")
+          .select(
+            "invite_code, max_uses, uses_count, is_active, expires_at, role, is_system, created_at"
+          )
+          .eq("team_id", team_id)
+          .eq("role", role)
+          .eq("is_system", is_system)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingInvite) {
+          const { invite_code, max_uses: m, uses_count, expires_at } =
+            existingInvite as any;
+          const notExpired = !expires_at || new Date(expires_at) > new Date();
+          const hasQuota = m === null || (uses_count ?? 0) < (m ?? 0);
+          if (notExpired && hasQuota) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                invite_code,
+                reused: true,
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
 
         // 產生唯一邀請碼
         let inviteCode: string | null = null;
@@ -226,6 +339,7 @@ serve(async (req) => {
             role,
             max_uses,
             is_active: true,
+            is_system,
           })
           .select("invite_code")
           .single();
@@ -255,19 +369,92 @@ serve(async (req) => {
         } = body || {};
         if (!team_name) throw new Error("Missing team_name");
 
+        // 解析 owner_user_id：若未提供，嘗試用 admin auth_user_id 對應的 users.id
+        let resolvedOwnerUserId = owner_user_id;
+        if (!resolvedOwnerUserId) {
+          const { data: adminUser, error: adminUserError } = await supabaseAdmin
+            .from("users")
+            .select("id")
+            .eq("auth_user_id", authUser.id)
+            .maybeSingle();
+
+          if (adminUserError) throw adminUserError;
+          if (!adminUser?.id) {
+            throw new Error("Admin user not linked to public.users");
+          }
+          resolvedOwnerUserId = adminUser.id;
+        }
+
+        const isLineChannelConflict = (err: unknown) => {
+          if (typeof err !== "object" || !err) return false;
+          const msg =
+            (err as { message?: string }).message ||
+            (err as { error?: string }).error ||
+            "";
+          return (
+            msg.includes("line_channel_id") ||
+            msg.includes("teams_line_channel_id_key") ||
+            msg.includes('duplicate key value violates unique constraint "teams_line_channel_id_key"')
+          );
+        };
+
         // 若提供 owner_user_id，走既有 RPC
-        if (owner_user_id) {
-          const { data: teamData, error } = await supabaseAdmin.rpc(
-            "create_team_with_owner",
-            {
-              p_user_id: owner_user_id,
+        if (resolvedOwnerUserId) {
+          let teamData;
+          let error;
+          try {
+            const result = await supabaseAdmin.rpc("create_team_with_owner", {
+              p_user_id: resolvedOwnerUserId,
               p_team_name: team_name,
               p_line_channel_id: line_channel_id || null,
               p_business_type: business_type || "bakery",
+            });
+            teamData = result.data;
+            error = result.error;
+          } catch (err) {
+            if (isLineChannelConflict(err)) {
+              throw new Error(
+                "此 LINE Channel 已被其他團隊使用，請換一組或先解除舊團隊綁定"
+              );
             }
-          );
-          if (error) throw error;
+            throw err;
+          }
+          if (error) {
+            if (isLineChannelConflict(error)) {
+              throw new Error(
+                "此 LINE Channel 已被其他團隊使用，請換一組或先解除舊團隊綁定"
+              );
+            }
+            throw error;
+          }
           const team = teamData?.[0];
+
+          // 若有提供 LINE 三鍵/名稱，補寫入 teams（RPC 只帶 channel_id）
+          if (team?.team_id) {
+            const updateFields: Record<string, unknown> = {};
+            if (line_channel_id !== undefined) updateFields.line_channel_id = line_channel_id;
+            if (line_channel_secret !== undefined)
+              updateFields.line_channel_secret = line_channel_secret;
+            if (line_channel_access_token !== undefined)
+              updateFields.line_channel_access_token = line_channel_access_token;
+            if (line_channel_name !== undefined)
+              updateFields.line_channel_name = line_channel_name;
+            if (Object.keys(updateFields).length > 0) {
+              updateFields.updated_at = new Date().toISOString();
+              const { error: updateErr } = await supabaseAdmin
+                .from("teams")
+                .update(updateFields)
+                .eq("id", team.team_id);
+              if (updateErr) {
+                if (isLineChannelConflict(updateErr)) {
+                  throw new Error(
+                    "此 LINE Channel 已被其他團隊使用，請換一組或先解除舊團隊綁定"
+                  );
+                }
+                throw updateErr;
+              }
+            }
+          }
 
           return new Response(
             JSON.stringify({
@@ -309,7 +496,14 @@ serve(async (req) => {
           .select("id, name, slug")
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          if (isLineChannelConflict(insertError)) {
+            throw new Error(
+              "此 LINE Channel 已被其他團隊使用，請換一組或先解除舊團隊綁定"
+            );
+          }
+          throw insertError;
+        }
 
         return new Response(
           JSON.stringify({
