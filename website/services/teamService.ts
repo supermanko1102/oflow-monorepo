@@ -29,10 +29,7 @@ export async function getUserTeams() {
 }
 
 export async function getAllTeams() {
-  const { teams } = await adminApi.call<{ teams: TeamRow[] }>(
-    "GET",
-    "teams"
-  );
+  const { teams } = await adminApi.call<{ teams: TeamRow[] }>("GET", "teams");
   return teams;
 }
 
@@ -46,9 +43,9 @@ export async function getTeamMembers(teamId: string) {
 }
 
 export async function getInviteCode(teamId: string): Promise<string> {
-  const { invite_code } = await teamApi.call<{ invite_code: string }>(
+  const { invite_code } = await adminApi.call<{ invite_code: string }>(
     "GET",
-    "invite",
+    "team-invite",
     { team_id: teamId }
   );
   return invite_code;

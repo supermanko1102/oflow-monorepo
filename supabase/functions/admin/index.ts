@@ -101,6 +101,76 @@ serve(async (req) => {
         );
       }
 
+      // Admin 取得或建立團隊邀請碼（不需成員身份）
+      if (action === "team-invite") {
+        const teamId = url.searchParams.get("team_id");
+        if (!teamId) {
+          throw new Error("Missing team_id parameter");
+        }
+
+        const nowIso = new Date().toISOString();
+        const { data: existingInvite, error: inviteError } = await supabaseAdmin
+          .from("team_invites")
+          .select("invite_code, expires_at, is_active")
+          .eq("team_id", teamId)
+          .eq("is_active", true)
+          .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (inviteError) throw inviteError;
+
+        if (existingInvite?.invite_code) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              invite_code: existingInvite.invite_code,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: team, error: teamError } = await supabaseAdmin
+          .from("teams")
+          .select("slug")
+          .eq("id", teamId)
+          .single();
+
+        if (teamError || !team?.slug) {
+          throw new Error("Team not found");
+        }
+
+        const { data: generatedCode, error: generateError } =
+          await supabaseAdmin.rpc("generate_invite_code", {
+            p_team_slug: team.slug,
+          });
+
+        if (generateError || !generatedCode) {
+          throw generateError || new Error("Failed to generate invite code");
+        }
+
+        const { error: insertError } = await supabaseAdmin
+          .from("team_invites")
+          .insert({
+            team_id: teamId,
+            invite_code: generatedCode as string,
+            invited_by: authUser.id,
+            role: "admin",
+            is_active: true,
+          });
+
+        if (insertError) throw insertError;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            invite_code: generatedCode,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       throw new Error(`Unknown GET action: ${action}`);
     }
 

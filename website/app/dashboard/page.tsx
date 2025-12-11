@@ -19,11 +19,12 @@ import {
 } from "@/components/ui/table";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { getAllTeams } from "@/services/teamService";
+import { getAllTeams, getInviteCode } from "@/services/teamService";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TeamRow } from "@/lib/types";
+import { useMemo } from "react";
 
 function DashboardPage() {
   const sessionQuery = useQuery({
@@ -41,6 +42,42 @@ function DashboardPage() {
     queryKey: ["admin-teams"],
     queryFn: getAllTeams,
     enabled: !!sessionQuery.data,
+  });
+
+  const teams = teamsQuery.data ?? [];
+  const teamIds = useMemo(
+    () => teams.map((t) => t.team_id).sort(),
+    [teams]
+  );
+
+  const invitesQuery = useQuery({
+    queryKey: ["admin-team-invites", teamIds],
+    enabled: !!sessionQuery.data && teamIds.length > 0,
+    queryFn: async () => {
+      const codes: Record<string, string> = {};
+      const errors: Record<string, string> = {};
+
+      await Promise.all(
+        teamIds.map(async (teamId) => {
+          try {
+            const code = await getInviteCode(teamId);
+            codes[teamId] = code;
+          } catch (error) {
+            console.error("Fetch invite code failed", error);
+            const statusCode =
+              typeof error === "object" && error && "statusCode" in error
+                ? (error as { statusCode?: number }).statusCode
+                : undefined;
+            errors[teamId] =
+              statusCode === 401 || statusCode === 403
+                ? "無權限"
+                : "取得失敗";
+          }
+        })
+      );
+
+      return { codes, errors };
+    },
   });
 
   const sessionError =
@@ -81,7 +118,9 @@ function DashboardPage() {
   const userEmail = user?.email ?? "";
   const avatar = user?.user_metadata?.avatar_url as string | undefined;
 
-  const teams = teamsQuery.data ?? [];
+  const inviteCodes = invitesQuery.data?.codes ?? {};
+  const inviteErrors = invitesQuery.data?.errors ?? {};
+  const isLoadingInvites = invitesQuery.isLoading;
 
   return (
     <SidebarProvider
@@ -112,6 +151,7 @@ function DashboardPage() {
                     <TableHead>訂閱</TableHead>
                     <TableHead>成員</TableHead>
                     <TableHead>訂單</TableHead>
+                    <TableHead>邀請碼</TableHead>
                     <TableHead>建立時間</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -153,6 +193,25 @@ function DashboardPage() {
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {team.order_count}
+                        </TableCell>
+                        <TableCell>
+                          {inviteCodes[team.team_id] ? (
+                            <span className="font-mono text-xs">
+                              {inviteCodes[team.team_id]}
+                            </span>
+                          ) : inviteErrors[team.team_id] ? (
+                            <span className="text-xs text-rose-500">
+                              {inviteErrors[team.team_id]}
+                            </span>
+                          ) : isLoadingInvites ? (
+                            <span className="text-xs text-muted-foreground">
+                              載入中...
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              —
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {team.created_at
