@@ -8,13 +8,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { Controller, useForm } from "react-hook-form";
 import {
   Pressable,
-  ScrollView,
   Switch,
   Text,
   TextInput,
   type KeyboardTypeOptions,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ProductFormProps = {
   onSubmit: (values: ProductFormValues) => void;
@@ -40,6 +41,7 @@ export default function ProductForm({
   defaultValues,
   mode = "create",
 }: ProductFormProps) {
+  const insets = useSafeAreaInsets();
   const isEdit = mode === "edit";
   const {
     control,
@@ -73,7 +75,14 @@ export default function ProductForm({
   };
 
   return (
-    <>
+    <KeyboardAwareScrollView
+      className="flex-1"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      bottomOffset={insets.bottom + 16}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
+      showsVerticalScrollIndicator={false}
+    >
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-1 pr-3">
           <Text className="text-lg font-bold text-slate-900">
@@ -88,157 +97,151 @@ export default function ProductForm({
         </Pressable>
       </View>
 
-      <ScrollView
-        className="max-h-[70vh]"
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View className="gap-3">
-          <Controller
-            control={control}
-            name="name"
-            rules={{ required: "請輸入商品名稱" }}
-            render={({ field: { onChange, value } }) => (
-              <InputField
-                label="商品名稱"
-                placeholder="輸入商品名稱"
-                value={value}
-                onChangeText={onChange}
-                error={errors.name?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="price"
-            rules={{
-              required: "請輸入價格",
-              validate: (v) =>
-                v && !Number.isNaN(Number(v)) ? true : "價格需為數字",
-            }}
-            render={({ field: { onChange, value } }) => (
-              <InputField
-                label="價格 (元)"
-                placeholder="例：350"
-                keyboardType="numeric"
-                value={value || ""}
-                onChangeText={onChange}
-                error={errors.price?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="category"
-            render={({ field: { onChange, value } }) => (
-              <InputField
-                label="分類"
-                placeholder="例：蛋糕 / 飲品"
-                value={value || ""}
-                onChangeText={onChange}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="stock"
-            render={({ field: { onChange, value } }) => (
-              <InputField
-                label="庫存 (選填)"
-                placeholder="數字"
-                keyboardType="numeric"
-                value={value || ""}
-                onChangeText={onChange}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, value } }) => (
-              <InputField
-                label="描述 (選填)"
-                placeholder="口味、尺寸等"
-                value={value || ""}
-                onChangeText={onChange}
-                multiline
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="is_available"
-            render={({ field: { value, onChange } }) => (
-              <ToggleRow label="上架中" value={value} onChange={onChange} />
-            )}
-          />
-
-          <View className="mt-2 gap-2">
-            <Controller
-              control={control}
-              name="useTeamDeliveryDefault"
-              render={({ field: { value, onChange } }) => (
-                <ToggleRow
-                  label="沿用全店配送設定"
-                  value={value}
-                  onChange={onChange}
-                />
-              )}
+      <View className="gap-3">
+        <Controller
+          control={control}
+          name="name"
+          rules={{ required: "請輸入商品名稱" }}
+          render={({ field: { onChange, value } }) => (
+            <InputField
+              label="商品名稱"
+              placeholder="輸入商品名稱"
+              value={value}
+              onChangeText={onChange}
+              error={errors.name?.message}
             />
-            {!useDefault && (
-              <View className="gap-2">
-                <Text className="text-sm font-semibold text-slate-800">
-                  自訂配送方式
-                </Text>
-                <Text className="text-[12px] text-slate-500">
-                  至少選一種，未勾選的方式將不可用
-                </Text>
-                <View className="flex-row flex-wrap gap-2 mt-2">
-                  {deliveryOptions.map((opt) => {
-                    const isActive = (selectedMethods || []).includes(opt.key);
-                    return (
-                      <Pressable
-                        key={`create-${opt.key}`}
-                        onPress={() => toggleMethod(opt.key)}
-                        className="px-3 py-2 rounded-full border"
-                        style={{
-                          borderColor: isActive ? brandTeal : "#CBD5E1",
-                          backgroundColor: isActive
-                            ? "rgba(14,165,233,0.08)"
-                            : "#FFFFFF",
-                        }}
-                      >
-                        <View className="flex-row items-center gap-1">
-                          <Ionicons
-                            name={
-                              isActive ? "checkbox-outline" : "square-outline"
-                            }
-                            size={16}
-                            color={isActive ? brandTeal : "#94A3B8"}
-                          />
-                          <Text
-                            className="text-sm font-semibold"
-                            style={{
-                              color: isActive ? brandTeal : "#475569",
-                            }}
-                          >
-                            {opt.label}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="price"
+          rules={{
+            required: "請輸入價格",
+            validate: (v) =>
+              v && !Number.isNaN(Number(v)) ? true : "價格需為數字",
+          }}
+          render={({ field: { onChange, value } }) => (
+            <InputField
+              label="價格 (元)"
+              placeholder="例：350"
+              keyboardType="numeric"
+              value={value || ""}
+              onChangeText={onChange}
+              error={errors.price?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="category"
+          render={({ field: { onChange, value } }) => (
+            <InputField
+              label="分類"
+              placeholder="例：蛋糕 / 飲品"
+              value={value || ""}
+              onChangeText={onChange}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="stock"
+          render={({ field: { onChange, value } }) => (
+            <InputField
+              label="庫存 (選填)"
+              placeholder="數字"
+              keyboardType="numeric"
+              value={value || ""}
+              onChangeText={onChange}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="description"
+          render={({ field: { onChange, value } }) => (
+            <InputField
+              label="描述 (選填)"
+              placeholder="口味、尺寸等"
+              value={value || ""}
+              onChangeText={onChange}
+              multiline
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="is_available"
+          render={({ field: { value, onChange } }) => (
+            <ToggleRow label="上架中" value={value} onChange={onChange} />
+          )}
+        />
+
+        <View className="mt-2 gap-2">
+          <Controller
+            control={control}
+            name="useTeamDeliveryDefault"
+            render={({ field: { value, onChange } }) => (
+              <ToggleRow
+                label="沿用全店配送設定"
+                value={value}
+                onChange={onChange}
+              />
             )}
-          </View>
+          />
+          {!useDefault && (
+            <View className="gap-2">
+              <Text className="text-sm font-semibold text-slate-800">
+                自訂配送方式
+              </Text>
+              <Text className="text-[12px] text-slate-500">
+                至少選一種，未勾選的方式將不可用
+              </Text>
+              <View className="flex-row flex-wrap gap-2 mt-2">
+                {deliveryOptions.map((opt) => {
+                  const isActive = (selectedMethods || []).includes(opt.key);
+                  return (
+                    <Pressable
+                      key={`create-${opt.key}`}
+                      onPress={() => toggleMethod(opt.key)}
+                      className="px-3 py-2 rounded-full border"
+                      style={{
+                        borderColor: isActive ? brandTeal : "#CBD5E1",
+                        backgroundColor: isActive
+                          ? "rgba(14,165,233,0.08)"
+                          : "#FFFFFF",
+                      }}
+                    >
+                      <View className="flex-row items-center gap-1">
+                        <Ionicons
+                          name={
+                            isActive ? "checkbox-outline" : "square-outline"
+                          }
+                          size={16}
+                          color={isActive ? brandTeal : "#94A3B8"}
+                        />
+                        <Text
+                          className="text-sm font-semibold"
+                          style={{
+                            color: isActive ? brandTeal : "#475569",
+                          }}
+                        >
+                          {opt.label}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
-      </ScrollView>
+      </View>
 
       <View className="gap-3 mt-4">
         <Pressable
@@ -270,7 +273,7 @@ export default function ProductForm({
           </View>
         </Pressable>
       </View>
-    </>
+    </KeyboardAwareScrollView>
   );
 }
 
